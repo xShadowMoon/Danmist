@@ -1,0 +1,20 @@
+.wb-filters {display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px}
+.wb-filters input[type=number]{width:58px}
+#workmode{display:none}
+.wb-dialog{width:min(1080px,94vw);max-height:90vh;border:1px solid var(--line);border-radius:18px;background:var(--card);color:var(--ink);padding:0;box-shadow:0 20px 80px #0005}
+.wb-dialog::backdrop{background:#11182788;backdrop-filter:blur(4px)}
+.wb-dialog header{display:flex;gap:12px;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:1}
+.wb-dialog header h2{font-size:19px;margin:0;flex:1}.wb-body{padding:18px 22px}.wb-sub{font-size:13px;color:var(--ink2);line-height:1.8;margin:0 0 14px}
+.wb-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center}.wb-toolbar input{flex:1;min-width:180px}
+.wb-dialog input,.wb-dialog select,.wb-dialog textarea,.wb-filters input,.wb-filters select{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--card);color:var(--ink);font:inherit;min-width:0}
+.wb-table{width:100%;border-collapse:collapse;font-size:13px}.wb-table th{text-align:left;color:var(--ink2);font-weight:500}.wb-table td,.wb-table th{padding:12px 8px;border-bottom:1px solid var(--line);vertical-align:top}.wb-table td:first-child{max-width:250px;overflow-wrap:anywhere}.wb-table small{display:block;color:var(--ink2);margin-top:4px}.wb-table .wb-actions{display:flex;gap:5px;flex-wrap:wrap}.wb-tag{display:inline-block;border:1px solid var(--line);padding:2px 7px;border-radius:12px;font-size:11px;margin:3px 3px 0 0}
+.wb-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.wb-field{display:flex;flex-direction:column;gap:5px;font-size:13px}.wb-field.wide{grid-column:1/-1}.wb-field textarea{min-height:85px;resize:vertical}.wb-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}.wb-status{min-height:20px;font-size:13px;color:var(--mist-d);margin-top:10px}.wb-danger{color:#c54d62}.wb-task{padding:12px;border-bottom:1px solid var(--line)}.wb-task.done{opacity:.65}.wb-task-head{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink2)}.wb-task p{margin:7px 0;line-height:1.6;overflow-wrap:anywhere}.wb-task .btn{margin:0 6px 0 0}.wb-checks{display:grid;grid-template-columns:1fr 1fr;gap:10px}.wb-check{border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;gap:10px;align-items:flex-start}.wb-check b{display:block;margin-bottom:5px}.wb-check small{display:block;line-height:1.6;color:var(--ink2)}.wb-check .status{border-radius:8px;padding:3px 6px;font-size:11px;white-space:nowrap;background:#e4ab3826;color:#b57f13}.wb-check.pass .status{background:#3c9c8022;color:#34876d}.wb-check.fail .status{background:#d4546822;color:#c2475d}.wb-manual{margin-top:18px;padding:15px;background:var(--bg);border-radius:12px}.wb-manual label{display:block;margin:12px 0;line-height:1.6}.wb-import-preview{max-height:250px;overflow:auto;background:var(--bg);border-radius:10px;padding:12px;white-space:pre-wrap;font-size:13px}.wb-modal-table{overflow-x:auto}.wb-empty{text-align:center;padding:28px;color:var(--ink2)}
+.pop #workmode,.pop #librarybtn,.pop #responsesbtn,.pop #preflightbtn{display:none!important}
+.sc.expired-dim:not(.read){opacity:.65}
+@media(max-width:700px){.wb-grid,.wb-checks{grid-template-columns:1fr}.wb-body{padding:14px}.wb-dialog header{padding:14px}.wb-table th:nth-child(3),.wb-table td:nth-child(3){display:none}.wb-table td{padding:10px 4px}.wb-dialog{max-height:94vh}.wb-toolbar input{width:100%}}
+
+/* 窗口不够宽时顶栏按钮再收紧一点，一行放得下（2026-11-13） */
+@media (max-width:1240px){.top{gap:6px}.top .btn{padding:6px 7px}}
+/* 多了曲库、自检、模式三个按钮：带字的顶栏要更宽才放得下，1480 以下只留图标 */
+@media (max-width:1900px){.top .btn .lbl{display:none}.top .btn{padding:6px 9px}}
+@media (max-width:1240px){.top .btn{padding:6px 7px}}

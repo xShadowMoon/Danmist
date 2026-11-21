@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>弹幕姬</title>
+<link rel="icon" href="/static/art/icon-64.png">
+<link rel="manifest" id="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/art/icon-192.png">
+<script>if (location.pathname.startsWith('/host')) document.getElementById('manifest').href = '/static/manifest-host.json';</script>
+<script>
+// 先定好深色还是浅色，免得打开时闪一下
+(() => {
+  let t = 'auto';
+  try { t = JSON.parse(localStorage.getItem('xw-cfg') || '{}').theme || 'auto'; } catch {}
+  if (t === 'auto') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  document.documentElement.dataset.theme = t;
+  try { const p = JSON.parse(localStorage.getItem('xw-cfg') || '{}').pal; if (p) document.documentElement.dataset.pal = p; } catch {}
+})();
+</script>
+<link rel="stylesheet" href="/static/app/main.css?v=0">
+<link rel="stylesheet" href="/static/workbench.css?v=20261113c">
+</head>
+<body>
+<div id="snow"></div>
+<div id="netbar" title="正在重新连接"></div>
+<div id="warnbar" hidden></div>
+<button id="verbar" hidden title="弹幕姬上线了新版本，点一下刷新页面（下播后会自己刷新）">有新版本 · 点这里更新</button>
+<div id="reconn" aria-live="polite"><img src="/static/art/xw-connect.webp" alt="" onerror="this.remove()"><span>正在重新连接…</span></div>
+<div class="app">
+  <div class="top">
+    <div class="brand">
+      <div class="logo"><img src="/static/art/icon-256.png" alt=""></div>
+      <div>
+        <h1>弹幕姬<small id="roomid"></small></h1>
+        <div class="titlerow"><div class="title" id="title">连接中…</div><form id="tedit" hidden><input id="tinput" maxlength="40" title="直播间标题：直接改，回车或点 ✓ 确认" placeholder="直播间标题"><select id="tarea" title="分区"></select><button class="btn sm" id="tsave" title="确认修改" disabled>✓</button><button type="button" class="btn sm" id="tprebtn" title="常用标题：点一下换成存好的标题和分区"><i class="ic" data-ic="pin"></i></button><button type="button" class="btn sm" id="tnewsbtn" title="直播间公告"><i class="ic" data-ic="notice"></i></button><button type="button" class="btn sm" id="golive" title="一键开播 / 下播"><i class="ic" data-ic="live"></i> <span>开播</span></button></form><div id="tpremenu" hidden></div>
+<div id="livepanel" hidden>
+  <div class="lphead"><b id="lptitle">一键开播</b><button type="button" class="lpx" id="lpclose" title="关上"><i class="ic" data-ic="close"></i></button></div>
+  <div id="lpinfo" class="lpinfo"></div>
+  <label class="lpopt"><input type="checkbox" id="lpauto"> 让 OBS 自动开始 / 停止推流</label>
+  <div class="lpobs" id="lpobs">
+    <input id="lpurl" placeholder="ws://127.0.0.1:4455" title="OBS → 工具 → WebSocket 服务器设置 里的地址和端口">
+    <input id="lppw" type="password" placeholder="OBS WebSocket 密码" title="OBS → 工具 → WebSocket 服务器设置 → 显示连接信息 里的密码；没开身份验证就空着">
+    <button type="button" class="btn sm" id="lptest" title="试着连一下 OBS，不会开始推流">测试</button>
+  </div>
+  <div id="lpmsg" class="lpmsg"></div>
+  <div id="lpkey" class="lpkey" hidden></div>
+  <button type="button" class="btn lpgo" id="lpgo"></button>
+</div><a class="btn sm" id="roomlink" target="_blank" rel="noopener" title="在新窗口打开直播间" style="display:none"><i class="ic" data-ic="tv"></i></a><button class="btn sm" id="monbtn" title="直播画面：看观众那边看到的样子（静音小窗）" style="display:none"><i class="ic" data-ic="monitor"></i></button></div>
+      </div>
+    </div>
+    <span class="pill" id="live">未开播</span>
+    <span class="pill" id="conn">连接中</span>
+    <span class="pill rank" id="rankpill" title="B 站人气榜和分区小时榜的排名" hidden></span>
+    <span id="ttsbar"><span><i class="ic" data-ic="volume"></i></span><span class="now" id="ttsnow"></span><span class="q" id="ttsq"></span><button class="btn sm" id="ttsskip">跳过</button><button class="btn sm" id="ttsclear">清空</button></span>
+    <span id="ttshint"> 点一下开始朗读</span>
+    <div class="spacer"></div>
+    <!-- 工作模式：自己画的菜单（原生下拉框的样子没法统一），实际状态仍存在隐藏的 #workmode 里，workbench.js 只认它 -->
+    <select id="workmode" hidden><option value="custom">我的布局</option><option value="sing">唱歌</option><option value="chat">聊天</option><option value="moderate">房管</option></select>
+    <div class="wmode"><button class="btn" id="workmodebtn" title="工作模式：唱歌 / 聊天 / 房管各一套布局和朗读设置" aria-haspopup="menu" aria-expanded="false"><span class="wico" id="workmodeico"></span><span class="lbl" id="workmodelbl"> 我的布局</span><svg class="wcaret" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+      <div class="wmenu" id="workmenu" role="menu" hidden></div></div>
+    <i class="tsep"></i>
+    <button class="btn admin-only" id="librarybtn" title="曲库：歌手、标签、熟练度、伴奏，一键排歌"><i class="ic" data-ic="music"></i><span class="lbl"> 曲库</span></button>
+    <button class="btn admin-only" id="preflightbtn" title="开播自检：连接、登录、保存、备份、歌单、上屏"><i class="ic" data-ic="check"></i><span class="lbl"> 自检</span></button>
+    <button class="btn" id="histbtn" title="历史场次"><i class="ic" data-ic="history"></i><span class="lbl"> 历史</span></button>
+    <button class="btn" id="obsbtn" title="OBS 弹幕"><i class="ic" data-ic="video"></i><span class="lbl"> OBS 弹幕</span></button>
+    <i class="tsep"></i>
+    <button class="btn" id="layoutbtn" title="布局"><i class="ic" data-ic="grid"></i><span class="lbl"> 布局</span></button>
+    <button class="btn" id="compactbtn" title="紧凑模式"><i class="ic" data-ic="compact"></i><span class="lbl"> 紧凑</span></button>
+    <button class="btn" id="themebtn" title="切换深色 / 浅色"><i class="ic" data-ic="moon"></i><span class="lbl"> 深浅色</span></button>
+    <i class="tsep"></i>
+    <button class="btn" id="ttsbtn" title="弹幕、SC、礼物朗读"><i class="ic" data-ic="volume"></i><span class="lbl"> 朗读：关</span></button>
+    <button class="btn admin-only" id="copylink" title="复制普通链接：发给别人看的那个网址（只能看弹幕、SC、礼物、歌单）"><i class="ic" data-ic="link"></i><span class="lbl"> 普通链接</span></button>
+    <button class="btn" id="viewbtn" title="普通视角：看看拿普通链接的人看到什么（再点一下回到管理）" hidden><i class="ic" data-ic="eye"></i><span class="lbl"> 普通视角</span></button>
+    <i class="tsep"></i>
+    <button class="btn" id="newsbtn" title="功能一览、更新公告"><i class="ic" data-ic="book"></i><span class="lbl"> 功能</span></button>
+    <div class="wmode" id="morewrap" hidden><button class="btn" id="morebtn" title="更多" aria-haspopup="menu"><i class="ic" data-ic="more"></i></button><div class="wmenu moremenu" id="moremenu" hidden></div></div>
+    <button class="btn" id="setbtn" title="设置"><i class="ic" data-ic="gear"></i><span class="lbl"> 设置</span></button>
+
+  </div>
+
+  <div class="sidebar" id="sidebar" hidden></div>
+  <div id="banner"></div>
+
+  <div class="stats" id="stats">
+    <div class="stat" id="t-watched"><div class="k"><i class="ic" data-ic="eye"></i>看过</div><div class="v" id="watched">-</div><div class="s"></div></div>
+    <div class="stat" id="t-online" hidden><div class="k"><i class="ic" data-ic="snow"></i> 在线</div><div class="v" id="online">-</div><div class="s"></div></div>
+    <div class="stat" id="t-users"><div class="k"><i class="ic" data-ic="p-users"></i>本场来过</div><div class="v" id="users">0</div><div class="s" id="dmcount">弹幕 0 条</div></div>
+    <div class="stat" id="t-dur"><div class="k"><i class="ic" data-ic="clock"></i>本场时长</div><div class="v" id="dur">—</div><div class="s" id="likes">点赞 -</div></div>
+  </div>
+
+  <div class="main" id="main"></div>
+  <nav id="mtabs" aria-label="切换栏目"></nav>
+</div>
+
+<!-- 面板先放在这里，按布局搬到 #main 里 -->
+<div id="pool">
+  <section class="panel" id="p-dm" data-id="dm">
+    <header><span class="ttl"><i class="ic" data-ic="p-dm"></i>弹幕</span> <span class="xrwrap" hidden><button class="xrbtn" id="xroombtn" title="切换直播间：看别的直播间的弹幕（不影响主播这边的记录）"><i class="ic" data-ic="tv"></i><span id="xroomlbl">主播</span><svg class="wcaret" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button><div class="wmenu xrmenu" id="xroommenu" hidden></div></span> <span class="count" id="dmn"></span><select class="dmfilter" id="dmfilter" title="只看哪些弹幕"><option value="all">全部</option><option value="guard">舰长</option><option value="medal">粉丝牌</option><option value="hl">高亮</option><option value="nobot">不看机器人弹幕</option></select><input class="search" id="dmsearch" placeholder="" title="搜本场全部弹幕"><button class="btn sm" id="dmpop" title="弹幕小窗：浮在最上面"><i class="ic" data-ic="popout"></i></button><span class="ptools"><button class="btn sm" data-hide="dm" title="移除这个模块">✕ 移除</button></span></header>
+    <div class="list" id="dmlist"></div><div class="entbar" id="entertip" aria-live="polite"></div>
+    <div class="newbar" id="newbar">↓ 新弹幕</div>
+    <div class="saybar admin-only"><button class="btn sm" id="sayas" title="换账号"></button><input id="sayinput" maxlength="40" placeholder="发弹幕"><button class="btn sm" id="saybtn">发送</button></div>
+  </section>
+  <section class="panel" id="p-sc" data-id="sc">
+    <header><span class="ttl"><i class="ic" data-ic="p-sc"></i>SC</span> <span class="count" id="scn"></span><select class="dmfilter" id="scmin" title="只看多少元以上的 SC"><option value="0">全部</option><option value="30">≥ ¥30</option><option value="50">≥ ¥50</option><option value="100">≥ ¥100</option></select><button class="btn sm" id="screadall" style="margin-left:auto;display:none" title="全部标成已读">✓ 已读</button><span class="ptools"><button class="btn sm" data-hide="sc">✕ 移除</button></span></header>
+    <div class="list" id="sclist"></div>
+  </section>
+  <section class="panel" id="p-gift" data-id="gift">
+    <header><span class="ttl"><i class="ic" data-ic="p-gift"></i>礼物</span><span class="ginc money-only" id="t-money"><i class="ic" data-ic="coin"></i><b id="income">¥0</b><span id="flowdetail" hidden></span></span>
+      <div class="tabs"><span class="tab on" data-g="all">全部</span><span class="tab" data-g="guard">上舰</span><span class="tab" data-g="rank">送礼榜</span></div>
+      <span class="ptools" style="margin-left:auto"><button class="btn sm" data-hide="gift">✕ 移除</button></span>
+    </header>
+    <div class="list" id="giftlist"></div>
+  </section>
+  <section class="panel" id="p-enter" data-id="enter">
+    <header><span class="ttl"><i class="ic" data-ic="p-enter"></i>进房</span> <span class="count" id="entern"></span><span class="ptools" style="margin-left:auto"><button class="btn sm" data-hide="enter">✕ 移除</button></span></header>
+    <div class="list" id="enterlist"></div>
+  </section>
+  <section class="panel" id="p-req" data-id="req">
+    <header><span class="ttl"><i class="ic" data-ic="p-req"></i>点歌</span> <span class="count" id="reqn"></span>
+      <div class="tabs"><span class="tab on" data-r="list">歌单</span><span class="tab" data-r="song">点歌</span></div><select class="dmfilter" id="songgroup" title="歌单分组：按曲库里填的歌手或标签分成几组，点组名收起 / 展开"><option value="">不分组</option><option value="artist">按歌手</option><option value="tag">按标签</option></select>
+      <span class="ptools" style="margin-left:auto"><button class="btn sm" data-hide="req">✕ 移除</button></span>
+    </header>
+    <div class="songadd admin-only" id="songadd"><input id="songinput" maxlength="80" placeholder="＋ 歌名，回车添加" autocomplete="off"><div id="songsug"></div></div>
+    <div class="reqrules admin-only" id="reqrules" title="填 0 = 不限；舰长以上不看粉丝牌。不合规则的点歌照样列出来，但会变灰，你还是可以手动加进歌单" style="display:none"><span>每人每场最多</span><input type="number" id="rr-max" min="0" max="50"><span>首</span><span>· 粉丝牌 ≥</span><input type="number" id="rr-medal" min="0" max="40"><span>级</span></div>
+    <div class="wb-filters admin-only"><button class="btn sm" id="songnext" title="当前这首唱完，换下一首"><i class="ic" data-ic="skip"></i> 下一首</button><button class="btn sm" id="songlibrary" title="打开曲库"><i class="ic" data-ic="music"></i></button></div>
+    <div class="list" id="reqlist"></div>
+  </section>
+  <section class="panel" id="p-rank" data-id="rank">
+    <header><span class="ttl"><i class="ic" data-ic="p-rank"></i>送礼榜</span> <span class="count" id="xn-rank"></span><span class="ptools" style="margin-left:auto"><button class="btn sm" data-hide="rank">✕ 移除</button></span></header>
+    <div class="list" id="x-rank"></div>
+  </section>
+  <section class="panel" id="p-guards" data-id="guards">
+    <header><span class="ttl"><i class="ic" data-ic="p-guards"></i>上舰</span> <span class="count" id="xn-guards"></span><span class="ptools" style="margin-left:auto"><button class="btn sm" data-hide="guards">✕ 移除</button></span></header>
+    <div class="list" id="x-guards"></div>
+  </section>
+  <section class="panel" id="p-top" data-id="top">
+    <header><span class="ttl"><i class="ic" data-ic="p-top"></i>高能榜</span> <span class="count" id="xn-top"></span><span class="ptools" style="margin-left:auto"><button class="btn sm" data-hide="top">✕ 移除</button></span></header>
+    <div class="list" id="x-top"></div>
+  </section>
+  <section class="panel" id="p-follow" data-id="follow">
+    <header><span class="ttl"><i class="ic" data-ic="p-follow"></i>新关注</span> <span class="count" id="xn-follow"></span><span class="ptools" style="margin-left:auto"><button class="btn sm" data-hide="follow">✕ 移除</button></span></header>
+    <div class="list" id="x-follow"></div>
+  </section>
+  <section class="panel" id="p-note" data-id="note">
+    <header><span class="ttl"><i class="ic" data-ic="p-note"></i>便签</span> <span class="count" id="xn-note"></span><span class="ptools" style="margin-left:auto"><button class="btn sm" data-hide="note">✕ 移除</button></span></header>
+    <textarea id="notepad" placeholder="随手记点什么…" style="flex:1;border:0;resize:none;padding:10px 14px;background:transparent;outline:none;font-size:14px;line-height:1.6"></textarea>
+  </section>
+  <section class="panel" id="p-clock" data-id="clock">
+    <header><span class="ttl"><i class="ic" data-ic="p-clock"></i>时间</span> <span class="count" id="xn-clock"></span><span class="ptools" style="margin-left:auto"><button class="btn sm" data-hide="clock">✕ 移除</button></span></header>
+    <div class="clockbox"><div id="clk-now">--:--</div><div id="clk-dur">本场 —</div></div>
+  </section>
+  <section class="panel" id="p-users" data-id="users">
+    <header><span class="ttl"><i class="ic" data-ic="p-users"></i>观众</span>
+      <div class="tabs"><span class="tab on" data-u="top" title="现在在直播间的人数">在线 <b id="onlinen"></b></span><span class="tab" data-u="all">来过</span><span class="tab" data-u="guard" title="现在的舰长，快到期的在前面">舰长 <b id="guardn"></b></span><span class="tab admin-only" data-u="mute" title="禁言名单：现在禁言了谁，可以解除">禁言</span></div>
+      <span class="ptools" style="margin-left:auto"><button class="btn sm" data-hide="users">✕ 移除</button></span>
+    </header>
+    <div class="list" id="userlist"></div>
+  </section>
+</div>
+
+
+<aside id="laydlg"><header><i class="ic" data-ic="grid"></i>布局<button class="btn sm" id="layclose">关闭</button></header><div id="laybody"></div></aside>
+<div class="mask" id="mask"></div>
+<aside id="settings">
+  <header><i class="ic" data-ic="gear"></i>设置<input id="setsearch" placeholder="搜设置" title="输入「字号」「朗读」这类词，直接找到那一项" autocomplete="off"><button class="btn sm" id="setclose">关闭</button></header>
+  <!-- 2026-11-21 改版（参考 OBS / PR / DaVinci 的设置，用户看过改版图同意）：左边分类分三组，右边一页；各栏标题上的齿轮也是打开这里对应的那一页 -->
+  <div class="stabs" id="stabs">
+    <div class="snavg">整体</div>
+    <button class="on" data-st="tts"><i class="ic" data-ic="volume"></i>朗读</button><button data-st="alert"><i class="ic" data-ic="bell"></i>提示音</button><button data-st="view"><i class="ic" data-ic="monitor"></i>外观</button>
+    <div class="snavg">各栏</div>
+    <button data-st="dm"><i class="ic" data-ic="p-dm"></i>弹幕</button><button data-st="sc"><i class="ic" data-ic="p-sc"></i>SC</button><button data-st="gift"><i class="ic" data-ic="p-gift"></i>礼物</button><button data-st="enter"><i class="ic" data-ic="p-enter"></i>进房</button><button data-st="users"><i class="ic" data-ic="p-users"></i>观众</button><button data-st="req"><i class="ic" data-ic="music"></i>点歌</button>
+    <div class="snavg">其它</div>
+    <button data-st="pset"><i class="ic" data-ic="save"></i>设置方案</button><button data-st="link" class="admin-only"><i class="ic" data-ic="link"></i>链接</button><button data-st="more"><i class="ic" data-ic="grid"></i>更多</button>
+  </div>
+  <div class="body">
+    <div class="spage on" data-sp="tts">
+      <h2 class="ptitle">朗读</h2>
+      <fieldset><legend>声音</legend>
+        <div class="opt r"><span>朗读</span><div class="ctl"><label class="switch"><input type="checkbox" data-k="tts.on"><i></i></label></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>声音</span><div class="ctl"><select data-k="tts.voice" id="voicesel" title="声音（Edge 里更自然）"></select></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>音量</span><div class="ctl"><input type="range" min="0" max="1" step="0.05" data-k="tts.volume" data-pct="1" data-u="%"></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>语速</span><div class="ctl"><input type="range" min="0.6" max="2" step="0.05" data-k="tts.rate" data-u="倍"></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>音调</span><div class="ctl"><input type="range" min="0.5" max="1.6" step="0.05" data-k="tts.pitch"></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+      <fieldset class="ckg"><legend>读什么</legend>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" data-k="tts.dm"><span>弹幕</span></label>
+          <label class="chip"><input type="checkbox" data-k="tts.sc"><span>SC</span></label>
+          <label class="chip"><input type="checkbox" data-k="tts.gift"><span>礼物</span></label>
+          <label class="chip"><input type="checkbox" data-k="tts.guard"><span>上舰</span></label>
+          <label class="chip"><input type="checkbox" data-k="tts.follow"><span>关注</span></label>
+          <label class="chip"><input type="checkbox" data-k="tts.enter"><span>进房</span></label>
+        </div>
+        <div class="opt r"><span>礼物 ≥</span><div class="ctl"><input type="number" min="0" step="0.1" data-k="tts.giftMin"><small>元</small></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>弹幕最多</span><div class="ctl"><input type="number" min="5" max="200" step="1" data-k="tts.maxLen"><small>字</small></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+      <fieldset class="ckg"><legend>怎么读</legend>
+        <div class="chips">
+          <label class="chip" title="弹幕读出是谁说的"><input type="checkbox" data-k="tts.readName"><span>读名字</span></label>
+          <label class="chip" title="礼物读出价格"><input type="checkbox" data-k="tts.readPrice"><span>读价格</span></label>
+          <label class="chip" title="表情包弹幕也读"><input type="checkbox" data-k="tts.readEmoticon"><span>读表情</span></label>
+          <label class="chip" title="进房只读舰长的"><input type="checkbox" data-k="tts.enterGuardOnly"><span>进房只读舰长</span></label>
+          <label class="chip" title="读不过来时只读最新一条"><input type="checkbox" data-k="tts.zeroDelay"><span>只读最新</span></label>
+        </div>
+      </fieldset>
+      <fieldset class="ckg"><legend>不读</legend>
+        <div class="chips">
+          <label class="chip" title="机器人发的弹幕不读"><input type="checkbox" data-k="tts.skipBot"><span>机器人弹幕</span></label>
+          <label class="chip" title="主播自己发的弹幕不读"><input type="checkbox" data-k="tts.skipAnchor"><span>主播</span></label>
+        </div>
+        <div class="field"><div>屏蔽词</div><textarea data-k="tts.block" placeholder="空格隔开"></textarea></div>
+        <div id="mutedlist" class="note" style="margin-top:6px">没有</div>
+      </fieldset>
+      <fieldset><legend>试听</legend>
+        <div class="chips" title="按现在的声音、语速和说法读一句示例">
+          <button class="chipbtn" data-tryt="dm">▶ 弹幕</button><button class="chipbtn" data-tryt="sc">▶ SC</button><button class="chipbtn" data-tryt="gift">▶ 礼物</button><button class="chipbtn" data-tryt="guard">▶ 上舰</button><button class="chipbtn" data-tryt="enter">▶ 进房</button><button class="chipbtn" data-tryt="follow">▶ 关注</button>
+        </div>
+      </fieldset>
+      <fieldset><legend>改说法</legend>
+        <span class="note">{name} {text} {price} {num} {gift} {level}</span>
+        <div class="opt r"><span>弹幕</span><div class="ctl"><input type="text" data-k="tts.tpl.dm"><button class="chipbtn" data-tryt="dm" title="试听">▶</button></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>SC</span><div class="ctl"><input type="text" data-k="tts.tpl.sc"><button class="chipbtn" data-tryt="sc" title="试听">▶</button></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>礼物</span><div class="ctl"><input type="text" data-k="tts.tpl.gift"><button class="chipbtn" data-tryt="gift" title="试听">▶</button></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>上舰</span><div class="ctl"><input type="text" data-k="tts.tpl.guard"><button class="chipbtn" data-tryt="guard" title="试听">▶</button></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>进房</span><div class="ctl"><input type="text" data-k="tts.tpl.enter"><button class="chipbtn" data-tryt="enter" title="试听">▶</button></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>关注</span><div class="ctl"><input type="text" data-k="tts.tpl.follow"><button class="chipbtn" data-tryt="follow" title="试听">▶</button></div><button class="rs" title="恢复默认">↺</button></div>
+        <button class="btn sm" id="tplreset" hidden>恢复默认</button>
+      </fieldset>
+    </div>
+
+    <div class="spage" data-sp="alert">
+      <h2 class="ptitle">提示音</h2>
+      <fieldset><legend>开关</legend>
+        <div class="opt r"><span>提示音</span><div class="ctl"><label class="switch" title="总开关：关着的时候什么都不响"><input type="checkbox" data-k="snd.on"><i></i></label></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>音量</span><div class="ctl"><input type="range" min="0.05" max="1" step="0.05" data-k="snd.vol" data-pct="1" data-u="%"></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+      <fieldset class="ckg"><legend>哪些事响</legend>
+        <div class="chips" id="sndkinds" title="哪些事要响一声；每种的声音不一样">
+          <label class="chip"><input type="checkbox" data-k="snd.dm"><span>弹幕</span></label>
+          <label class="chip"><input type="checkbox" data-k="snd.sc"><span>SC</span></label>
+          <label class="chip"><input type="checkbox" data-k="snd.gift"><span>礼物</span></label>
+          <label class="chip"><input type="checkbox" data-k="snd.guard"><span>上舰</span></label>
+          <label class="chip" title="舰长、提督、总督进直播间"><input type="checkbox" data-k="snd.enterGuard"><span>舰长进房</span></label>
+          <label class="chip"><input type="checkbox" data-k="snd.follow"><span>新关注</span></label>
+        </div>
+        <div class="opt r"><span title="多少元以上的礼物才响">礼物响 ≥</span><div class="ctl"><input type="number" min="0" step="1" data-k="snd.giftMin"><small>元</small></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span title="SC 多少元以上才响">SC 响 ≥</span><div class="ctl"><input type="number" min="0" step="1" data-k="snd.scMin"><small>元</small></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+      <fieldset><legend>试听</legend>
+        <div class="chips" title="听听每种提示音（不管开没开都能试）">
+          <button class="chipbtn" data-sndtry="dm">▶ 弹幕</button><button class="chipbtn" data-sndtry="sc">▶ SC</button><button class="chipbtn" data-sndtry="gift">▶ 礼物</button><button class="chipbtn" data-sndtry="guard">▶ 上舰</button><button class="chipbtn" data-sndtry="enterGuard">▶ 舰长进房</button><button class="chipbtn" data-sndtry="follow">▶ 新关注</button>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="spage" data-sp="view">
+      <h2 class="ptitle">外观</h2>
+      <fieldset><legend>颜色</legend>
+        <div class="opt r"><span>主题</span><div class="ctl"><span class="seg" data-segk="theme"><button type="button" data-val="light">浅色</button><button type="button" data-val="dark">深色</button><button type="button" data-val="auto">跟系统</button></span><select data-k="theme" hidden><option value="auto">自动</option><option value="light">浅色</option><option value="dark">深色</option></select></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>配色</span><div class="ctl"><div class="pals" id="pals"></div></div><span></span></div>
+        <div class="opt r" title="在配色上再换一个主色"><span>主题色</span><div class="ctl"><input type="color" data-k="accent"><button class="btn sm" id="accentpick" title="吸管：在屏幕上点一下，吸那里的颜色" hidden><i class="ic" data-ic="pipette"></i></button><button class="btn sm" id="accentreset" title="恢复默认" hidden>↺</button></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="accsw" id="accsw" title="从背景图里取的颜色，点一下就用"></div>
+      </fieldset>
+      <fieldset class="ckg"><legend>显示</legend>
+        <div class="chips">
+          <label class="chip" title="顶栏按钮只留图标，面板间距小一点"><input type="checkbox" data-k="compact"><span>紧凑</span></label>
+          <label class="chip" title="较占资源"><input type="checkbox" data-k="snow"><span>飘雪</span></label>
+          <label class="chip" title="舰长、提督、总督的头像框，跟 OBS 一样"><input type="checkbox" data-k="frames"><span>头像框</span></label>
+        </div>
+      </fieldset>
+      <fieldset><legend>背景图</legend>
+        <div class="opt r"><span>背景图</span><div class="ctl"><button class="btn sm" id="bgpick">选图</button><button class="btn sm" id="bgclear" title="去掉背景图">去掉</button><input type="file" id="bgfile" accept="image/*" hidden></div><span></span></div>
+        <div class="opt r" title="有背景图时，面板透出多少"><span>面板浓度</span><div class="ctl"><input type="range" min="30" max="100" step="5" data-k="bgAlpha" data-u="%"></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+    </div>
+
+    <div class="spage" data-sp="dm">
+      <h2 class="ptitle">弹幕<small>弹幕栏标题上的齿轮也是打开这一页</small></h2>
+      <fieldset><legend>文字</legend>
+        <div class="opt r"><span>字号</span><div class="ctl"><input type="range" min="13" max="28" step="0.5" data-k="dmSize" data-u="px"></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>名字大小</span><div class="ctl"><input type="range" min="10" max="20" step="0.5" data-k="dm.name" data-u="px"></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>字体</span><div class="ctl"><select data-k="dm.font"><option value="">默认</option><option value="round">圆体</option><option value="hei">黑体</option><option value="kai">楷体</option><option value="song">宋体</option></select></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r" title="不改就用默认颜色"><span>文字颜色</span><div class="ctl"><input type="color" data-k="dm.color"><button class="btn sm" id="dmcolorreset" hidden>↺</button></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+      <fieldset><legend>排版</legend>
+        <div class="opt r" title="名字和内容排在同一行，还是名字在上面"><span>排法</span><div class="ctl"><span class="seg" data-segk="dm.inline"><button type="button" data-val="false">名字在上</button><button type="button" data-val="true">同一行</button></span><input type="checkbox" data-k="dm.inline" hidden></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>间距</span><div class="ctl"><input type="range" min="0" max="24" step="1" data-k="dm.gap" data-u="px"></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>背景</span><div class="ctl"><span class="seg" data-segk="dm.bg"><button type="button" data-val="none">无</button><button type="button" data-val="bubble">气泡</button><button type="button" data-val="stripe">隔行</button><button type="button" data-val="line">分隔线</button></span><select data-k="dm.bg" hidden><option value="none">无</option><option value="bubble">气泡</option><option value="stripe">隔行</option><option value="line">分隔线</option></select></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+      <fieldset class="ckg"><legend>每条显示</legend>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" data-k="dm.avatar"><span>头像</span></label>
+          <label class="chip"><input type="checkbox" data-k="dm.medal"><span>粉丝牌</span></label>
+          <label class="chip"><input type="checkbox" data-k="dm.time"><span>时间</span></label>
+          <label class="chip"><input type="checkbox" data-k="dm.bold"><span>加粗</span></label>
+          <label class="chip" title="舰长、提督、总督的弹幕带底色"><input type="checkbox" data-k="dm.guardBg"><span>舰长底色</span></label>
+          <label class="chip" title="名字旁边显示你给这个人写的备注"><input type="checkbox" data-k="dm.note"><span>备注</span></label>
+        </div>
+      </fieldset>
+      <fieldset><legend>进场动画</legend>
+        <div class="opt r"><span>样式</span><div class="ctl"><span class="seg" data-segk="dm.anim"><button type="button" data-val="in">上滑</button><button type="button" data-val="fadein">淡入</button><button type="button" data-val="popin">弹出</button><button type="button" data-val="leftin">左滑</button><button type="button" data-val="rightin">右滑</button><button type="button" data-val="none">无</button></span><select data-k="dm.anim" hidden><option value="in">上滑</option><option value="fadein">淡入</option><option value="popin">弹出</option><option value="leftin">左滑入</option><option value="rightin">右滑入</option><option value="none">无</option></select></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r" title="数字越大越慢"><span>时长</span><div class="ctl"><input type="range" min="150" max="2500" step="50" data-k="dm.animMs" data-u="ms"></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>预览</span><div class="ctl"><div class="animprev" id="animprev" title="点一下再播一遍"><div class="list" id="animprevlist"></div><button class="btn sm" id="animplay">▶</button></div></div><span></span></div>
+      </fieldset>
+      <fieldset><legend>进房提示</legend>
+        <div class="opt r" title="进房不单独占一栏，在弹幕栏里提示一下"><span>进房</span><div class="ctl"><span class="seg" data-segk="enterMerge"><button type="button" data-val="true">并入弹幕</button><button type="button" data-val="false">单独一栏</button></span><input type="checkbox" data-k="enterMerge" hidden></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="entopts" id="entopts">
+          <div class="opt r"><span>位置</span><div class="ctl"><span class="seg" data-segk="enterTip.pos"><button type="button" data-val="flow">底部小栏</button><button type="button" data-val="top">顶上弹出</button><button type="button" data-val="bottom">底下弹出</button></span><select data-k="enterTip.pos" hidden><option value="flow">底部小栏</option><option value="top">顶上弹出</option><option value="bottom">底下弹出</option></select></div><button class="rs" title="恢复默认">↺</button></div>
+          <div class="opt r ep-sec"><span>停留</span><div class="ctl"><input type="range" min="1.5" max="10" step="0.5" data-k="enterTip.sec" data-u="秒"></div><button class="rs" title="恢复默认">↺</button></div>
+          <div class="chips ckrow"><label class="chip"><input type="checkbox" data-k="enterTip.enter"><span>进房</span></label><label class="chip"><input type="checkbox" data-k="enterTip.follow"><span>关注</span></label><label class="chip"><input type="checkbox" data-k="enterTip.like"><span>点赞</span></label><label class="chip"><input type="checkbox" data-k="enterTip.share"><span>分享</span></label><label class="chip" title="只提示舰长、提督、总督"><input type="checkbox" data-k="enterTip.guardOnly"><span>只看舰长</span></label><label class="chip"><input type="checkbox" data-k="enterTip.avatar"><span>进房头像</span></label></div>
+          <div class="enterprev" id="enterprev" title="预览"><div class="ep-rows"><div class="ep-row"></div><div class="ep-row"></div><div class="ep-row"></div></div><div class="entbar" id="eptip"></div></div>
+        </div>
+      </fieldset>
+      <fieldset><legend>筛选</legend>
+        <div class="opt r"><span>高亮词</span><div class="ctl"><input type="text" data-k="hlWords" placeholder="空格隔开"></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r" title="「只看粉丝牌」只算主播的牌子"><span>粉丝牌 ≥</span><div class="ctl"><input type="number" min="1" max="40" step="1" data-k="dmMedalMin"><small>级</small></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+      <button class="btn sm" id="dmreset" hidden>↺ 恢复默认</button>
+    </div>
+
+    <div class="spage" data-sp="sc">
+      <h2 class="ptitle">SC<small>SC 栏标题上的齿轮也是打开这一页</small></h2>
+      <fieldset><legend>显示</legend>
+        <div class="opt r"><span>字号</span><div class="ctl"><input type="range" min="80" max="160" step="5" data-u="%" data-k="fs.sc"></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>已读后</span><div class="ctl"><span class="seg" data-segk="sc.read"><button type="button" data-val="dim">变淡</button><button type="button" data-val="fold">收起</button><button type="button" data-val="hide">隐藏</button><button type="button" data-val="keep">不变</button></span><select data-k="sc.read" hidden><option value="dim">变淡</option><option value="fold">收起</option><option value="hide">隐藏</option><option value="keep">不变</option></select></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+      <fieldset class="ckg"><legend>每条显示</legend>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" data-k="sc.avatar"><span>头像</span></label>
+          <label class="chip" title="置顶剩余时间和进度条"><input type="checkbox" data-k="sc.bar"><span>倒计时</span></label>
+          <label class="chip" title="没读的排在最上面"><input type="checkbox" data-k="sc.unreadTop"><span>未读在上</span></label>
+          <label class="chip" title="置顶时间到了仅淡化外观，不改变已读或回应状态"><input type="checkbox" data-k="sc.autoRead"><span>到时淡化</span></label>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="spage" data-sp="gift">
+      <h2 class="ptitle">礼物<small>礼物栏标题上的齿轮也是打开这一页</small></h2>
+      <fieldset><legend>礼物栏</legend>
+        <div class="opt r"><span>字号</span><div class="ctl"><input type="range" min="80" max="160" step="5" data-u="%" data-k="fs.gift"></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r" title="礼物栏只显示这个价以上的"><span>只显示 ≥</span><div class="ctl"><input type="number" min="0" step="0.1" data-k="giftMin"><small>元</small></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r" title="刚送来的礼物在礼物栏里播几秒动图"><span>礼物动图</span><div class="ctl"><label class="switch"><input type="checkbox" data-k="giftAnim"><i></i></label><button class="chipbtn" id="gaprev" title="看看礼物动图的样子">▶ 预览</button></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="gaprev" id="gaprevbox"></div>
+      </fieldset>
+      <fieldset><legend>大特效</legend>
+        <div class="opt r" title="大额礼物在弹幕栏中间放大播一次"><span>大礼物特效</span><div class="ctl"><label class="switch"><input type="checkbox" data-k="bigGift.on"><i></i></label><button class="chipbtn" id="gfxprev">▶ 预览</button></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r"><span>大特效 ≥</span><div class="ctl"><input type="number" min="1" step="1" data-k="bigGift.min"><small>元</small></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r" title="有人上舰时在礼物栏里播一次：锚徽章 + 上舰横幅"><span>上舰特效</span><div class="ctl"><label class="switch"><input type="checkbox" data-k="bigGift.guard"><i></i></label><button class="chipbtn" id="gfxguard" title="舰长、提督、总督轮着预览">▶ 预览</button></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+    </div>
+
+    <div class="spage" data-sp="enter">
+      <h2 class="ptitle">进房<small>进房栏标题上的齿轮也是打开这一页；进房提示在「弹幕」那一页</small></h2>
+      <fieldset><legend>显示</legend>
+        <div class="opt r"><span>字号</span><div class="ctl"><input type="range" min="80" max="160" step="5" data-u="%" data-k="fs.enter"></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+    </div>
+    <div class="spage" data-sp="users">
+      <h2 class="ptitle">观众<small>观众栏标题上的齿轮也是打开这一页</small></h2>
+      <fieldset><legend>显示</legend>
+        <div class="opt r"><span>字号</span><div class="ctl"><input type="range" min="80" max="160" step="5" data-u="%" data-k="fs.users"></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+    </div>
+    <div class="spage" data-sp="req">
+      <h2 class="ptitle">点歌<small>点歌栏标题上的齿轮也是打开这一页</small></h2>
+      <fieldset><legend>显示</legend>
+        <div class="opt r"><span>字号</span><div class="ctl"><input type="range" min="80" max="160" step="5" data-u="%" data-k="fs.req"></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
+    </div>
+
+    <div class="spage" data-sp="pset">
+      <h2 class="ptitle">设置方案</h2>
+      <fieldset><legend>存一套</legend>
+        <div class="opt"><input type="text" id="psetname" placeholder="起个名字，存下现在这套" maxlength="12" style="flex:1"><button class="btn sm" id="psetsave">保存</button></div>
+        <div class="chips" id="psets"></div>
+      </fieldset>
+      <fieldset><legend>文件</legend>
+        <div class="chips"><button class="btn sm" id="cfgexport" title="存成文件，可以发给别人"><i class="ic" data-ic="upload"></i> 导出</button><button class="btn sm" id="cfgimport" title="读入别人发来的设置文件"><i class="ic" data-ic="download"></i> 导入</button><input type="file" id="cfgfile" accept=".json,application/json" hidden></div>
+      </fieldset>
+    </div>
+
+    <div class="spage admin-only" data-sp="link">
+      <h2 class="ptitle">链接</h2>
+      <fieldset><legend>普通链接</legend>
+        <div class="opt" title="发给别人看的网址"><input type="text" id="lk-public" readonly style="flex:1;min-width:0"><button class="btn sm" id="lk-copy">复制</button></div>
+        <div class="opt"><span>现在在看</span><b id="lk-online">-</b></div>
+      </fieldset>
+      <fieldset><legend>管理链接</legend>
+        <div id="lk-list"></div>
+        <div class="opt"><input type="text" id="lk-name" maxlength="12" placeholder="备注，比如「手机」" style="flex:1;min-width:0"><select id="lk-days" title="多久以后失效"><option value="1">1 天</option><option value="7">7 天</option><option value="30" selected>30 天</option><option value="0">长期</option></select><button class="btn sm" id="lk-new">新建</button></div>
+        <div class="chips"><label class="chip" title="给主播直播用：不显示普通视角、链接管理、清零这些后台的东西；会记下每次打开"><input type="checkbox" id="lk-host"><span><i class="ic" data-ic="user"></i> 主播专属</span></label></div>
+        <div class="chips"><button class="btn sm danger" id="lk-rotate" title="所有管理链接马上失效，换一把新的。在这台电脑上直接打开的不受影响">全部作废，换新的</button></div>
+      </fieldset>
+    </div>
+
+    <div class="spage" data-sp="more">
+      <h2 class="ptitle">更多</h2>
+      <fieldset><legend>其它</legend>
+        <div class="chips"><button class="btn" id="touropen" title="再看一遍新手引导"><i class="ic" data-ic="book"></i> 引导</button><button class="btn" id="layoutopen"><i class="ic" data-ic="grid"></i> 布局</button><a class="btn" href="obs-setup" target="_blank"><i class="ic" data-ic="video"></i> OBS 弹幕</a><button class="btn" id="pwabtn" title="把弹幕姬装成电脑上的应用：独立窗口、桌面和任务栏有图标（数据还是连这台电脑）"><i class="ic" data-ic="download"></i> 装到桌面</button></div>
+      </fieldset>
+    </div>
+  </div>
+  <div class="sfoot"><span>粗体的是改过的，点 ↺ 只恢复那一项</span><button class="btn sm" id="pagereset">恢复这一页默认</button></div>
+</aside>
+
+<div id="card"></div>
+<div id="spot"><span id="spottip"></span></div>
+<div class="fwin" id="lkbox" hidden><header><i class="ic" data-ic="link"></i><b>新的管理链接</b><small>只显示这一次</small><span class="sp"></span><button class="btn sm" id="lkboxclose"><i class="ic" data-ic="close"></i></button></header><div style="padding:12px;display:flex;gap:8px"><input type="text" id="lkboxurl" readonly style="flex:1;min-width:0"><button class="btn sm accent" id="lkboxcopy">复制</button></div></div>
+<div id="pwatip" hidden><img src="/static/art/icon-64.png" alt=""><div class="pt"><b>把弹幕姬装到桌面？</b><small>独立窗口，任务栏有主播图标</small></div><div class="pb"><button class="btn sm" id="pwalater">以后再说</button><button class="btn sm accent" id="pwayes">安装</button></div></div>
+<div id="tour" hidden><div class="tt" id="tourtxt"></div><div class="tb"><span id="tourn"></span><button class="btn sm" id="tourskip">跳过</button><button class="btn sm accent" id="tournext">下一步</button></div></div>
+<div class="fwin" id="lyr" hidden><header><i class="ic" data-ic="lyrics"></i><b id="lyrname">歌词</b><span class="sp"></span><button class="btn sm" id="lyrsm" title="字小一点">A−</button><button class="btn sm" id="lyrbig" title="字大一点">A+</button><button class="btn sm" id="lyrclose" title="关掉"><i class="ic" data-ic="close"></i></button></header><div id="lyrbody"></div></div>
+<div class="fwin" id="mon" hidden><header><i class="ic" data-ic="monitor"></i><b>直播画面</b><small>静音 · 有几秒延迟</small><span class="sp"></span><button class="btn sm" id="monreload" title="重新加载"><i class="ic" data-ic="history"></i></button><button class="btn sm" id="monclose" title="关掉（关掉就不再占网速）"><i class="ic" data-ic="close"></i></button></header><iframe id="monframe" allow="autoplay; fullscreen" title="直播画面"></iframe></div>
+
+<section id="guide">
+  <header>
+    <div class="gtabs"><button data-gt="feat" class="on"><i class="ic" data-ic="book"></i> 功能</button><button data-gt="news"><i class="ic" data-ic="sparkle"></i> 更新</button></div>
+    <input id="gsearch" placeholder="找功能">
+    <button class="btn sm" id="gclose">关闭</button>
+  </header>
+  <div class="gmain"><nav class="grail" id="grail"></nav><div class="gbody" id="gbody"></div></div>
+</section>
+
+<section id="obsbox">
+  <header><span><i class="ic" data-ic="video"></i> OBS 弹幕设置</span><a class="btn sm" href="obs-setup" target="_blank" style="margin-left:auto">↗ 在新窗口打开</a><button class="btn sm" id="obsclose">关闭</button></header>
+  <iframe id="obsframe" title="OBS 弹幕设置"></iframe>
+</section>
+
+<section id="hist">
+  <header><span id="htitle"><i class="ic" data-ic="history"></i> 历史场次</span><button class="btn sm" id="hback" style="display:none">←</button><button class="btn sm" id="hclose">关闭</button></header>
+  <div class="hbody" id="hbody"></div>
+</section>
+
+<script src="/static/app/icons.js?v=0"></script>
+<script src="/static/app/core.js?v=0"></script>
+<script src="/static/app/render.js?v=0"></script>
+<script src="/static/app/people.js?v=0"></script>
+<script src="/static/app/voice.js?v=0"></script>
+<script src="/static/app/songs.js?v=0"></script>
+<script src="/static/app/news.js?v=0"></script>
+<script src="/static/app/ws.js?v=0"></script>
+<script src="/static/app/ui.js?v=0"></script>
+<script src="/static/workbench.js?v=20261113c"></script>
+</body>
+</html>

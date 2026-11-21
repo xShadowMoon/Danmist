@@ -1,0 +1,26 @@
+{
+  "name": "弹幕姬",
+  "short_name": "弹幕姬",
+  "description": "B 站直播弹幕工作台",
+  "display": "standalone",
+  "background_color": "#eef4fa",
+  "theme_color": "#7fb3dd",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/static/art/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/art/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "id": "/",
+  "start_url": "/",
+  "scope": "/"
+}
