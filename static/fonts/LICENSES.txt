@@ -1,0 +1,17 @@
+OBS 弹幕 / 歌单可选的开源字体（2026-11-21 加）
+
+都用 SIL Open Font License 1.1（可以免费商用，可以精简、改格式后再分发，不能单独卖字体）。
+这里的 .woff2 是精简过的（只留 GB2312 常用汉字、英文数字和常用标点），原字体从下面这些地方下载：
+
+wenkai.woff2     霞鹜文楷 LXGW WenKai v1.530        https://github.com/lxgw/LxgwWenKai
+smiley.woff2     得意黑 Smiley Sans v2.0.1         https://github.com/atelier-anchor/smiley-sans
+marker.woff2     霞鹜漫黑 LXGW Marker Gothic v1.012  https://github.com/lxgw/LxgwMarkerGothic
+kuaile.woff2     站酷快乐体 ZCOOL KuaiLe           https://github.com/google/fonts/tree/main/ofl/zcoolkuaile
+xiaowei.woff2    站酷小薇 ZCOOL XiaoWei            https://github.com/google/fonts/tree/main/ofl/zcoolxiaowei
+huangyou.woff2   站酷庆科黄油体 ZCOOL QingKe HuangYou https://github.com/google/fonts/tree/main/ofl/zcoolqingkehuangyou
+notosans.woff2   思源黑体 Noto Sans SC（粗 700）     https://github.com/google/fonts/tree/main/ofl/notosanssc
+notoserif.woff2  思源宋体 Noto Serif SC（粗 700）    https://github.com/google/fonts/tree/main/ofl/notoserifsc
+mashan.woff2     马善政毛笔 Ma Shan Zheng          https://github.com/google/fonts/tree/main/ofl/mashanzheng
+longcang.woff2   龙藏体 Long Cang                  https://github.com/google/fonts/tree/main/ofl/longcang
+
+授权全文：https://openfontlicense.org/open-font-license-official-text/

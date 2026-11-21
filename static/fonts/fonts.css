@@ -1,0 +1,13 @@
+/* OBS 弹幕 / 歌单可选的开源字体（2026-11-21 加）：都是 SIL OFL 授权，可以免费商用。
+   只保留了常用的几千个汉字（GB2312 + 英文数字 + 常用标点），没有的字会自动用后面的系统字体顶上。
+   哪个字体真的被选上才会下载，没选的不下载。 */
+@font-face { font-family: "XW 霞鹜文楷"; src: url(wenkai.woff2) format("woff2"); font-display: swap; }
+@font-face { font-family: "XW 得意黑"; src: url(smiley.woff2) format("woff2"); font-display: swap; }
+@font-face { font-family: "XW 霞鹜漫黑"; src: url(marker.woff2) format("woff2"); font-display: swap; }
+@font-face { font-family: "XW 站酷快乐体"; src: url(kuaile.woff2) format("woff2"); font-display: swap; }
+@font-face { font-family: "XW 站酷小薇"; src: url(xiaowei.woff2) format("woff2"); font-display: swap; }
+@font-face { font-family: "XW 站酷黄油体"; src: url(huangyou.woff2) format("woff2"); font-display: swap; }
+@font-face { font-family: "XW 思源黑体"; src: url(notosans.woff2) format("woff2"); font-display: swap; }
+@font-face { font-family: "XW 思源宋体"; src: url(notoserif.woff2) format("woff2"); font-display: swap; }
+@font-face { font-family: "XW 马善政"; src: url(mashan.woff2) format("woff2"); font-display: swap; }
+@font-face { font-family: "XW 龙藏体"; src: url(longcang.woff2) format("woff2"); font-display: swap; }
