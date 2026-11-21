@@ -1,0 +1,10 @@
+{
+  "room": 0,
+  "anchor_name": "主播名字",
+  "port": 8373,
+  "host": "127.0.0.1",
+  "login_file": "data/bili-login.json",
+  "public_url": "",
+  "discord_webhook": "",
+  "bot_say_url": ""
+}

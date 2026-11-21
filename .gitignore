@@ -1,0 +1,21 @@
+# Local data and secrets: never commit
+config.json
+admin.key
+bot.token
+data/
+*.log
+*.log.*
+backup/
+备份/
+
+# Python / tools
+__pycache__/
+*.pyc
+.venv/
+.demo-test-*/
+tests/retention-*/
+
+# Your own artwork (put it in static/art/, see static/art/README.md)
+static/art/*
+!static/art/README.md
+!static/art/icon-*.png
