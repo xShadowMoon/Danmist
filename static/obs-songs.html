@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="/static/art/icon-64.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>弹幕姬 · OBS 歌单</title>
+<link rel="stylesheet" href="static/fonts/fonts.css">
+<style>
+/* OBS 浏览器源用：整页透明，只画歌单那一块。没有一直在动的动画（OBS 里一直动会一直占显卡） */
+:root { --size: 20px; --bg: .55; --ink: #f6f8fc; --ink2: #c4d0e2; --accent: #9cc8f2; --panel: 16 22 34; --line: 169 188 213; }
+html, body { margin: 0; height: 100%; background: transparent !important; overflow: hidden; }
+body { font: 400 var(--size)/var(--lh, 1.5) var(--ff, "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif); color: var(--ink); }
+.light { --ink: #233044; --ink2: #536379; --accent: #3f7fc4; --panel: 255 255 255; }
+#box { position: absolute; left: 12px; right: 12px; top: 12px; display: flex; flex-direction: column; gap: .35em; }
+.center #box { align-items: center; text-align: center; }
+.right #box { align-items: flex-end; text-align: right; }
+.bottom #box { top: auto; bottom: 12px; }
+.panel { padding: .7em .9em .8em; border-radius: 14px; background: rgb(var(--panel) / var(--bg)); border: 1px solid rgb(var(--line) / calc(var(--bg) * .5)); box-shadow: 0 6px 20px rgb(0 0 0 / calc(var(--bg) * .35)); max-width: 100%; box-sizing: border-box; }
+.nobg .panel { background: none; border: 0; box-shadow: none; padding: 0; }
+.head { display: flex; align-items: baseline; gap: .5em; font-size: .72em; letter-spacing: .12em; color: var(--accent); font-weight: 700; margin-bottom: .35em; }
+.center .head { justify-content: center; } .right .head { justify-content: flex-end; }
+.head small { font-weight: 500; letter-spacing: 0; color: var(--ink2); }
+.now { display: flex; align-items: center; gap: .5em; margin: .1em 0 .35em; }
+.center .now { justify-content: center; } .right .now { justify-content: flex-end; }
+.now .k { flex: none; font-size: .58em; font-weight: 700; letter-spacing: .15em; color: #fff; background: var(--accent); border-radius: 999px; padding: .15em .7em; text-shadow: none; }
+.light .now .k { color: #fff; }
+.now .n { font-size: 1.25em; font-weight: 700; color: var(--now, #fff); overflow-wrap: anywhere; }
+.light .now .n { color: var(--now, #1d3a5e); }
+.now.fresh { animation: pop .6s cubic-bezier(.2, .8, .2, 1); }
+@keyframes pop { from { opacity: 0; transform: translateY(.4em) scale(.96); } }
+ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .12em; }
+li { display: flex; gap: .55em; align-items: baseline; overflow-wrap: anywhere; }
+.center li { justify-content: center; } .right li { justify-content: flex-end; }
+li i { font-style: normal; flex: none; min-width: 1.2em; text-align: right; color: var(--ink2); font-size: .8em; font-variant-numeric: tabular-nums; }
+.nonum li i { display: none; }
+li.new { animation: pop .5s ease-out; }
+.sung { margin-bottom: .25em; }
+.sung li { color: var(--ink2); opacity: .7; font-size: .86em; }
+.sung li span { text-decoration: line-through; text-decoration-thickness: 1px; }
+.sung li i { color: #8fd19e; opacity: 1; }
+.more { font-size: .72em; color: var(--ink2); margin-top: .2em; }
+.empty { font-size: .8em; color: var(--ink2); }
+
+/* ===== 主播专属（2026-11-21）：跟 OBS 弹幕的「薄雾」「留言本」配套 ===== */
+.hk .panel { all: unset; display: block; box-sizing: border-box; max-width: 100%; position: relative; }
+/* 薄雾：没有底板，金色四角星 + 细竖线，大号白字带深靛描边 */
+.s-mist .panel { padding-left: 1.05em; }
+.s-mist .panel::before { content: ""; position: absolute; left: .22em; top: 1.6em; bottom: .2em; width: 2px; background: linear-gradient(#ece4ff, transparent); }
+.s-mist .head { color: #ffd47a; font-size: .7em; letter-spacing: .14em; paint-order: stroke fill; -webkit-text-stroke: 2px #1b1a44d9; text-shadow: 0 1.3px 3px #11112ee8; }
+.s-mist .head svg { width: 1.1em; height: 1.25em; fill: #e8b84a; margin-left: -1.55em; margin-right: .15em; filter: drop-shadow(0 0 2px #c7a8ff72); }
+.s-mist .head small { color: #f2edff; }
+.s-mist .now .k { background: none; color: #ffd47a; padding: 0; font-size: .62em; letter-spacing: .12em; -webkit-text-stroke: 2px #1b1a44d9; paint-order: stroke fill; }
+.s-mist .now .n { color: var(--now, #fff); font-size: 1.3em; font-weight: 760; paint-order: stroke fill; -webkit-text-stroke: 3px #1b1a44; text-shadow: 0 2px 3px #11122ad9; }
+.s-mist li { color: #f2edff; font-weight: 600; paint-order: stroke fill; -webkit-text-stroke: 2.4px #1b1a44; text-shadow: 0 1.5px 3px #11122ad9; }
+.s-mist li i { color: #c7a8ff; -webkit-text-stroke: 2px #1b1a44; }
+.s-mist .sung li { opacity: .55; filter: blur(.3px); }
+.s-mist .sung li i { color: #8fd19e; }
+.s-mist .more, .s-mist .empty { color: #ece4ff; -webkit-text-stroke: 2px #1b1a44d9; paint-order: stroke fill; }
+/* 留言本：一小页夜蓝手账，左边线圈；正在唱是一张浅纸卡，下面的歌写在横线上 */
+.s-diary #box { left: 8px; right: 8px; top: 8px; }
+.s-diary.bottom #box { top: auto; bottom: 8px; }
+.s-diary .panel { padding: .7em 1em .9em 2.6em; border-radius: 16px; overflow: hidden;
+  background: radial-gradient(1.2px 1.2px at 18% 22%, #fff8 50%, transparent 51%), radial-gradient(1px 1px at 72% 14%, #fff7 50%, transparent 51%), radial-gradient(1.2px 1.2px at 88% 70%, #fff6 50%, transparent 51%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 18px), repeating-linear-gradient(90deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 18px),
+    linear-gradient(180deg, #1b1c3a, #232548);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 6px 18px rgba(0, 0, 0, .35); color: #f2efff; }
+.s-diary .rings { position: absolute; left: 2px; top: 10px; bottom: 10px; width: 1.7em; background-repeat: repeat-y; background-size: 100% 1.9em;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='46'%3E%3Cdefs%3E%3ClinearGradient id='m' x1='0' x2='0' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f4f6fb'/%3E%3Cstop offset='.5' stop-color='%23a9aec0'/%3E%3Cstop offset='1' stop-color='%23e6e9f2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='30' cy='23' r='5' fill='%23111228'/%3E%3Cpath d='M30 17 C 12 14, 4 20, 6 25 C 8 30, 22 30, 30 27' fill='none' stroke='url(%23m)' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.s-diary .xw { position: absolute; right: .3em; top: .2em; height: 3.4em; filter: drop-shadow(0 3px 6px #0006); }
+.s-diary .head { display: block; margin: 0 4em .4em 0; color: #f4f1ff; }
+.s-diary.noxw .head { margin-right: 0; }
+.s-diary .xwsp { height: 3.2em; margin: 0; }  /* 标题关了、小人还开着：给小人留出位置，别压到歌名 */
+.s-diary .head .hand { font: italic 400 1.9em/1.1 "Segoe Script", "Lucida Handwriting", "Brush Script MT", cursive; letter-spacing: 0; }
+.s-diary .head .hand svg { width: .45em; height: .55em; fill: #f2c768; vertical-align: .55em; margin-left: .15em; }
+.s-diary .head .sub { font: 400 .78em/1.4 "KaiTi", "STKaiti", serif; letter-spacing: .4em; color: #c9c6e6; border-bottom: 1.5px dashed rgba(220, 216, 255, .35); padding-bottom: .35em; }
+.s-diary .head small { letter-spacing: .05em; color: #e8b84a; font-family: inherit; margin-left: .3em; }
+.s-diary .now { display: flex; align-items: center; gap: .6em; margin: .35em 0 .45em; padding: .45em .7em; border-radius: 10px; background: linear-gradient(180deg, #f7f4fb, #ebe7f4); color: #2b2850; box-shadow: 0 3px 8px rgba(0, 0, 0, .35); }
+.s-diary .now .k { flex: none; display: grid; place-items: center; width: 1.9em; height: 1.9em; padding: 0; border-radius: 50%; font-size: .75em; letter-spacing: 0; color: #fff; background: #6a5ac4; box-shadow: 0 0 0 3px #e8b84a; }
+.s-diary .now .n { color: var(--now, #2b2850); font-size: 1.15em; font-weight: 700; }
+.s-diary ol { gap: 0; }
+.s-diary li { padding: .12em .2em; border-bottom: 1px solid rgba(220, 216, 255, .16); color: #ece8ff; }
+.s-diary li i { color: #e8b84a; }
+.s-diary .sung li { color: #b9b4dc; }
+.s-diary .more, .s-diary .empty { color: #c9c6e6; margin-top: .35em; }
+/* 样式「细条」：一行胶囊 */
+.s-strip .panel { display: inline-flex; align-items: center; gap: .6em; padding: .35em 1em .35em .45em; border-radius: 999px; white-space: nowrap; max-width: 100%; overflow: hidden; }
+.s-strip .k { flex: none; font-size: .62em; font-weight: 700; letter-spacing: .12em; color: #fff; background: var(--accent); border-radius: 999px; padding: .3em .8em; text-shadow: none; }
+.s-strip .n { font-weight: 700; color: var(--now, inherit); overflow: hidden; text-overflow: ellipsis; }
+.s-strip .n.fresh { animation: pop .6s cubic-bezier(.2, .8, .2, 1); }
+.s-strip .nx { font-size: .8em; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; }
+.s-strip .nx::before { content: "·"; margin-right: .6em; }
+.s-strip small { flex: none; font-size: .68em; color: var(--ink2); }
+/* 样式「唱片」：左边一张黑胶，换歌时转一圈 */
+.s-vinyl .panel { display: flex; align-items: center; gap: .9em; }
+.s-vinyl .disc { flex: none; width: 4.6em; height: 4.6em; border-radius: 50%; position: relative; box-shadow: 0 4px 14px rgb(0 0 0 / .35);
+  background: radial-gradient(circle, var(--accent) 0 17%, #111 18% 21%, transparent 22%), repeating-radial-gradient(circle, #1b1f27 0 2px, #2a303b 2px 3px); }
+.s-vinyl .disc i { position: absolute; left: 50%; top: 50%; width: .5em; height: .5em; margin: -.25em; border-radius: 50%; background: #0c0e12; }
+.s-vinyl .disc::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 20deg, transparent 0 40deg, rgb(255 255 255 / .16) 55deg, transparent 75deg 200deg, rgb(255 255 255 / .1) 225deg, transparent 250deg); }
+.s-vinyl .disc.spin { animation: turn 1.6s cubic-bezier(.3, .1, .2, 1); }
+/* 有歌曲封面（2026-11-19）：封面做成唱片中间的圆标，外面一圈黑胶纹；查不到就是原来的唱片 */
+.s-vinyl .disc b { position: absolute; inset: 13%; border-radius: 50%; background: center / cover no-repeat; box-shadow: 0 0 0 2px #111, inset 0 0 0 1px rgb(255 255 255 / .15); opacity: 0; transition: opacity .4s; }
+.s-vinyl .disc b.on { opacity: 1; }
+.s-vinyl .disc b.on + i { width: .42em; height: .42em; margin: -.21em; box-shadow: 0 0 0 2px rgb(255 255 255 / .55); }
+@keyframes turn { from { transform: rotate(-360deg); } }
+.s-vinyl .vb { min-width: 0; flex: 1; }
+.s-vinyl .now { margin-top: 0; }
+.s-vinyl ol { font-size: .82em; }
+.s-vinyl li { color: var(--ink2); }
+.ts.s-strip .panel, .ts.s-strip .n, .ts.s-strip .nx, .ts .vb { text-shadow: var(--ts); }
+/* 文字描边 / 阴影（跟 OBS 弹幕页同一套参数） */
+.ts .panel, .ts .head, .ts li, .ts .now .n, .ts .more { text-shadow: var(--ts); }
+.tc li, .tc .more { color: var(--tc); }
+.tc li i { color: inherit; opacity: .75; }
+</style>
+</head>
+<body>
+<div id="box"></div>
+<script>
+// ---------- 网址参数（都可以不写；用 /obs-setup 的「歌单」调最方便） ----------
+// style=card    样式：card 卡片（正在唱 + 列表）/ strip 细条（只有一行：正在唱 · 下一首）/ vinyl 唱片（左边一张唱片）
+// size=20       字号（像素）            n=5        接下来显示几首（0 = 只显示正在唱）
+// done=3       上面显示最近唱完的几首（灰色划线、打勾），0 = 唱完就不显示
+// align=left    left / center / right    pos=top    top 贴上面 / bottom 贴下面
+// head=1        显示标题行              head_text=今日歌单   标题写什么
+// count=1       标题旁显示「已唱 3/10」  num=1      歌名前的序号
+// bg=55         底板浓度 0~100（0 = 没有底板，只有字）     light=0   1 = 浅色底板
+// now_color=ffd27a 正在唱那首的颜色；color=ffffff 其他歌名的颜色
+// font / lh / stroke / stroke_color / glow / glow_color 跟 OBS 弹幕页一样（默认细描边 + 阴影）
+// demo=1        不连弹幕姬，用示例歌单（设置页预览用）
+const P = new URLSearchParams(location.search);
+const num = (k, d) => { const v = parseFloat(P.get(k)); return isFinite(v) ? v : d; };
+const str = (k, d) => P.get(k) ?? d;
+const B = document.body.classList, R = document.documentElement.style;
+const STYLE = ['strip', 'vinyl', 'mist', 'diary'].includes(str('style', 'card')) ? str('style', 'card') : 'card';  // card 卡片 / strip 细条（一行）/ vinyl 唱片 / mist 薄雾 / diary 留言本（主播专属，2026-11-21）
+const HK = STYLE === 'mist' || STYLE === 'diary';
+B.add('s-' + STYLE);
+if (HK) B.add('hk');
+const opt = { done: Math.max(0, Math.min(20, num('done', 3))), n: Math.max(0, Math.min(20, num('n', 5))), head: str('head', '1') !== '0', headText: str('head_text', '今日歌单').slice(0, 20), xw: str('xw', '0') !== '0',
+  count: str('count', '1') !== '0', demo: str('demo', '0') !== '0' };
+if (!opt.xw) B.add('noxw');
+const light = str('light', '0') === '1', bg = Math.max(0, Math.min(100, num('bg', 55)));
+R.setProperty('--size', Math.max(12, Math.min(60, num('size', 20))) + 'px');
+R.setProperty('--bg', bg / 100);
+if (bg === 0) B.add('nobg');
+if (light) B.add('light');
+// pal=sakura / mint / night / lilac  配色，跟弹幕姬一样
+{ const PAL = { sakura: ['236 170 196', '#f4a9c4', '#cc5d87'], mint: ['150 210 188', '#8fdcbf', '#2b9670'], night: ['175 178 240', '#b3b6f7', '#5a5fc4'], lilac: ['180 168 238', '#cbc2ff', '#6a5ac4'] }[str('pal', '')];  // 主播配色 2026-11-19 补上（之前歌单页漏了，选主播跟雾蓝一样）
+  if (PAL) { R.setProperty('--line', PAL[0]); R.setProperty('--accent', light ? PAL[2] : PAL[1]); } }
+B.add(str('align', 'left'));
+if (str('pos', 'top') === 'bottom') B.add('bottom');
+if (str('num', '1') === '0') B.add('nonum');
+{
+  const FONTS = { yahei: '"Microsoft YaHei UI", "Microsoft YaHei", sans-serif', hei: '"SimHei", "黑体", "Microsoft YaHei", sans-serif',
+    round: '"YouYuan", "幼圆", "HarmonyOS Sans SC", sans-serif', kai: '"KaiTi", "楷体", "STKaiti", serif', song: '"SimSun", "宋体", "Songti SC", serif',
+    // 2026-11-21 新加的开源字体（static/fonts/fonts.css），缺的字用系统字体顶上
+    wenkai: '"XW 霞鹜文楷", "KaiTi", "Microsoft YaHei", sans-serif', smiley: '"XW 得意黑", "Microsoft YaHei", sans-serif',
+    marker: '"XW 霞鹜漫黑", "Microsoft YaHei", sans-serif', kuaile: '"XW 站酷快乐体", "Microsoft YaHei", sans-serif',
+    xiaowei: '"XW 站酷小薇", "SimSun", serif', huangyou: '"XW 站酷黄油体", "Microsoft YaHei", sans-serif',
+    notosans: '"XW 思源黑体", "Microsoft YaHei", sans-serif', notoserif: '"XW 思源宋体", "SimSun", serif',
+    mashan: '"XW 马善政", "KaiTi", serif', longcang: '"XW 龙藏体", "KaiTi", serif' };
+  const hex = k => { const v = str(k, '').replace(/^#/, ''); return /^[0-9a-f]{6}$/i.test(v) ? '#' + v : ''; };
+  if (FONTS[str('font', '')]) R.setProperty('--ff', FONTS[str('font', '')]);
+  const lh = num('lh', 0); if (lh >= 1 && lh <= 3) R.setProperty('--lh', lh);
+  const tc = hex('color'), nc = hex('now_color');
+  if (tc) { R.setProperty('--tc', tc); B.add('tc'); }
+  if (nc) R.setProperty('--now', nc);
+  // 默认带细描边 + 阴影，透明背景上也看得清
+  const sw = Math.max(0, Math.min(4, num('stroke', 1))), gl = Math.max(0, Math.min(24, num('glow', 4)));
+  // 描边颜色（2026-11-19）：可以自己选；不选时看字的颜色——深色字描白边，浅色字描黑边（跟 OBS 弹幕页一样）
+  const scol = hex('stroke_color') || (light || (tc && parseInt(tc.slice(1), 16) < 0x666666) ? '#ffffff' : '#000000'), gcol = hex('glow_color') || scol;
+  const parts = [];
+  if (sw) { const n = sw > 1.5 ? 16 : 8; for (let a = 0; a < n; a++) { const r = a * 2 * Math.PI / n; parts.push(`${(Math.cos(r) * sw).toFixed(2)}px ${(Math.sin(r) * sw).toFixed(2)}px 0 ${scol}`); } }
+  if (gl) parts.push(`0 0 ${gl}px ${gcol}`, `0 ${Math.max(1, gl / 4).toFixed(1)}px ${(gl / 2).toFixed(1)}px ${gcol}`);
+  if (parts.length && !HK) { B.add('ts'); R.setProperty('--ts', parts.join(', ')); }  // 主播专属两个样式自己管描边
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const box = document.getElementById('box');
+let lastNow = '', lastKeys = new Set(), lastSig = '';
+let lastSongs = [];
+function draw(songs) {
+  lastSongs = songs || [];
+  songs = Array.isArray(songs) ? songs : [];
+  const sig = JSON.stringify(songs);
+  if (sig === lastSig) return;  // 没变就不重画
+  lastSig = sig;
+  const now = songs.find(x => x.now && !x.done), todo = songs.filter(x => !x.done && !x.now), done = songs.filter(x => x.done).length;
+  if (!songs.length) { box.innerHTML = ''; lastNow = ''; lastKeys = new Set(); return; }
+  const show = todo.slice(0, opt.n);
+  const STAR = '<svg viewBox="0 0 12 14"><path d="M6 0C6.8 4.85 7.8 6.1 12 7C7.65 7.95 6.8 9.35 6 14C5.2 9.25 4.3 7.95 0 7C4.3 6.1 5.25 4.9 6 0Z"/></svg>';
+  const cnt = opt.count ? `<small>${done}/${songs.length}</small>` : '';
+  const head = !opt.head ? '' : STYLE === 'mist' ? `<div class="head">${STAR}${esc(opt.headText)}${cnt}</div>`
+    : STYLE === 'diary' ? `<div class="head"><div class="hand">${esc(str('hname', 'Diary'))}${STAR}</div><div class="sub">${esc(opt.headText)}${cnt}</div></div>`
+    : `<div class="head">🎵 ${esc(opt.headText)}${cnt}</div>`;
+  // 唱完的不消失：最近唱完的几首放在最上面，灰色划线、打勾
+  const sung = songs.filter(x => x.done).sort((a, c) => (a.done_at || 0) - (c.done_at || 0)).slice(-opt.done);
+  const doneHtml = opt.done && sung.length ? `<ol class="sung">${sung.map(x => `<li><i>✓</i><span>${esc(x.name)}</span></li>`).join('')}</ol>` : '';
+  const nowHtml = now ? `<div class="now${now.id !== lastNow ? ' fresh' : ''}"><span class="k">${STYLE === 'diary' ? '♪' : '正在唱'}</span><span class="n">${esc(now.name)}</span></div>` : '';
+  const list = show.length ? `<ol>${show.map((x, i) => `<li${lastKeys.size && !lastKeys.has(x.id) ? ' class="new"' : ''}><i>${i + 1}</i><span>${esc(x.name)}</span></li>`).join('')}</ol>` : '';
+  const more = todo.length > show.length ? `<div class="more">还有 ${todo.length - show.length} 首</div>` : '';
+  const empty = !now && !show.length ? `<div class="empty">今天的歌都唱完啦</div>` : '';
+  if (STYLE === 'strip') {
+    // 细条：一行，正在唱 · 下一首
+    box.innerHTML = `<div class="panel">${now ? `<span class="k">正在唱</span><span class="n${now.id !== lastNow ? ' fresh' : ''}">${esc(now.name)}</span>` : '<span class="k">歌单</span>'}${todo[0] ? `<span class="nx">下一首 · ${esc(todo[0].name)}</span>` : ''}${opt.count ? `<small>${done}/${songs.length}</small>` : ''}</div>`;
+  } else if (STYLE === 'vinyl') {
+    const cu = now ? coverOf(now) : '';
+    box.innerHTML = `<div class="panel"><div class="disc${now && now.id !== lastNow ? ' spin' : ''}"><b${cu ? ` class="on" style="background-image:url('${cu}')"` : ''}></b><i></i></div><div class="vb">${head}${nowHtml || '<div class="now"><span class="n">♪</span></div>'}${list}${more}</div></div>`;
+  } else if (STYLE === 'diary') {
+    box.innerHTML = `<div class="panel"><div class="rings"></div>${opt.xw ? '<img class="xw" src="static/art/diary-xw.webp" alt="" onerror="this.remove()">' : ''}${head || (opt.xw ? '<div class="xwsp"></div>' : '')}${doneHtml}${nowHtml}${list}${more}${empty}</div>`;
+  } else box.innerHTML = `<div class="panel">${head}${doneHtml}${nowHtml}${list}${more}${empty}</div>`;
+  lastNow = now ? now.id : '';
+  lastKeys = new Set(show.map(x => x.id));
+}
+// 歌曲封面：问后台（网易云搜的），记在这一页里；查到了重画一下
+const COVERS = new Map();
+function coverOf(s) {
+  if (opt.covers === false) return '';
+  const key = s.name + '|' + (s.artist || '');
+  if (COVERS.has(key)) return COVERS.get(key);
+  COVERS.set(key, '');
+  fetch(`api/song_cover?name=${encodeURIComponent(s.name)}&artist=${encodeURIComponent(s.artist || '')}`).then(r => r.ok ? r.json() : {}).then(j => {
+    const u = String(j.url || '');
+    if (/^https:\/\/([\w.-]+\.music\.126\.net|y\.gtimg\.cn)\//.test(u)) { COVERS.set(key, u); const img = new Image(); img.onload = () => { lastSig = ''; draw(lastSongs); }; img.src = u; }
+  }).catch(() => {});
+  return '';
+}
+let myVer = 0;
+function checkVer(v) {  // 上线了新版：这一页自己刷新
+  const n = v?.['obs-songs.html'];
+  if (!n || opt.demo) return;
+  if (!myVer) { myVer = n; return; }
+  if (n !== myVer) location.reload();
+}
+function handle(type, data) {
+  if (type === 'ver') { checkVer(data); return; }
+  if (type === 'snapshot') { checkVer(data.ver); draw(data.songs); }
+  else if (type === 'songs') draw(data);
+}
+// 设置页预览：直接塞一份歌单进来
+addEventListener('message', e => { if (e.origin === location.origin && e.data?.type) handle(e.data.type, e.data.data); });
+
+let retry = 0;
+function connect() {
+  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + location.pathname.replace(/[^/]*$/, '') + 'ws?client=obs-songs');
+  ws.onopen = () => { retry = 0; };
+  ws.onclose = () => setTimeout(connect, Math.min(30000, 2000 * 2 ** retry++));
+  // 歌单页只关心歌单：别的消息（弹幕、礼物）只看一眼类型就丢掉，不解析整条
+  ws.onmessage = ev => { if (!/^\{"type": ?"(snapshot|songs|ver)"/.test(ev.data)) return; const m = JSON.parse(ev.data); handle(m.type, m.data); };
+}
+if (opt.demo) {
+  handle('songs', [{ id: 'd0', name: '告白气球', done: true, done_at: 1 }, { id: 'd1', name: '晴天', done: true, done_at: 2 }, { id: 'd2', name: '稻香', artist: '周杰伦', now: true }, { id: 'd3', name: '起风了' }, { id: 'd4', name: '小幸运' },
+    { id: 'd5', name: '后来' }, { id: 'd6', name: '平凡之路' }, { id: 'd7', name: '夜空中最亮的星' }, { id: 'd8', name: '海阔天空' }]);
+} else connect();
+</script>
+</body>
+</html>

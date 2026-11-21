@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="/static/art/icon-64.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OBS 弹幕设置 · 弹幕姬</title>
+<link rel="stylesheet" href="static/fonts/fonts.css">
+<style>
+:root { --bg: #eef4fa; --sheet: #fbfdff; --line: #d8e4ef; --ink: #23364a; --ink2: #5d7186; --ink3: #8fa2b5; --mist-d: #4a8cc4; --chip: #e3eef9; --input: #fff; color-scheme: light; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0e1520; --sheet: #172231; --line: #2a3a50; --ink: #e2ebf4; --ink2: #a8b9ca; --ink3: #74889e; --mist-d: #8cc0ef; --chip: #1d3350; --input: #101925; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font: 14px/1.5 "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif; color: var(--ink); background: var(--bg); display: flex; }
+button, input, select { font: inherit; color: inherit; }
+#panel { width: 400px; max-width: 100%; flex: none; background: var(--sheet); border-right: 1px solid var(--line); display: flex; flex-direction: column; height: 100%; }
+#panel > header { padding: 14px 18px 10px; border-bottom: 1px solid var(--line); }
+#panel h1 { margin: 0; font-size: 18px; }
+#panel h1 small { font-weight: 400; color: var(--ink3); font-size: 12px; margin-left: 6px; }
+#panel .sub { color: var(--ink3); font-size: 12px; margin-top: 2px; }
+#fields { flex: 1; overflow-y: auto; padding: 4px 18px 16px; }
+h3 { font-size: 12px; color: var(--ink3); font-weight: 600; margin: 16px 0 6px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+h3::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.opt { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
+.opt > span:first-child { flex: 1; min-width: 0; }
+.opt small { color: var(--ink3); font-size: 12px; }
+.opt input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--mist-d); margin: 0; flex: none; }
+.opt input[type=range] { width: 150px; accent-color: var(--mist-d); }
+.opt input[type=number] { width: 70px; }
+.opt select, .opt input[type=number], .opt input[type=text] { border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; background: var(--input); outline: none; }
+/* 拖条：− 拖条 ＋ 数字框 单位（2026-11-19） */
+.opt.rng input[type=range] { flex: 1; min-width: 40px; width: auto; }
+.opt > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.opt.rng > span:first-child { flex: none; width: 6.4em; }
+.opt.rng .stp { flex: none; width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 7px; background: var(--input); color: var(--ink2); cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+.opt.rng .stp:hover { color: var(--mist-d); border-color: var(--mist); }
+.opt.rng .nv { width: 58px; text-align: right; padding: 3px 6px; font-variant-numeric: tabular-nums; }
+.opt.rng .u { flex: none; width: 3.2em; white-space: nowrap; }
+.opt .val { width: 52px; text-align: right; color: var(--ink2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.btn { border: 1px solid var(--line); background: var(--input); color: var(--ink2); border-radius: 8px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--mist-d); color: var(--mist-d); }
+.btn.sm { padding: 3px 9px; font-size: 12px; }
+.btn.go { background: var(--mist-d); border-color: var(--mist-d); color: #fff; font-weight: 600; }
+#out { border-top: 1px solid var(--line); padding: 12px 18px 14px; background: var(--chip); }
+#url { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--input); font-size: 12px; font-family: Consolas, monospace; }
+#out .row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+#out .how { color: var(--ink2); font-size: 12px; margin-top: 8px; line-height: 1.6; }
+#stage { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--sheet); }
+#bar .sp { flex: 1; }
+#view { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; padding: 14px; }
+#frame { position: relative; flex: none; border-radius: 10px; overflow: hidden; outline: 2px dashed var(--mist-d); outline-offset: 3px; transform-origin: center; }
+#frame iframe { color-scheme: light; position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }
+#frame.dark { background: radial-gradient(800px 500px at 70% 30%, #3b5d7a, transparent), linear-gradient(160deg, #1d2b3a, #44506a 50%, #2b2f45); }
+#frame.lightbg { background: linear-gradient(160deg, #f6e9da, #cfe3f2 60%, #f1f5fa); }
+#frame.checker { background: repeating-conic-gradient(#d9dee4 0% 25%, #f5f7f9 0% 50%) 0 0 / 24px 24px; }
+@media (max-width: 860px) { body { flex-direction: column; height: auto; } #panel { width: 100%; height: auto; border-right: 0; } #fields { overflow: visible; } #stage { height: 90vh; } }
+.tabs { display: flex; gap: 6px; padding: 10px 18px 0; }
+.tabs button { flex: 1; border: 1px solid var(--line); background: var(--input); color: var(--ink2); border-radius: 10px; padding: 7px 0; cursor: pointer; }
+.tabs button.on { background: var(--chip); border-color: var(--mist-d); color: var(--mist-d); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 9px 8px; padding: 6px 0; }
+/* 2026-11-19 分组小标题：组和组之间一条细线隔开，行距拉开 */
+h4.grp { margin: 18px 0 6px; padding-top: 14px; border-top: 1px solid var(--line-soft, var(--line)); font-size: 12px; font-weight: 700; color: var(--mist-d); letter-spacing: 1px; }
+.pick + h4.grp { border-top: 0; padding-top: 4px; margin-top: 12px; }
+#fields > h4.grp:first-child { border-top: 0; padding-top: 0; margin-top: 8px; }
+.chip { cursor: pointer; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip span, .seg button, .pick button { display: inline-block; border: 1px solid var(--line); background: var(--input); color: var(--ink3); border-radius: 999px; padding: 4px 11px; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.chip input:checked + span, .seg button.on, .pick button.on { background: var(--chip); border-color: var(--mist-d); color: var(--mist-d); font-weight: 600; }
+.seg { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+.seg.fonts { justify-content: flex-start; } .seg.fonts button { font-size: 15px; padding: 4px 12px; }
+.opt:has(.seg) { flex-wrap: wrap; }
+.opt:has(.seg) > span:first-child { flex: none; white-space: nowrap; }  /* 选项多时整排换到下一行，标题不再被挤成两行 */
+.pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 6px; padding: 10px 0 4px; }
+.pick button { border-radius: 12px; padding: 8px 0 6px; text-align: center; line-height: 1.3; }
+.pick button i { display: block; font-style: normal; font-size: 20px; }
+.sw { width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+.sw.on { border-color: var(--mist-d); }
+.sw.checker { background: repeating-conic-gradient(#d9dee4 0% 25%, #f5f7f9 0% 50%) 0 0 / 10px 10px; }
+.sw.dark { background: linear-gradient(160deg, #1d2b3a, #44506a); }
+.sw.lightbg { background: linear-gradient(160deg, #f6e9da, #cfe3f2); }
+.sws { display: inline-flex; gap: 3px; flex: none; }
+.swc { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line); padding: 0; cursor: pointer; }
+.swc.on { outline: 2px solid var(--mist-d); outline-offset: 1px; }
+.opt input[type=color] { width: 38px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; flex: none; }
+.modes { display: flex; gap: 4px; margin: 10px 18px 0; padding: 3px; border-radius: 12px; background: var(--chip); }
+.modes button { flex: 1; border: 0; background: transparent; color: var(--ink2); border-radius: 9px; padding: 7px 0; cursor: pointer; font-weight: 600; }
+.modes button.on { background: var(--sheet); color: var(--mist-d); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+body.songs .tgrp:not(#backdrop), body.songs #fixedchip { display: none; }
+.tgrp { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--input); }
+.tgrp b { font-size: 12px; font-weight: 600; color: var(--ink3); margin-right: 4px; white-space: nowrap; }
+.tgrp .btn { border-color: transparent; background: var(--chip); color: var(--ink2); }
+.tgrp .btn:hover { border-color: var(--mist-d); color: var(--mist-d); }
+.tgrp .btn.g3 { color: #3f7fd8; } .tgrp .btn.g2 { color: #8a52c8; } .tgrp .btn.g1 { color: #d06a2c; }
+.sep { width: 1px; height: 20px; background: var(--line); }
+svg.ic { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px; }
+h1 svg.ic { width: 20px; height: 20px; color: var(--mist-d); }
+.pick i svg.ic { width: 20px; height: 20px; }
+/* 2026-11-21 跟主页面设置统一（参考 OBS / PR）：左边分类、右边一页；每页带标题的框，名字一列、控件一列对齐；数字拖着改、点一下打字；改过的加粗 + ↺ */
+@media (min-width: 861px) { #panel { width: 600px; } }
+#pwrap { flex: 1; min-height: 0; display: grid; grid-template-columns: 112px minmax(0, 1fr); }
+#pnav { display: flex; flex-direction: column; gap: 2px; padding: 10px 6px; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--chip) 40%, transparent); overflow-y: auto; }
+#pnav button { position: relative; display: flex; align-items: center; gap: 7px; padding: 7px 9px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--ink2); cursor: pointer; text-align: left; font-size: 13.5px; }
+#pnav button svg.ic { width: 16px; height: 16px; color: var(--mist-d); flex: none; }
+#pnav button:hover { background: var(--input); }
+#pnav button.on { background: var(--input); border-color: var(--line); box-shadow: inset 3px 0 0 var(--mist-d); color: var(--ink); font-weight: 700; }
+#pnav button i.dot { position: absolute; right: 7px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: #e88aa8; }
+#pnav button i.dot[hidden] { display: none; }
+#fields { overflow-y: auto; }
+.ptitle { margin: 4px 0 10px; font-size: 17px; }
+fieldset { border: 1px solid var(--line); border-radius: 10px; background: var(--input); margin: 0 0 12px; padding: 4px 12px 8px; min-width: 0; }
+legend { font-size: 12px; font-weight: 700; color: var(--mist-d); padding: 0 6px; letter-spacing: 1px; }
+.opt.r { display: grid; grid-template-columns: 5.6em minmax(0, 1fr) 20px; gap: 10px; align-items: center; min-height: 36px; padding: 3px 0; }
+.opt.r + .opt.r { border-top: 1px dashed var(--line); }
+.opt.r > span:first-child { text-align: right; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.opt.r.chg > span:first-child { color: var(--ink); font-weight: 700; }
+.opt.r .ctl { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; }
+.opt.r .ctl input[type=range] { flex: 1; width: auto; min-width: 60px; max-width: 200px; }
+.opt.r .ctl input[type=text] { flex: 1; min-width: 0; }
+.opt.r .ctl .seg { margin-left: 0; }
+.opt.r .ctl .ccell { margin-left: 0; min-width: 9em; }
+.rs { visibility: hidden; border: 0; background: none; color: var(--mist-d); font-size: 15px; cursor: pointer; padding: 0; }
+.chg .rs { visibility: visible; }
+.scrub { min-width: 3.6em; color: var(--mist-d); font-weight: 600; border-bottom: 1px dashed var(--mist-d); cursor: ew-resize; user-select: none; touch-action: none; white-space: nowrap; }
+.scrub small { color: var(--ink3); font-weight: 400; margin-left: 2px; font-size: 11px; }
+.scrub:focus-visible { outline: 2px solid var(--mist-d); border-radius: 3px; }
+.opt.r .nv { width: 5em; border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; background: var(--input); }
+/* 一组开关：勾选框排三列 */
+.ckg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; padding: 8px 0 6px; }
+.ckg label { display: flex; align-items: center; gap: 7px; cursor: pointer; color: var(--ink2); min-width: 0; }
+.ckg label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ckg input { width: 15px; height: 15px; accent-color: var(--mist-d); margin: 0; flex: none; }
+.ckg label.chg { color: var(--ink); font-weight: 700; }
+.pfoot { display: flex; justify-content: flex-end; padding: 2px 0 8px; }
+@media (max-width: 860px) { #pwrap { display: block; } #pnav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); } #pnav button { flex: none; white-space: nowrap; } .ckg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+#panel > header { display: flex; align-items: center; gap: 12px; }
+#panel > header .modes { margin: 0 0 0 auto; padding: 3px; width: auto; }
+#panel > header .modes button { flex: none; padding: 4px 14px; font-size: 13px; }
+#fields { padding: 10px 18px 16px; }
+h4.cap { margin: 10px 0 8px; font-size: 12px; font-weight: 700; color: var(--mist-d); letter-spacing: 1px; }
+.sec { border: 1px solid var(--line); border-radius: 12px; background: var(--input); margin: 8px 0; }
+.sec > .hd { width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 0; background: none; cursor: pointer; text-align: left; color: var(--ink); font-weight: 600; }
+.sec > .hd svg.ic { color: var(--mist-d); }
+.sec > .hd small { flex: 1; min-width: 0; font-weight: 400; color: var(--ink3); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sec > .hd::after { content: ""; flex: none; width: 7px; height: 7px; border-right: 1.6px solid var(--ink3); border-bottom: 1.6px solid var(--ink3); transform: rotate(-45deg); margin-right: 4px; transition: transform .15s; }
+.sec.open > .hd::after { transform: rotate(45deg); }
+.sec > .bd { display: none; padding: 2px 12px 10px; border-top: 1px solid var(--line); }
+.sec.open > .bd { display: block; }
+/* 颜色：一张小表，点哪格弹出色板 */
+.ctab { display: grid; grid-template-columns: 4.6em 1fr 1fr; gap: 6px 10px; align-items: center; padding: 8px 0 2px; }
+.ctab.one { grid-template-columns: 4.6em 1fr; }
+.ctab .h { font-size: 12px; color: var(--ink3); text-align: center; }
+.ccell { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--input); color: var(--ink2); font-size: 12px; cursor: pointer; min-width: 0; }
+.ccell i { flex: none; width: 16px; height: 16px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.15); }
+.ccell i.auto { background: conic-gradient(#ffd27a 0 25%, #8ebcff 0 50%, #c7a8ff 0 75%, #fff 0); }
+.ccell span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ccell.set { color: var(--ink); }
+.ccell:hover, .ccell.open { border-color: var(--mist-d); }
+.opt .ccell { margin-left: auto; min-width: 7.5em; }
+#cpop { position: fixed; z-index: 80; width: 286px; padding: 10px; border-radius: 12px; background: var(--sheet); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.22); }
+#cpop[hidden] { display: none; }
+#cpop .t { font-size: 12px; color: var(--ink2); margin-bottom: 8px; }
+#cpop .row { display: flex; flex-wrap: wrap; gap: 8px; }
+#cpop .swc { width: 24px; height: 24px; }
+#cpop .bt { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+#cpop .bt input[type=color] { width: 34px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
+#owh { display: inline-flex; align-items: center; gap: 6px; }
+#owh input { width: 64px; border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; background: var(--input); }
+#out .how { margin-top: 6px; }
+/* 第一次打开的教学（2026-11-19）：圈出按钮 + 一句话；标题旁「?」可以再看 */
+#ospot { position: fixed; z-index: 90; pointer-events: none; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(12, 22, 36, .55), 0 0 0 3px var(--mist, #7fb3dd), 0 0 24px 6px var(--mist, #7fb3dd); transition: left .2s, top .2s, width .2s, height .2s; }
+#ospot[hidden], #otour[hidden] { display: none; }
+#otour { position: fixed; z-index: 91; width: 250px; padding: 12px 14px; border-radius: 14px; background: var(--sheet, #fff); border: 1px solid var(--line, #d8e4ef); box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: 13.5px; color: var(--ink, #23364a); }
+#otour .ob { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+#otour .ob span { flex: 1; font-size: 12px; color: var(--ink3, #8fa2b5); }
+#ohelp { margin-left: auto; border: 0; background: none; color: var(--ink3, #8fa2b5); cursor: pointer; display: inline-flex; padding: 4px; border-radius: 8px; }
+#ohelp:hover { color: var(--mist-d, #4a8cc4); }
+#ohelp svg.ic { width: 17px; height: 17px; }
+</style>
+</head>
+<body>
+<aside id="panel">
+  <header><h1><i class="ic" data-ic="video"></i> OBS</h1><div class="modes" id="modes"><button data-mode="dm" class="on"><i class="ic" data-ic="p-dm"></i> 弹幕</button><button data-mode="songs"><i class="ic" data-ic="music"></i> 歌单</button></div><button id="ohelp" title="怎么用"><i class="ic" data-ic="help"></i></button></header>
+  <div id="pwrap"><nav id="pnav"></nav><div id="fields"></div></div>
+  <div id="out">
+    <input id="url" readonly title="OBS 浏览器源用的网址">
+    <div class="row"><button class="btn go" id="copy" title="OBS → 来源 ＋ → 浏览器 → 把网址粘贴进去，宽高照下面填"><i class="ic" data-ic="copy"></i> 复制网址</button><button class="btn" id="reset" title="恢复默认">↺</button><span id="copied" style="color:var(--mist-d);font-size:12px"></span></div>
+    <div class="how" id="how"><span id="owh" title="OBS 浏览器源的宽和高，照这里填">宽 <input type="number" id="ow" min="150" max="1920" step="10"> 高 <input type="number" id="oh" min="100" max="1080" step="10"></span></div>
+  </div>
+</aside>
+<main id="stage">
+  <div id="bar">
+    <span id="backdrop" class="tgrp" style="padding-right:8px;gap:6px" title="只是换右边预览的背景，看看在不同画面上清不清楚。不改样式，也不会进 OBS"><b>预览背景</b><button class="sw checker on" data-bg="checker" title="透明（棋盘格代表透明）"></button><button class="sw dark" data-bg="dark" title="假装后面是深色画面"></button><button class="sw lightbg" data-bg="lightbg" title="假装后面是浅色画面"></button></span>
+    <label class="chip" title="用真实直播间的弹幕预览"><input type="checkbox" id="real"><span><i class="ic" data-ic="live"></i> 实时</span></label>
+    <label class="chip" id="fixedchip" title="固定一组样例，不滚动"><input type="checkbox" id="fixed" checked><span><i class="ic" data-ic="pin"></i> 固定</span></label><span class="sp"></span>
+    <!-- 发一条测试的到右边预览里看效果：按「弹幕 / 礼物 / 上舰」分组，组名写在前面 -->
+    <span class="tgrp" title="发一条测试弹幕到预览里"><b><i class="ic" data-ic="p-dm"></i> 弹幕</b><button class="btn sm" data-t="dm">普通</button><button class="btn sm g3" data-t="g3">舰长</button><button class="btn sm g2" data-t="g2">提督</button><button class="btn sm g1" data-t="g1">总督</button></span>
+    <span class="tgrp" title="发一条测试礼物 / 醒目留言到预览里"><b><i class="ic" data-ic="p-gift"></i> 礼物</b><button class="btn sm" data-t="gift" title="小花花 ×10（¥1）">小礼物</button><button class="btn sm" data-t="big" title="舰长送的 情书 ×2（¥104）">大礼物</button><button class="btn sm" data-t="sc" title="¥50 醒目留言">SC</button></span>
+    <span class="tgrp" title="发一条测试上舰到预览里"><b><i class="ic" data-ic="anchor"></i> 上舰</b><button class="btn sm g3" data-t="buy3">舰长</button><button class="btn sm g2" data-t="buy2">提督</button><button class="btn sm g1" data-t="buy1">总督</button></span>
+  </div>
+  <div id="view"><div id="frame" class="checker"><iframe id="pv" title="预览"></iframe></div></div>
+</main>
+<script src="/static/app/icons.js?v=0"></script>
+<script>
+fillIcons();
+const $ = id => document.getElementById(id);
+// 每个设置：k = 网址里的参数名，def = 默认值（跟默认一样的不写进网址，网址更短）
+// tab = 在哪一页；show = 什么时候才显示（跟当前风格无关的不出现，少看几项）
+const CARD = c => c.style === 'card' || c.style === 'glass';
+// 字体（2026-11-21 加了 10 款开源字体）：按钮上的字就用那个字体写，一眼看得出样子
+const FONT_OPTS = [['', '默认'], ['yahei', '雅黑'], ['hei', '黑体'], ['round', '圆体'], ['kai', '楷体'], ['song', '宋体'],
+  ['wenkai', '霞鹜文楷'], ['smiley', '得意黑'], ['marker', '霞鹜漫黑'], ['kuaile', '站酷快乐体'], ['xiaowei', '站酷小薇'],
+  ['huangyou', '站酷黄油体'], ['notosans', '思源黑体'], ['notoserif', '思源宋体'], ['mashan', '马善政毛笔'], ['longcang', '龙藏体']];
+const FONT_CSS = { yahei: '"Microsoft YaHei"', hei: '"SimHei"', round: '"YouYuan"', kai: '"KaiTi"', song: '"SimSun"',
+  wenkai: '"XW 霞鹜文楷"', smiley: '"XW 得意黑"', marker: '"XW 霞鹜漫黑"', kuaile: '"XW 站酷快乐体"', xiaowei: '"XW 站酷小薇"',
+  huangyou: '"XW 站酷黄油体"', notosans: '"XW 思源黑体"', notoserif: '"XW 思源宋体"', mashan: '"XW 马善政"', longcang: '"XW 龙藏体"' };
+let F = [
+  { k: 'style', tab: 'look', type: 'hidden', def: 'moon' },
+  { k: 'buy', tab: 'look', label: '⚓ 上舰样式', type: 'select', def: 'banner', opts: [['banner', '横幅'], ['badge', '徽章']], show: c => c.style === 'luna', tip: '有人开通舰长时出来的那条：一张横幅图，还是中间一个大徽章' },
+  { k: 'size', tab: 'look', label: '🔠 字号', type: 'range', min: 12, max: 40, step: 1, def: 18, unit: 'px' },
+  { k: 'max', tab: 'look', label: '📚 最多显示', type: 'range', min: 3, max: 30, step: 1, def: 12, unit: '条' },
+  { k: 'gap', tab: 'look', label: '↕ 间距', type: 'range', min: 0, max: 30, step: 1, def: 10, unit: 'px' },
+  { k: 'fade', tab: 'look', label: '⏳ 淡出', type: 'range', min: 0, max: 120, step: 5, def: 0, unit: '秒', zero: '不淡出', tip: '显示多久后淡出' },
+  { k: 'anim', tab: 'look', label: '✨ 动画', type: 'select', def: 'slide', opts: [['slide', '上滑'], ['fade', '淡入'], ['pop', '弹出'], ['left', '左滑'], ['right', '右滑'], ['none', '无']] },
+  // SC / 上舰动画用户说没用，2026-11-19 删掉（OBS 页里还是默认的上浮）
+  { k: 'anim_ms', tab: 'look', label: '⏩ 动画时长', type: 'range', min: 100, max: 1500, step: 50, def: 600, unit: 'ms', show: c => c.anim !== 'none', tip: '数字越大越慢' },
+  { k: 'xw', tab: 'look', label: '🙂 Q 版主播', type: 'check', def: true, show: c => c.style === 'diary', tip: '右上角坐着的主播' },
+  { k: 'htitle', tab: 'look', label: '✏ 标题字', type: 'check', def: true, show: c => c.style === 'diary', tip: '上面的标题。小人和标题字都关掉，弹幕会往上铺满' },
+  { k: 'peek', tab: 'look', label: '🙂 探头主播', type: 'check', def: false, show: c => c.style === 'mist', tip: '右下角放一张探头的主播' },
+  { k: 'right', tab: 'look', label: '➡ 靠右', type: 'check', def: false, tip: '弹幕靠画面右边排（不开就是靠左）' },
+  { k: 'bubble', tab: 'look', label: '🟦 底色', type: 'check', def: true, show: CARD },
+  { k: 'border', tab: 'look', label: '▢ 边框', type: 'check', def: true, show: CARD },
+  { k: 'shadow', tab: 'look', label: '🌫 阴影', type: 'check', def: false, show: CARD },
+  { k: 'light', tab: 'look', label: '☀ 浅色', type: 'check', def: false, show: CARD, tip: '底框用白色、字用深色（不开是深色底框、浅色字）' },
+  { k: 'pal', tab: 'look', label: '🎨 配色', type: 'select', def: '', opts: [['', '雾蓝'], ['sakura', '樱粉'], ['mint', '薄荷'], ['night', '雪夜'], ['lilac', '紫金']], tip: '跟弹幕姬的配色方案一样，边框和名字换颜色' },
+  { k: 'bg', tab: 'look', label: '💧 底色浓度', type: 'range', min: 0, max: 100, step: 5, def: 70, unit: '%', show: c => CARD(c) && c.bubble },
+  { k: 'radius', tab: 'look', label: '◔ 圆角', type: 'range', min: 0, max: 30, step: 1, def: 12, unit: 'px', show: CARD },
+  { k: 'width', tab: 'look', label: '↔ 宽度', type: 'select', def: 'full', opts: [['full', '铺满'], ['fit', '随文字']], show: c => c.style !== 'luna', tip: '每条弹幕的底框：铺满整行，还是字多长框就多长' },
+  { k: 'layout', tab: 'look', label: '¶ 排版', type: 'select', def: 'stacked', opts: [['stacked', '名字在上'], ['inline', '名字在前']], show: c => c.style !== 'luna', tip: '名字单独一行、弹幕在下面；还是名字和弹幕排在同一行' },
+  { k: 'w', tab: 'look', label: '📐 宽', type: 'num', min: 200, max: 1920, step: 10, def: 450, unit: 'px', local: true, tip: 'OBS 浏览器源的宽度' },
+  { k: 'h', tab: 'look', label: '📐 高', type: 'num', min: 200, max: 1080, step: 10, def: 800, unit: 'px', local: true, tip: 'OBS 浏览器源的高度' },
+
+  // 文字：透明背景上要看得清，默认带细描边和阴影（2026-11-12）
+  { k: 'font', tab: 'font', label: '🔤 字体', type: 'select', def: '', opts: FONT_OPTS },
+  { k: 'fw', tab: 'font', label: '𝐁 粗细', type: 'select', def: '', opts: [['', '默认'], ['300', '细'], ['500', '中'], ['700', '粗'], ['900', '特粗']], tip: '弹幕正文的粗细' },
+  { k: 'lh', tab: 'font', label: '↕ 行距', type: 'range', min: 1, max: 2.2, step: 0.05, def: 1.5, unit: '' },
+  { k: 'ls', tab: 'font', label: '↔ 字距', type: 'range', min: 0, max: 0.3, step: 0.01, def: 0.01, unit: 'em' },
+  { k: 'color', tab: 'font', label: '🎨 正文颜色', type: 'color', def: '' },
+  { k: 'name_color', tab: 'font', label: '✏ 名字颜色', type: 'color', def: '', tip: '不改就按舰长、提督、总督分颜色' },
+  { k: 'card_color', tab: 'font', label: '🎁 卡片字色', type: 'color', def: '', tip: '礼物卡、SC 卡里的字' },
+  { k: 'c3', tab: 'font', label: '⚓ 舰长名字', type: 'color', def: '' },
+  { k: 't3', tab: 'font', label: '⚓ 舰长弹幕', type: 'color', def: '' },
+  { k: 'c2', tab: 'font', label: '⚓ 提督名字', type: 'color', def: '' },
+  { k: 't2', tab: 'font', label: '⚓ 提督弹幕', type: 'color', def: '' },
+  { k: 'c1', tab: 'font', label: '⚓ 总督名字', type: 'color', def: '' },
+  { k: 't1', tab: 'font', label: '⚓ 总督弹幕', type: 'color', def: '' },  { k: 'stroke', tab: 'font', label: '⭕ 描边', type: 'range', min: 0, max: 4, step: 0.5, def: 1, unit: 'px', zero: '无', tip: '字外面一圈边，透明背景上最管用' },
+  { k: 'stroke_color', tab: 'font', label: '⭕ 描边颜色', type: 'color', def: '', show: c => c.stroke > 0, tip: '不改：浅色字描黑边，深色字描白边' },
+  { k: 'glow', tab: 'font', label: '🌫 文字阴影', type: 'range', min: 0, max: 24, step: 1, def: 4, unit: 'px', zero: '无' },
+  { k: 'glow_color', tab: 'font', label: '🌫 阴影颜色', type: 'color', def: '', show: c => c.glow > 0, tip: '不改就跟描边同色' },
+
+  { k: 'avatar', tab: 'who', label: '🙂 头像', type: 'check', def: true },
+  { k: 'wealth', tab: 'who', label: '💎 荣耀等级', type: 'check', def: false, tip: 'B 站的荣耀等级勋章，放在名字旁边（2026-11-21）' },
+  { k: 'frame', tab: 'who', label: '🖼 头像框', type: 'check', def: true, tip: '舰长以上的专属头像框' },
+  { k: 'badge', tab: 'who', label: '⚓ 徽章', type: 'check', def: true, tip: '舰长、提督、总督的小徽章' },
+  { k: 'rank', tab: 'who', label: '🏷 身份字', type: 'check', def: true, tip: '舰长 / 提督 / 总督文字' },
+  { k: 'names', tab: 'who', label: '✏ 昵称', type: 'check', def: true },
+  { k: 'avatar_size', tab: 'who', label: '🙂 头像大小', type: 'range', min: 24, max: 72, step: 2, def: 46, unit: 'px', show: c => c.avatar },
+  { k: 'medal', tab: 'who', label: '🏅 粉丝牌', type: 'select', def: 'all', opts: [['all', '全部'], ['own', '只主播的'], ['0', '无']] },
+
+  { k: 'merge', tab: 'what', label: '×3 合并重复', type: 'check', def: true, tip: '一样的弹幕合并成「×3」' },
+  { k: 'bot', tab: 'what', label: '🤖 机器人弹幕', type: 'check', def: false, tip: '显示机器人发的弹幕' },
+  { k: 'gifts', tab: 'what', label: '🎁 礼物', type: 'check', def: true },
+  { k: 'price', tab: 'what', label: '💰 价格', type: 'check', def: false, tip: '礼物后面显示价格。不开的话，后台连价格都不发给这个 OBS 网址' },
+  { k: 'gift_line', tab: 'what', label: '🎁 礼物只占一行', type: 'check', def: false, show: c => ['moon', 'rime', 'clip', 'bubble', 'ticket'].includes(c.style || 'moon'), tip: '礼物卡缩成一行小胶囊，打游戏时少挡一块' },
+  // 直播间（2026-11-21）：只能选切房名单里的，名单在弹幕姬里「主播名字 ▾」管理
+  { k: 'room', tab: 'what', label: '📡 直播间', type: 'select', def: '', opts: [['', '主播']], tip: '这个 OBS 网址显示哪个直播间的弹幕。只能选弹幕姬切房名单里的' },
+  { k: 'sc', tab: 'what', label: '✉ SC', type: 'check', def: true },
+  { k: 'sc_bg', tab: 'what', label: '✉ SC 底色', type: 'check', def: true },
+  { k: 'guardbuy', tab: 'what', label: '⚓ 上舰', type: 'check', def: true },
+  { k: 'enter', tab: 'what', label: '🚪 进房', type: 'select', def: 'guard', opts: [['guard', '舰长'], ['all', '所有人'], ['0', '无']] },
+  { k: 'block', tab: 'what', label: '🚫 屏蔽词', type: 'text', def: '', tip: '空格隔开；带这些词的弹幕、SC 不上屏，弹幕姬里照样看得到', ph: '空格隔开' },
+  { k: 'gift_min', tab: 'what', label: '🎁 礼物 ≥', type: 'num', min: 0, max: 1000, step: 0.1, def: 0, unit: '元', show: c => c.gifts },
+];
+// 歌单上屏（/obs-songs）的设置：正在唱 + 接下来几首，跟弹幕姬的歌单同步
+// 颜色选项旁边的几个常用色，一点就用（也能点最右边的色块任意选）
+const SWATCH = ['ffffff', 'ffe58a', 'ffc2d6', 'b9dcff', 'b8f0c8', 'c4507c', '5a6b80', '222222'];  // 2026-11-19 加了两个深一点的，给描边用
+const SF = [
+  { k: 'style', tab: 'songs', label: '🎨 样式', type: 'select', def: 'card', opts: [['card', '卡片'], ['strip', '细条'], ['vinyl', '唱片'], ['mist', '薄雾'], ['diary', '留言本']], tip: '卡片：正在唱 + 列表；细条：只有一行；唱片：左边一张黑胶；薄雾、留言本：跟 OBS 弹幕的主播专属风格配套' },
+  { k: 'size', tab: 'songs', label: '🔠 字号', type: 'range', min: 12, max: 60, step: 1, def: 20, unit: 'px' },
+  { k: 'done', tab: 'songs', label: '✓ 已唱', type: 'range', min: 0, max: 20, step: 1, def: 3, unit: '首', zero: '不显示', tip: '最近唱完的几首留在最上面（灰色划线）' },
+  { k: 'n', tab: 'songs', label: '📋 接下来', type: 'range', min: 0, max: 20, step: 1, def: 5, unit: '首', zero: '只显示正在唱' },
+  { k: 'align', tab: 'songs', label: '↔ 对齐', type: 'select', def: 'left', opts: [['left', '靠左'], ['center', '居中'], ['right', '靠右']], tip: '歌单在 OBS 浏览器源那一块里靠哪边' },
+  { k: 'pos', tab: 'songs', label: '↕ 贴哪边', type: 'select', def: 'top', opts: [['top', '贴顶部'], ['bottom', '贴底部']], tip: '歌单贴着 OBS 浏览器源那一块的顶部还是底部。歌变多时：贴顶部往下长，贴底部往上长' },
+  { k: 'head', tab: 'songs', label: '🎵 标题', type: 'check', def: true },
+  { k: 'xw', tab: 'songs', label: '🙂 Q 版主播', type: 'check', def: true, show: c => c.style === 'diary', tip: '右上角坐着的主播' },
+  { k: 'count', tab: 'songs', label: '✓ 已唱几首', type: 'check', def: true, show: c => c.head },
+  { k: 'num', tab: 'songs', label: '# 序号', type: 'check', def: true },
+  { k: 'light', tab: 'songs', label: '☀ 浅色', type: 'check', def: false, tip: '底板用白色、字用深色（不开是深色底板、浅色字）' },
+  { k: 'pal', tab: 'songs', label: '🎨 配色', type: 'select', def: '', opts: [['', '雾蓝'], ['sakura', '樱粉'], ['mint', '薄荷'], ['night', '雪夜'], ['lilac', '紫金']], tip: '跟弹幕姬的配色方案一样，边框和名字换颜色' },
+  { k: 'head_text', tab: 'songs', label: '🎵 标题文字', type: 'text', def: '今日歌单', show: c => c.head },
+  { k: 'bg', tab: 'songs', label: '💧 底板浓度', type: 'range', min: 0, max: 100, step: 5, def: 55, unit: '%', zero: '无底板' },
+  { k: 'font', tab: 'songs', label: '🔤 字体', type: 'select', def: '', opts: FONT_OPTS },
+  { k: 'now_color', tab: 'songs', label: '♪ 正在唱颜色', type: 'color', def: '' },
+  { k: 'color', tab: 'songs', label: '🎨 歌名颜色', type: 'color', def: '' },
+  { k: 'stroke', tab: 'songs', label: '⭕ 描边', type: 'range', min: 0, max: 4, step: 0.5, def: 1, unit: 'px', zero: '无' },
+  { k: 'stroke_color', tab: 'songs', label: '⭕ 描边颜色', type: 'color', def: '', show: c => c.stroke > 0, tip: '不改：浅色字描黑边，深色字描白边。字被描边糊住就换个浅一点的颜色' },
+  { k: 'glow', tab: 'songs', label: '🌫 文字阴影', type: 'range', min: 0, max: 24, step: 1, def: 4, unit: 'px', zero: '无' },
+  { k: 'glow_color', tab: 'songs', label: '🌫 阴影颜色', type: 'color', def: '', show: c => c.glow > 0, tip: '不改就跟描边同色' },
+  { k: 'w', tab: 'songs', label: '📐 宽', type: 'num', min: 150, max: 1920, step: 10, def: 400, unit: 'px', local: true, tip: 'OBS 浏览器源的宽度' },
+  { k: 'h', tab: 'songs', label: '📐 高', type: 'num', min: 100, max: 1080, step: 10, def: 360, unit: 'px', local: true, tip: 'OBS 浏览器源的高度' },
+];
+// 两种 OBS 页面：弹幕（/obs）和歌单（/obs-songs），各有各的设置，分开存
+const MODES = { dm: { F, key: 'xw-obs', page: 'obs', tab: 'look' }, songs: { F: SF, key: 'xw-obs-songs', page: 'obs-songs', tab: 'songs' } };
+let mode = 'dm';
+try { if (localStorage.getItem('xw-obs-mode') === 'songs') mode = 'songs'; } catch {}
+let fields, cfg;
+function loadMode() {
+  F = fields = MODES[mode].F;
+  cfg = Object.fromEntries(fields.map(f => [f.k, f.def]));
+  try { const saved = JSON.parse(localStorage.getItem(MODES[mode].key) || '{}'); Object.assign(cfg, saved); if (saved.square && saved.radius == null) cfg.radius = 6; delete cfg.square;
+    if (mode === 'dm' && ['card', 'glass', 'plain'].includes(cfg.style)) cfg.style = 'moon';  // 2026-11-21 这几个样式去掉了
+    // 第一次打开：配色跟弹幕姬现在用的一样
+    if (!('pal' in saved)) cfg.pal = JSON.parse(localStorage.getItem('xw-cfg') || '{}').pal || '';
+    if ('anim_ms' in cfg && !(cfg.anim_ms > 0)) cfg.anim_ms = 600; } catch {}  // 以前 0 = 默认，默认就是 600
+}
+loadMode();
+const save = () => { try { localStorage.setItem(MODES[mode].key, JSON.stringify(cfg)); } catch {} };
+const page = () => MODES[mode].page;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// 风格：一个按钮定好一整套
+const LOOKS = {
+  // 2026-11-21 用户挑的：月见 / 雾凇 / 星扣（雾月系，居中半透明）、气泡、票根；不要的流光 / 卡片 / 轻透 / 悬浮去掉了（旧网址自动当月见）
+  moon: ['✨', '月见', { style: 'moon' }], rime: ['❄', '雾凇', { style: 'rime' }], clip: ['📌', '星扣', { style: 'clip' }],
+  luna: ['🌙', '雾月', { style: 'luna' }], bubble: ['🫧', '气泡', { style: 'bubble' }], ticket: ['🏷', '票根', { style: 'ticket' }],
+  // 主播专属（2026-11-21）：薄雾 = 游戏时用，没有底板；留言本 = 聊天时用，整页夜蓝手账本
+  mist: ['🌫', '薄雾', { style: 'mist' }], diary: ['📖', '留言本', { style: 'diary', w: 560, h: 860 }],
+};
+// 文字效果：一键套一组描边 / 阴影
+const TEXTS = {
+  clear: ['🔲', '清晰', { stroke: 1, glow: 4, stroke_color: '', glow_color: '' }],
+  bold: ['⬛', '粗描边', { stroke: 2, glow: 6, stroke_color: '', glow_color: '' }],
+  soft: ['🌫', '柔光', { stroke: 0, glow: 10, stroke_color: '', glow_color: '' }],
+  none: ['◻', '无', { stroke: 0, glow: 0 }],
+};
+const textNow = () => Object.keys(TEXTS).find(k => Object.entries(TEXTS[k][2]).every(([a, b]) => cfg[a] === b)) || '';
+const lookNow = () => LOOKS[cfg.style] ? cfg.style : 'moon';
+function setMode(m) {
+  mode = m;
+  try { localStorage.setItem('xw-obs-mode', m); } catch {}
+  loadMode();
+  document.body.classList.toggle('songs', m === 'songs');
+  $('modes').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.mode === m));
+  draw(); update();
+}
+
+// ---------- 画出左边的面板（2026-11-21 改版：一页从上到下，用户看过改版图同意的） ----------
+// 每一页：[编号, 图标, 标题, [[框的标题, 这框里的设置], ...]]；COLOR = 颜色小表，TEXTS = 文字效果一键套，IMPORT = 读旧网址
+const PAGES = {
+  dm: [
+    ['look', 'sparkle', '样式', [['这个样式的', ['xw', 'htitle', 'peek', 'buy']], ['常用', ['size', 'max', 'pal']], ['进场动画', ['anim', 'anim_ms']]]],
+    ['font', 'type', '文字', [['效果', 'TEXTS'], ['字体', ['font', 'fw']], ['描边和阴影', ['stroke', 'stroke_color', 'glow', 'glow_color']], ['行距', ['lh', 'ls']]]],
+    ['color', 'palette', '颜色', 'COLOR'],
+    ['who', 'user', '每条显示', [['显示什么', ['avatar', 'frame', 'badge', 'rank', 'names', 'wealth']], ['粉丝牌和头像', ['medal', 'avatar_size']]]],
+    ['what', 'p-dm', '上屏内容', [['哪个直播间', ['room']], ['哪些上屏', ['merge', 'bot', 'gifts', 'price', 'gift_line', 'sc', 'sc_bg', 'guardbuy']], ['进房和筛选', ['enter', 'gift_min', 'block']]]],
+    ['more', 'grid', '排版', [['排版', ['gap', 'fade', 'width', 'layout', 'right']], ['底板', ['bubble', 'border', 'shadow', 'light', 'bg', 'radius']], ['读旧网址', 'IMPORT']]],
+  ],
+  songs: [
+    ['look', 'music', '样式', [['常用', ['size', 'pal', 'n', 'done']]]],
+    ['font', 'type', '文字', [['字体', ['font']], ['描边和阴影', ['stroke', 'stroke_color', 'glow', 'glow_color']]]],
+    ['color', 'palette', '颜色', 'COLOR'],
+    ['show', 'eye', '显示', [['显示什么', ['xw', 'head', 'count', 'num', 'light']], ['标题和底板', ['head_text', 'bg']]]],
+    ['pos', 'grid', '位置', [['位置', ['align', 'pos']]]],
+  ],
+};
+let curPg = 'look';
+// 2026-11-21 用户：选了哪个样式，就只显示对它有效果的设置。下面每一项都是把这个设置真的改一下、
+// 截图跟默认比过（7 个弹幕样式 × 40 个设置、5 个歌单样式 × 19 个设置），一点变化都没有的才藏
+const NA = {
+  // 2026-11-21 用户：头像、牌子、名字、身份这些每个样式都要能开关 —— 雾月、薄雾、留言本补上了，下面只剩真的没有的
+  luna: ['pal', 'rank', 'avatar_size', 'sc_bg', 'bubble', 'border', 'shadow', 'light', 'radius'],
+  moon: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge'],
+  rime: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge'],
+  clip: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge'],
+  bubble: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge', 'frame'],
+  ticket: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge', 'frame'],
+  mist: ['anim', 'width', 'layout', 'light', 'stroke', 'stroke_color', 'glow', 'glow_color', 'avatar', 'frame', 'badge', 'avatar_size', 'sc_bg'],
+  diary: ['anim', 'width', 'layout', 'light', 'pal', 'card_color', 'stroke', 'stroke_color', 'glow', 'glow_color', 'frame', 'badge', 'avatar_size', 'medal', 'sc_bg'],
+};
+const SNA = {
+  card: [], strip: ['done', 'n', 'head', 'num', 'head_text'], vinyl: ['done'],
+  mist: ['light', 'pal', 'bg', 'stroke', 'stroke_color', 'glow', 'glow_color'],
+  diary: ['light', 'pal', 'bg', 'stroke', 'stroke_color', 'glow', 'glow_color'],
+};
+function useless(f) {
+  if (mode === 'songs') return (SNA[cfg.style] || []).includes(f.k);
+  const look = lookNow();
+  // 靠右：每条都铺满整行时看不出来，只有「宽度 → 随文字」才有用
+  if (f.k === 'right' && (cfg.width !== 'fit' || ['luna', 'mist', 'diary'].includes(look))) return true;
+  return (NA[look] || []).includes(f.k);
+}
+const visible = f => f && f.type !== 'hidden' && (!f.show || f.show(cfg)) && !useless(f);
+const SONG_LOOKS = { card: ['card', '卡片'], strip: ['square', '细条'], vinyl: ['music', '唱片'], mist: ['snow', '薄雾'], diary: ['book', '留言本'] };
+const fieldOf = k => fields.find(f => f.k === k);
+const sameV = (a, b) => JSON.stringify(a ?? '') === JSON.stringify(b ?? '');
+const chg = k => { const f = fieldOf(k); return !!f && !sameV(cfg[k], f.def); };
+const plain = f => f.label.replace(/^\S+\s/, '');
+// 颜色那一格：有颜色就画出来，没有就写「跟样式」（舰长、提督、总督写「同上」）
+const TIER_KEYS = ['c3', 't3', 'c2', 't2', 'c1', 't1'];
+const ccell = k => {
+  const v = cfg[k], auto = TIER_KEYS.includes(k) ? '同上' : '跟样式';
+  return `<button type="button" class="ccell${v ? ' set' : ''}" data-cc="${k}" title="${esc(fieldOf(k)?.tip || '')}"><i${v ? ` style="background:#${v}"` : ' class="auto"'}></i><span>${v ? '#' + v : auto}</span></button>`;
+};
+function colorTable() {
+  const V = k => visible(fieldOf(k));
+  if (mode === 'songs') return `<div class="ctab one">${[['正在唱', 'now_color'], ['歌名', 'color']].filter(r => V(r[1])).map(([n, k]) => `<span>${n}</span>${ccell(k)}`).join('')}</div>`;
+  const rows = [['所有人', 'name_color', 'color'], ['舰长', 'c3', 't3'], ['提督', 'c2', 't2'], ['总督', 'c1', 't1']];
+  let h = `<div class="ctab"><span></span><span class="h">名字</span><span class="h">弹幕</span>`;
+  for (const [n, a, b] of rows) h += `<span>${n}</span>${V(a) ? ccell(a) : '<span></span>'}${V(b) ? ccell(b) : '<span></span>'}`;
+  h += '</div>';
+  if (V('card_color')) h += `<div class="ctab one"><span>礼物 / SC</span>${ccell('card_color')}</div>`;
+  return h;
+}
+function pageKeys(groups) {
+  if (groups === 'COLOR') return (mode === 'songs' ? ['now_color', 'color'] : ['color', 'name_color', 'card_color', 'c3', 't3', 'c2', 't2', 'c1', 't1']).filter(k => visible(fieldOf(k)));
+  return groups.flatMap(([, ks]) => Array.isArray(ks) ? ks : ks === 'TEXTS' ? ['stroke', 'glow', 'stroke_color', 'glow_color'] : []).filter(k => visible(fieldOf(k)));
+}
+function renderPage(id, groups) {
+  const tip = f => f.tip ? ` title="${esc(f.tip)}"` : '';
+  const out = [];
+  if (id === 'look') {
+    if (mode === 'dm') out.push(`<fieldset><legend>选样式</legend><div class="pick">${Object.entries(LOOKS).map(([k, [ic, name]]) => `<button data-look="${k}"${lookNow() === k ? ' class="on"' : ''}><i>${lab(ic + ' ').trim()}</i>${name}</button>`).join('')}</div></fieldset>`);
+    else out.push(`<fieldset><legend>选样式</legend><div class="pick">${Object.entries(SONG_LOOKS).map(([k, [ic, name]]) => `<button data-seg="style" data-val="${k}"${cfg.style === k ? ' class="on"' : ''}><i>${icon(ic)}</i>${name}</button>`).join('')}</div></fieldset>`);
+  }
+  if (groups === 'COLOR') return pageKeys(groups).length ? `<fieldset><legend>名字和弹幕的颜色</legend>${colorTable()}</fieldset>` : null;
+  for (const [legend, keys] of groups) {
+    if (keys === 'TEXTS') { if (mode === 'dm' && visible(fieldOf('stroke'))) out.push(`<fieldset><legend>${legend}</legend><div class="pick" style="grid-template-columns:repeat(4,1fr)">${Object.entries(TEXTS).map(([k, [tic, name]]) => `<button data-txt="${k}"${textNow() === k ? ' class="on"' : ''}><i>${lab(tic + ' ').trim()}</i>${name}</button>`).join('')}</div></fieldset>`); continue; }
+    if (keys === 'IMPORT') { if (mode === 'dm') out.push(`<fieldset><legend>${legend}</legend><div class="opt"><input type="text" id="imp" placeholder="粘贴以前复制的 OBS 网址，接着改" style="flex:1"><button class="btn sm" id="impgo">读取</button></div></fieldset>`); continue; }
+    const list = keys.map(fieldOf).filter(visible);
+    if (!list.length) continue;
+    const body = [], checks = list.filter(f => f.type === 'check');
+    if (checks.length) body.push(`<div class="ckg">${checks.map(f => `<label${tip(f)}${chg(f.k) ? ' class="chg"' : ''}><input type="checkbox" data-k="${f.k}"${cfg[f.k] ? ' checked' : ''}><span>${esc(plain(f))}</span></label>`).join('')}</div>`);
+    for (const f of list) {
+      if (f.type === 'check') continue;
+      const v = cfg[f.k], head = `<div class="opt r${chg(f.k) ? ' chg' : ''}"${tip(f)}><span>${esc(plain(f))}</span><div class="ctl">`, tail = `</div><button type="button" class="rs" data-rs="${f.k}" title="恢复默认">↺</button></div>`;
+      if (f.type === 'select') body.push(head + `<span class="seg${f.k === 'font' ? ' fonts' : ''}">${f.opts.map(([a, b]) => `<button data-seg="${f.k}" data-val="${a}"${a === v ? ' class="on"' : ''}${f.k === 'font' && FONT_CSS[a] ? ` style='font-family:${FONT_CSS[a]}'` : ''}>${b}</button>`).join('')}</span>` + tail);
+      else if (f.type === 'range') body.push(head + `<b class="scrub" data-scrub="${f.k}" tabindex="0" title="按住左右拖，或点一下直接打字">${f.zero && !v ? f.zero : v}<small>${f.zero && !v ? '' : f.unit}</small></b><input type="range" data-k="${f.k}" min="${f.min}" max="${f.max}" step="${f.step}" value="${v}">` + tail);
+      else if (f.type === 'color') body.push(head + ccell(f.k) + tail);
+      else if (f.type === 'text') body.push(head + `<input type="text" data-k="${f.k}" value="${esc(v)}" placeholder="${f.ph || ''}">` + tail);
+      else if (f.type === 'num') body.push(head + `<input type="number" data-k="${f.k}" min="${f.min}" max="${f.max}" step="${f.step}" value="${v}"><small>${f.unit}</small>` + tail);
+    }
+    out.push(`<fieldset><legend>${legend}</legend>${body.join('')}</fieldset>`);
+  }
+  return out.length ? out.join('') : null;
+}
+function draw() {
+  const pages = PAGES[mode], nav = [];
+  let body = '', title = '';
+  const shown = pages.map(([id, ic, t, groups]) => [id, ic, t, groups, renderPage(id, groups)]).filter(x => x[4] !== null);
+  if (!shown.some(x => x[0] === curPg)) curPg = shown[0][0];
+  for (const [id, ic, t, groups, html] of shown) {
+    nav.push(`<button type="button" data-pg="${id}"${id === curPg ? ' class="on"' : ''}>${icon(ic)}${t}</button>`);
+    if (id === curPg) { body = html; title = t; }
+  }
+  $('pnav').innerHTML = nav.join('');
+  $('fields').innerHTML = `<h2 class="ptitle">${title}</h2>${body}<div class="pfoot"><button type="button" class="btn sm" id="pgreset">恢复这一页默认</button></div>`;
+  drawAfter();
+}
+function drawRows() {}
+// 颜色色板（点颜色表里的一格弹出来）：8 个常用色 + 自己挑 + 跟样式 / 同上
+const cpop = document.createElement('div');
+cpop.id = 'cpop'; cpop.hidden = true;
+document.body.appendChild(cpop);
+function openColor(btn) {
+  const k = btn.dataset.cc, f = fieldOf(k), v = cfg[k] || '';
+  const auto = TIER_KEYS.includes(k) ? '同上' : '跟样式';
+  cpop.innerHTML = `<div class="t">${esc(f.label.replace(/^\S+\s/, ''))}</div><div class="row">${SWATCH.map(c => `<button class="swc${v === c ? ' on' : ''}" data-pc="${c}" style="background:#${c}" title="#${c}"></button>`).join('')}</div>`
+    + `<div class="bt"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--ink2)"><input type="color" value="#${v || 'ffffff'}">自己挑颜色</label><button class="btn sm" data-pc="" style="margin-left:auto">${auto}</button></div>`;
+  const set = c => { cfg[k] = c; save(); cpop.hidden = true; draw(); update(); };
+  cpop.querySelectorAll('[data-pc]').forEach(b => b.onclick = () => set(b.dataset.pc));
+  cpop.querySelector('input[type=color]').onchange = e => set(e.target.value.slice(1));
+  const r = btn.getBoundingClientRect();
+  cpop.hidden = false;
+  cpop.style.left = Math.max(8, Math.min(r.left, innerWidth - cpop.offsetWidth - 8)) + 'px';
+  cpop.style.top = (r.bottom + 6 + cpop.offsetHeight < innerHeight ? r.bottom + 6 : r.top - 6 - cpop.offsetHeight) + 'px';
+}
+document.addEventListener('click', e => { if (!cpop.hidden && !e.target.closest('#cpop, [data-cc]')) cpop.hidden = true; });
+function drawAfter() {
+  // 拖滑块时不重画左边（重画会打断拖动）；只有出现 / 消失的选项变了才重画
+  const visKeys = () => F.filter(visible).map(f => f.k).join();
+  $('fields').querySelectorAll('[data-k]').forEach(el => el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', () => {
+    const f = fields.find(x => x.k === el.dataset.k), before = visKeys();
+    cfg[f.k] = f.type === 'check' ? el.checked : f.type === 'color' ? el.value.slice(1) : f.type === 'text' ? el.value.trim() : Number(el.value) || 0;
+    save();
+    if (f.type === 'check' || visKeys() !== before) draw();
+    else el.closest('.opt.r')?.classList.toggle('chg', chg(f.k));
+    update();
+    if (f.k === 'anim_ms') demoAnim();
+  }));
+  // 拖条旁边的数字框和 −/＋（2026-11-19）：直接打数字，或者一下一下微调
+  const setNum = (k, raw) => {
+    const f = fields.find(x => x.k === k); if (!f) return;
+    const before = visKeys();
+    let v = Number(raw); if (!Number.isFinite(v)) v = f.def;
+    v = Math.min(f.max, Math.max(f.min, Math.round(v / f.step) * f.step));
+    v = Number(v.toFixed(3));
+    cfg[k] = v; save();
+    const r = $('fields').querySelector(`input[type=range][data-k="${k}"]`); if (r) r.value = v;
+    const n = $('fields').querySelector(`[data-nv="${k}"]`); if (n && document.activeElement !== n) n.value = v;
+    if (visKeys() !== before) draw();
+    update();
+    if (k === 'anim_ms') demoAnim();
+  };
+  $('fields').querySelectorAll('[data-nv]').forEach(el => el.addEventListener('change', () => { setNum(el.dataset.nv, el.value); el.value = cfg[el.dataset.nv]; }));
+  $('fields').querySelectorAll('[data-stp]').forEach(b => b.onclick = e => { e.preventDefault(); const f = fields.find(x => x.k === b.dataset.stp); setNum(f.k, (Number(cfg[f.k]) || 0) + Number(b.dataset.d) * f.step); });
+  $('fields').querySelectorAll('input[type=range][data-k]').forEach(el => el.addEventListener('input', () => { const n = $('fields').querySelector(`[data-nv="${el.dataset.k}"]`); if (n) n.value = el.value; }));
+  $('fields').querySelectorAll('[data-cc]').forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); openColor(b); });
+  $('pnav').querySelectorAll('[data-pg]').forEach(b => b.onclick = () => { curPg = b.dataset.pg; draw(); $('fields').scrollTop = 0; });
+  $('fields').querySelectorAll('[data-rs]').forEach(b => b.onclick = () => { const f = fieldOf(b.dataset.rs); cfg[f.k] = f.def; save(); draw(); update(); });
+  $('pgreset').onclick = () => { const g = PAGES[mode].find(x => x[0] === curPg)?.[3]; for (const k of g ? pageKeys(g) : []) cfg[k] = fieldOf(k).def; save(); draw(); update(); };
+  // 拖条（2026-11-21 参考 PR）：蓝色数字按住左右拖就能改，点一下直接打字；旁边的细拖条也能拖
+  $('fields').querySelectorAll('input[type=range][data-k]').forEach(r => r.addEventListener('input', () => { const b = $('fields').querySelector(`[data-scrub="${r.dataset.k}"]`), f = fieldOf(r.dataset.k); if (b) b.innerHTML = `${f.zero && !Number(r.value) ? f.zero : r.value}<small>${f.zero && !Number(r.value) ? '' : f.unit}</small>`; }));
+  $('fields').querySelectorAll('[data-scrub]').forEach(sb => {
+    const k = sb.dataset.scrub, f = fieldOf(k);
+    let x0 = null, v0 = 0, moved = false;
+    const edit = () => {
+      const n = document.createElement('input');
+      n.type = 'number'; n.className = 'nv'; n.min = f.min; n.max = f.max; n.step = f.step; n.value = cfg[k];
+      sb.replaceWith(n); n.focus(); n.select();
+      let done = false;
+      const fin = ok => { if (done) return; done = true; if (ok && n.value !== '') setNum(k, n.value); draw(); };
+      n.onblur = () => fin(true); n.onkeydown = e => { if (e.key === 'Enter') fin(true); if (e.key === 'Escape') fin(false); };
+    };
+    sb.addEventListener('pointerdown', e => { x0 = e.clientX; v0 = Number(cfg[k]) || 0; moved = false; sb.setPointerCapture(e.pointerId); e.preventDefault(); });
+    sb.addEventListener('pointermove', e => {
+      if (x0 == null) return;
+      const dx = e.clientX - x0;
+      if (Math.abs(dx) > 3) moved = true;
+      if (!moved) return;
+      setNum(k, v0 + Math.round(dx / 4) * f.step);
+      const r = $('fields').querySelector(`input[type=range][data-k="${k}"]`); if (r) { r.value = cfg[k]; r.dispatchEvent(new Event('input')); }
+    });
+    sb.addEventListener('pointerup', () => { const was = moved; x0 = null; if (!was) edit(); else draw(); });
+    sb.addEventListener('keydown', e => { if (e.key === 'Enter') edit(); if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); setNum(k, (Number(cfg[k]) || 0) + (e.key === 'ArrowLeft' ? -1 : 1) * f.step); draw(); $('fields').querySelector(`[data-scrub="${k}"]`)?.focus(); } });
+  });
+  // 收起 / 打开一块：不用重画，记一下下次还是这样
+  $('fields').querySelectorAll('.sec > .hd').forEach(h => h.onclick = () => {
+    const sec = h.parentElement, id = sec.dataset.sec;
+    sec.classList.toggle('open');
+    if (sec.classList.contains('open')) openSecs.add(id); else openSecs.delete(id);
+    saveOpen();
+  });
+  $('fields').querySelectorAll('[data-txt]').forEach(b => b.onclick = () => { Object.assign(cfg, TEXTS[b.dataset.txt][2]); save(); draw(); update(); });
+  $('fields').querySelectorAll('[data-seg]').forEach(b => b.onclick = () => { cfg[b.dataset.seg] = b.dataset.val; save(); draw(); update(); if (b.dataset.seg === 'anim') demoAnim(); });
+  $('fields').querySelectorAll('[data-look]').forEach(b => b.onclick = () => { Object.assign(cfg, LOOKS[b.dataset.look][2]); save(); draw(); update(); });
+  if ($('impgo')) $('impgo').onclick = () => {
+    try {
+      const u = new URL($('imp').value.trim(), location.href);
+      for (const f of fields) {
+        if (f.local) continue;
+        if (!u.searchParams.has(f.k)) { cfg[f.k] = f.def; continue; }  // 网址里没写的就是默认值
+        const raw = u.searchParams.get(f.k);
+        cfg[f.k] = f.type === 'check' ? raw === '1' : f.type === 'select' ? (f.opts.some(o => o[0] === raw) ? raw : f.def) : f.type === 'hidden' ? raw
+          : f.type === 'text' ? raw.slice(0, 300) : f.type === 'color' ? (/^[0-9a-f]{6}$/i.test(raw.replace(/^#/, '')) ? raw.replace(/^#/, '') : '') : Number(raw) || 0;
+      }
+      if (u.searchParams.get('square') === '1' && !u.searchParams.has('radius')) cfg.radius = 6;
+      save(); draw(); update(); $('imp').placeholder = '✓ 读好了';
+    } catch { $('imp').value = ''; $('imp').placeholder = '这不像网址'; }
+  };
+  labels();
+}
+// 改了动画样式或时长：等预览重新加载好，自动发两条弹幕看效果
+let animT = 0;
+function demoAnim() {
+  clearTimeout(animT);
+  animT = setTimeout(() => { T.dm(); setTimeout(T.g3, 700); }, 1500);
+}
+function labels() {
+  for (const f of fields) {
+    const el = document.querySelector(`[data-v="${f.k}"]`);
+    if (el) el.textContent = f.zero && !cfg[f.k] ? f.zero : f.unit;  // 数字在旁边的框里，这里只写单位（0 时写「无」之类）
+  }
+}
+
+// ---------- 生成网址、刷新预览 ----------
+function query(extra = {}) {
+  const p = new URLSearchParams();
+  for (const f of fields) {
+    if (f.local || cfg[f.k] === f.def) continue;
+    p.set(f.k, f.type === 'check' ? (cfg[f.k] ? '1' : '0') : String(cfg[f.k]));
+  }
+  for (const [k, v] of Object.entries(extra)) p.set(k, v);
+  const s = p.toString();
+  return s ? '?' + s : '';
+}
+const base = () => location.origin + location.pathname.replace(/[^/]*$/, '') + page();
+let timer = 0, lastSrc = '';
+function update() {
+  labels();
+  $('url').value = base() + query();
+  if (document.activeElement !== $('ow')) $('ow').value = cfg.w;
+  if (document.activeElement !== $('oh')) $('oh').value = cfg.h;
+  fit();
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    const src = page() + query($('real').checked ? {} : { demo: $('fixed').checked ? 'static' : '1' });
+    if (src !== lastSrc) { lastSrc = src; $('pv').src = src; }
+  }, 250);
+}
+// 预览框按 OBS 里的宽高画，放不下就整体缩小
+function fit() {
+  const fr = $('frame'), v = $('view');
+  fr.style.width = cfg.w + 'px'; fr.style.height = cfg.h + 'px';
+  const s = Math.min(1, (v.clientWidth - 28) / cfg.w, (v.clientHeight - 28) / cfg.h);
+  fr.style.transform = `scale(${Math.max(.2, s)})`;
+  fr.style.margin = `${-(cfg.h * (1 - s)) / 2}px ${-(cfg.w * (1 - s)) / 2}px`;
+}
+addEventListener('resize', fit);
+
+$('copy').onclick = async () => {
+  const text = $('url').value;
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch {}
+  if (!ok) { $('url').select(); try { ok = document.execCommand('copy'); } catch {} }
+  $('copied').textContent = ok ? '✓ 已复制' : '没复制上，手动选中复制';
+  setTimeout(() => $('copied').textContent = '', 4000);
+};
+// 底下的宽、高：直接改，跟设置里的一样存
+for (const [id, k] of [['ow', 'w'], ['oh', 'h']]) $(id).addEventListener('change', () => {
+  const f = fieldOf(k); let v = Math.round(Number($(id).value) / 10) * 10;
+  if (!Number.isFinite(v)) v = f.def;
+  cfg[k] = Math.min(f.max, Math.max(f.min, v)); $(id).value = cfg[k]; save(); update();
+});
+$('reset').onclick = () => { cfg = Object.fromEntries(fields.map(f => [f.k, f.def])); save(); draw(); update(); };
+const setBg = b => { $('frame').className = b; $('backdrop').querySelectorAll('.sw').forEach(x => x.classList.toggle('on', x.dataset.bg === b)); };
+$('backdrop').onclick = e => { const b = e.target.closest('[data-bg]'); if (!b) return; setBg(b.dataset.bg); try { localStorage.setItem('xw-obs-bg', b.dataset.bg); } catch {} };
+try { const b = localStorage.getItem('xw-obs-bg'); if (b && /^(checker|dark|lightbg)$/.test(b)) setBg(b); } catch {}
+$('real').onchange = () => { $('fixed').disabled = $('real').checked; update(); };
+$('fixed').onchange = update;
+
+// ---------- 「发一条试试」 ----------
+let n = 0;
+const send = (type, data) => $('pv').contentWindow?.postMessage({ type, data }, location.origin);
+const dm = (name, text, guard, lv) => send('dm', { uid: 9000 + (++n), name, face: '', text, medal: '雾锁胃', medal_level: lv, medal_room: 1000001, guard, emoticon: '' });
+const T = {
+  dm: () => dm('雾里看花', '主播晚上好～今天唱什么呀', 0, 8),
+  g3: () => dm('路过的舰长', '来了来了，打卡', 3, 21),
+  g2: () => dm('紫色提督', '雾雾今天好可爱', 2, 25),
+  g1: () => dm('橙色总督', '主播冲鸭！', 1, 30),
+  gift: () => send('gift', { item: { id: 't' + (++n), uid: 1, name: '雪糕不化', face: '', gift: '小花花', num: 10, yuan: 1, img: '', guard: 0, blind: '' } }),
+  big: () => send('gift', { item: { id: 't' + (++n), uid: 2, name: '主播的猫', face: '', gift: '情书', num: 2, yuan: 104, img: '', guard: 3, blind: '' } }),
+  sc: () => send('sc', { item: { id: ++n, uid: 3, name: '冬天的鱼', face: '', price: 50, text: '主播辛苦啦，今天的歌超好听，早点休息哦～', guard: 0 } }),
+  buy3: () => send('guard', { item: { uid: 4, name: '路过的舰长', level: 3, level_name: '舰长', num: 1, unit: '月', yuan: 198 } }),
+  buy2: () => send('guard', { item: { uid: 5, name: '紫色提督', level: 2, level_name: '提督', num: 1, unit: '月', yuan: 1998 } }),
+  buy1: () => send('guard', { item: { uid: 6, name: '橙色总督', level: 1, level_name: '总督', num: 1, unit: '月', yuan: 19998 } }),
+};
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = T[b.dataset.t]);
+
+if (window !== window.top) document.querySelector('#panel > header').style.display = 'none';  // 嵌在弹幕姬里时外面已经有标题了
+$('modes').onclick = e => { const b = e.target.closest('[data-mode]'); if (b && b.dataset.mode !== mode) setMode(b.dataset.mode); };
+if (new URLSearchParams(location.search).get('mode') === 'songs') mode = 'songs';  // 从弹幕姬的歌单直接点过来
+setMode(mode);
+// 「直播间」能选哪些：跟弹幕姬的切房名单一样（2026-11-21）
+fetch('api/xrooms').then(r => r.json()).then(j => {
+  const f = F.find(x => x.k === 'room');
+  if (!f || !Array.isArray(j.rooms)) return;
+  f.opts = [['', j.main?.name || '主播'], ...j.rooms.map(r => [String(r.room), r.name || String(r.room)])];
+  if (cfg.room && !f.opts.some(o => o[0] === String(cfg.room))) { cfg.room = ''; }
+  draw(); update();
+}).catch(() => {});
+</script>
+<div id="ospot" hidden></div>
+<div id="otour" hidden><div id="otxt"></div><div class="ob"><span id="on"></span><button class="btn sm" id="oskip">跳过</button><button class="btn sm go" id="onext">下一步</button></div></div>
+<script>
+// OBS 设置页教学（2026-11-19）：第一次打开自动走一遍，标题旁「?」可以再看
+(() => {
+  const STEPS = [
+    ['#modes', '先选：做弹幕，还是做歌单'],
+    ['#fields .pick', '挑一个样子'],
+    ['#pnav', '左边分类，点一下换一页；改过的那页有小红点'],
+    ['#frame', '右边就是 OBS 里的样子'],
+    ['#bar [data-t="dm"]', '点这些，发一条测试的看看'],
+    ['#copy', '复制网址，贴进 OBS 的「浏览器」来源'],
+    ['#owh', '宽、高照这里填'],
+  ];
+  let list = [], i = -1, follow = 0;
+  const q = s => document.querySelector(s);
+  const place = el => {
+    const r = el.getBoundingClientRect(), sp = q('#ospot'), box = q('#otour'), pad = 6, gap = 14;
+    Object.assign(sp.style, { left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px' });
+    const bw = box.offsetWidth, bh = box.offsetHeight;
+    let top, left = r.left + r.width / 2 - bw / 2;
+    if (r.bottom + gap + bh < innerHeight - 8) top = r.bottom + gap;
+    else if (r.top - gap - bh > 8) top = r.top - gap - bh;
+    else { top = Math.max(8, Math.min(innerHeight - bh - 8, r.top)); left = r.right + gap + bw < innerWidth - 8 ? r.right + gap : r.left - gap - bw; }
+    box.style.top = Math.max(8, top) + 'px'; box.style.left = Math.max(8, Math.min(innerWidth - bw - 8, left)) + 'px';
+  };
+  const end = () => { clearInterval(follow); i = -1; q('#ospot').hidden = q('#otour').hidden = true; try { localStorage.setItem('xw-obs-tour', '1'); } catch {} };
+  const step = k => {
+    if (k >= list.length) return end();
+    const st = list[k]; try { st[2]?.(); } catch {}
+    const el = q(st[0]); if (!el?.getClientRects().length) return step(k + 1);
+    i = k; q('#otxt').textContent = st[1]; q('#on').textContent = `${k + 1} / ${list.length}`;
+    q('#onext').textContent = k === list.length - 1 ? '知道了' : '下一步';
+    q('#ospot').hidden = q('#otour').hidden = false;
+    el.scrollIntoView({ block: 'nearest' }); place(el);
+    clearInterval(follow); follow = setInterval(() => { const e = q(st[0]); if (e?.getClientRects().length) place(e); }, 250);
+  };
+  const start = () => { list = STEPS.filter(st => { try { st[2]?.(); } catch {} return q(st[0])?.getClientRects().length; }); step(0); };
+  q('#onext').onclick = () => step(i + 1);
+  q('#oskip').onclick = end;
+  q('#ohelp').onclick = start;
+  fillIcons();
+  addEventListener('keydown', e => { if (e.key === 'Escape' && i >= 0) end(); });
+  let seen = false; try { seen = !!localStorage.getItem('xw-obs-tour'); } catch {}
+  if (!seen) setTimeout(start, 1200);
+})();
+</script>
+</body>
+</html>

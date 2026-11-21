@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>弹幕姬 · OBS 弹幕</title>
+<link rel="stylesheet" href="static/fonts/fonts.css">
+<style>
+/* OBS 页面没有画布底色。预览背景只属于 obs-setup 的外层容器。 */
+:root {
+  --size: 18px; --card: rgba(16,22,32,.7); --bg-alpha: .7;
+  --ink: #f6f8fc; --ink2: #c4cfdf; --shadow: 0 1px 2px #0005;
+  --g3: #70afff; --g2: #bd8cf4; --g1: #ff905e;
+  --avatar-size: 46px; --gap: 10px; --radius: 12px;
+  --card-shadow: 0 4px 12px #0002;
+}
+html, body { margin: 0; height: 100%; background: transparent !important; overflow: hidden; }
+body { font: 400 var(--size)/var(--lh, 1.5) var(--ff, "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif); color: var(--ink); }
+.light { --ink: #233044; --ink2: #526176; --shadow: none; --g3: #326fc9; --g2: #8544bb; --g1: #c74f28; }
+.square { --radius: 6px; }
+#list { position: absolute; inset: auto 0 0; padding: 12px; will-change: transform; display: flex; flex-direction: column; align-items: flex-start; gap: var(--gap); }
+.right #list { align-items: flex-end; }
+.it { --rgb: var(--pal-rgb, 169 188 213); --accent: var(--pal-ink, var(--ink2)); position: relative; box-sizing: border-box; max-width: 100%; display: flex; align-items: flex-start; gap: .65em; padding: .6em .7em; border: 1px solid rgb(var(--rgb) / .23); border-radius: var(--radius); background: var(--card); color: var(--ink); text-shadow: var(--shadow); box-shadow: var(--card-shadow); animation: slidein var(--anim-ms, .6s) cubic-bezier(.22, 1, .36, 1) backwards; }
+.it.dm, .it.gift { width: 100%; }
+.fitwidth .it.dm, .fitwidth .it.gift { width: fit-content; }
+.it.g3 { --rgb: 76 151 247; --accent: var(--g3); }
+.it.g2 { --rgb: 165 94 232; --accent: var(--g2); }
+.it.g1 { --rgb: 245 111 56; --accent: var(--g1); }
+.it.g3, .it.g2, .it.g1 { border-color: rgb(var(--rgb) / .58); background: linear-gradient(115deg,rgb(var(--rgb) / calc(var(--bg-alpha) * .15)),transparent 75%),var(--card); }
+.dm[class*=" g"]::before { content: ''; position: absolute; top: -1px; left: 12px; right: 45%; height: 1px; background: linear-gradient(90deg,transparent,rgb(var(--rgb) / .9),transparent); pointer-events: none; }
+.body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.who { display: flex; flex-wrap: wrap; align-items: center; gap: .4em; margin: .02em 0 .2em; line-height: 1.4; }
+.name { font-size: .76em; font-weight: 600; color: var(--accent); overflow-wrap: anywhere; }
+.txt { display: block; line-height: 1.5; letter-spacing: .01em; }
+.txt img.emo { height: 1.45em; vertical-align: -.32em; margin: 0 .04em; }
+.txt img:not(.emo) { height: 2.2em; max-width: 100%; object-fit: contain; vertical-align: middle; }
+.rank { font-size: .56em; line-height: 1.5; color: var(--accent); padding: 0 .45em; border: 1px solid rgb(var(--rgb) / .4); border-radius: 4px; white-space: nowrap; margin-left: auto; letter-spacing: .08em; text-shadow: none; }
+.rank3 { --accent: var(--g3); --rgb: 76 151 247; } .rank2 { --accent: var(--g2); --rgb: 165 94 232; } .rank1 { --accent: var(--g1); --rgb: 245 111 56; }
+/* 粉丝牌：B 站新版样式（半透明底色 + 右边实色等级块，舰长牌子有亮边） */
+.medal { --mb: var(--mc); display: inline-flex; align-items: center; font-size: .57em; line-height: 1.5; border-radius: .4em; padding-right: .08em; text-shadow: none; flex: none;
+  background: color-mix(in srgb, var(--mc) 60%, transparent); border: 1px solid var(--mb); }
+.medal b { color: #fff; padding: 0 .4em 0 .45em; font-weight: 500; white-space: nowrap; }
+.medal i { font-style: normal; color: #fff; background: color-mix(in srgb, var(--mc) 90%, transparent); border-radius: .32em; padding: 0 .35em; min-width: 1.4em; text-align: center; font-weight: 700; }
+.identity { display: inline-flex; align-items: center; gap: 4px; flex: none; align-self: flex-start; }
+.portrait { position: relative; width: var(--avatar-size); height: var(--avatar-size); display: grid; place-items: center; flex: none; border-radius: 50%; isolation: isolate; box-sizing: border-box; }
+.av { width: 100%; height: 100%; box-sizing: border-box; border-radius: 50%; object-fit: cover; background: #8fb6dc; display: grid; place-items: center; font-size: calc(var(--avatar-size) * .42); color: #fff; font-weight: 600; text-shadow: none; }
+.tier3 { --frame-color: #5b9cf0; } .tier2 { --frame-color: #a86ae3; } .tier1 { --frame-color: #f5773f; }
+.identity[class*="tier"] .portrait { padding: 3px; border: 2px solid var(--frame-color); }
+.identity .portrait.has-art { border: 0; padding: 0; }
+.has-art .av { width: 78%; height: 78%; }
+.avatar-frame { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 1; }
+.gicon { flex: none; object-fit: contain; width: calc(var(--avatar-size) * .52); height: calc(var(--avatar-size) * .52); filter: drop-shadow(0 1px 1px #0003); }
+.gtag { font-size: .57em; border-radius: 4px; padding: .1em .3em; color: #fff; text-shadow: none; background: var(--frame-color,#598ed5); flex: none; }
+.noav .portrait { display: none; }
+.noav .identity:not([class*="tier"]), .noav.nobadge .identity { display: none; }
+.noframe .avatar-frame { display: none; }
+.noframe .identity .portrait { border: 0; padding: 0; }
+.noframe .has-art .av { width: 100%; height: 100%; }
+.nobadge .identity > .gicon, .nobadge .identity > .gtag { display: none; }
+.norank .rank { display: none; }
+.nonames .who .name { display: none; }
+.inline .who { display: inline-flex; margin: 0 .4em 0 0; vertical-align: middle; }
+.inline .rank { margin-left: 0; }
+.inline .txt { display: inline; }
+.inline .it.dm { align-items: center; }
+.gift { align-items: center; }
+.giftverb { font-size: .85em; color: var(--ink2); }
+.gift .gi { width: 2em; height: 2em; object-fit: contain; flex: none; }
+.gift .num, .rep { color: #ffb983; font-weight: 600; margin-left: .2em; display: inline-block; }
+.light .gift .num, .light .rep { color: #b35b24; }
+.gift .yuan { font-size: .75em; color: var(--ink2); margin-left: .35em; }
+.gift.big { border-color: #db945a77; }
+.sc { width: 100%; min-width: 0; padding: 0; flex-direction: column; align-items: stretch; gap: 0; overflow: hidden; color: #fff; text-shadow: none; background: none; border-color: #a8c5dd66; }
+.sc .h { display: flex; align-items: center; gap: .6em; padding: .55em .7em; background: color-mix(in srgb,var(--sc-tone,#427d9e) 55%,#172332) !important; }
+.sc .name { flex: 1; }
+.sc .p { margin-left: auto; font-size: .86em; font-weight: 600; white-space: nowrap; }
+.sc .m { padding: .6em .8em .7em; background: color-mix(in srgb,var(--sc-tone,#5a95b5) 55%,#223246) !important; border-top: 1px solid #bfd6eb20; line-height: 1.55; overflow-wrap: anywhere; }
+.no-sc-bg .sc, .no-sc-bg .sc .h, .no-sc-bg .sc .m { background: none !important; box-shadow: none; }
+.no-sc-bg .sc { color: var(--ink); text-shadow: var(--shadow); }
+.no-sc-bg.light:not(.plain) .sc .name { color: var(--ink) !important; }
+.guardbuy { align-items: center; color: #fff; background-size: cover; background-position: center; overflow: hidden; }
+.guardbuy.l3 { background: linear-gradient(110deg,#366cb7,#689cde); }
+.guardbuy.l2 { background: linear-gradient(110deg,#7542ad,#ad7edb); }
+.guardbuy.l1 { background: linear-gradient(110deg,#b53730,#f37e3d); }
+.guardbuy small { display: block; font-size: .75em; }
+.guardbuy.artbanner { background-color: transparent; background-size: 100% 100%; background-repeat: no-repeat; border: 0; border-radius: 0; overflow: visible; box-shadow: none; width: 21em; max-width: 100%; padding: 2% 33% 0 15%; text-shadow: 0 0 3px #4a2a55,0 1px 2px #4a2a55; }
+.artbanner .body { width: 100%; flex: initial; }
+.artbanner .l1, .artbanner small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.artbanner .l1 { font-size: 1.05em; font-weight: 700; }
+.enter { font-size: .82em; align-items: center; padding: .45em .7em; }
+.enter .name { font-size: 1em; }
+.enter .portrait { width: calc(var(--avatar-size) * .8); height: calc(var(--avatar-size) * .8); }
+/* 关闭底色后，连大礼物和大航海的渐变也去掉；边框由独立开关决定。 */
+.no-bubble .it.dm, .no-bubble .it.gift, .no-bubble .it.enter { background: none !important; box-shadow: none; }
+.no-border .it:not(.guardbuy) { border-color: transparent; }
+.no-border .dm::before { display: none; }
+.no-border .sc .m { border-color: transparent; }
+.no-shadow .it { box-shadow: none; }
+.plain { --ink: #fff; --ink2: #dfeaf6; --g3: #82bcff; --g2: #c39cff; --g1: #ffa079; --shadow: 0 0 2px #000,0 0 2px #000,0 1px 3px #000c; }
+.plain .it.dm, .plain .it.gift, .plain .it.enter { background: none !important; border-color: transparent; box-shadow: none; padding: .25em .2em; }
+.plain .dm::before { display: none; }
+.it.out { opacity: 0; transition: opacity .6s; }
+.anim-fade .it { animation-name: fadein; }
+.anim-none .it { animation: none; }
+.anim-pop .it { animation-name: popin; }
+.anim-left .it { animation-name: leftin; }
+.anim-right .it { animation-name: rightin; }
+@keyframes popin { from { opacity: 0; transform: scale(.82); } 60% { transform: scale(1.03); } }
+@keyframes leftin { from { opacity: 0; transform: translateX(-1.6em); } }
+@keyframes rightin { from { opacity: 0; transform: translateX(1.6em); } }
+.hasms .it:not(.g1):not(.artbanner) { animation-duration: var(--anim-ms) !important; }
+.bump { animation: bump .35s ease-out; }
+@keyframes slidein { from { opacity: 0; transform: translateY(.8em); } }
+@keyframes fadein { from { opacity: 0; } }
+@keyframes bump { 40% { transform: scale(1.18); } }
+@media(prefers-reduced-motion:reduce) { .it, .bump { animation: none !important; } }
+
+/* ===== 风格 A「雾月」：居中、细线、徽章式上舰 ===== */
+.theme-luna #list { align-items: center; }
+.theme-luna .it:not(.artbanner) { border: 0; box-shadow: none; background: none; }
+.theme-luna .it.artbanner { align-self: center; }
+.theme-luna.anim-slide .it { animation: lunain .5s cubic-bezier(.2, .8, .2, 1); }
+.theme-luna .it.artbanner.l1 { animation: lunain .5s cubic-bezier(.2, .8, .2, 1), bannerglow 1.6s ease-in-out .5s 2; }
+@keyframes lunain { from { opacity: 0; transform: translateY(.7em) scale(.97); filter: blur(4px); } }
+@keyframes bannerglow { 50% { filter: drop-shadow(0 0 .7em #ffd27a); } }
+.theme-luna .it.dm { width: auto; flex-direction: column; align-items: center; text-align: center; gap: .1em; padding: .15em .5em; }
+.theme-luna .dm::before { display: none; }
+/* 2026-11-21 用户：雾月字太小看不清 —— 名字行、弹幕都调大，字外面一圈深色外框（text-shadow 画，OBS 旧浏览器也不会吃细笔画）；
+   在设置里自己调了描边 / 阴影就用设置的 */
+.theme-luna .lw { font-size: .8em; font-weight: 700; letter-spacing: .08em; }
+.theme-luna:not(.ts) .lw .name, .theme-luna:not(.ts) .dm .txt, .theme-luna:not(.ts) .lcard .name, .theme-luna:not(.ts) .lm { text-shadow: var(--xo); }
+.theme-luna:not(.ts) .dm.g2 .txt, .theme-luna:not(.ts) .dm.g1 .txt { filter: drop-shadow(.05em 0 0 var(--xo-c)) drop-shadow(-.05em 0 0 var(--xo-c)) drop-shadow(0 .05em 0 var(--xo-c)) drop-shadow(0 -.05em 0 var(--xo-c)) drop-shadow(0 0 .3em rgba(150, 125, 255, .5)); }
+.theme-luna .lcard .name { font-size: .88em; } .theme-luna .lm { font-size: 1em; } .theme-luna .lk { font-size: .58em; }
+.lw { display: flex; align-items: center; justify-content: center; gap: .4em; font-size: .68em; letter-spacing: .12em; color: var(--accent); }
+.lw::before, .lw::after { content: ""; width: 2.6em; height: 1px; background: linear-gradient(90deg, transparent, currentColor); opacity: .8; }
+.lw::after { transform: scaleX(-1); }
+.lw .name { font-size: 1em; color: inherit; }
+.lw .lav { width: 2.1em; height: 2.1em; flex: none; border-radius: 50%; box-shadow: 0 0 0 1.5px currentColor, 0 2px 6px #0006; }
+.lw .lav .av { font-size: .9em; letter-spacing: 0; text-shadow: none; }
+.noav .lw .lav { display: none; }
+.nonames .lw .name, .nonames.theme-mist .meta .name, .nonames.theme-diary .tag .name { display: none; }
+.nobadge .lw .gicon, .nobadge .lw .gtag, .norank.theme-mist .grk, .norank.theme-diary .tag .gt { display: none; }
+.noav.theme-diary .card .ring { display: none; }
+.lw .gicon { width: 1.5em; height: 1.5em; }
+.lw .medal { font-size: .82em; }
+.theme-luna .it.dm:not([class*=" g"]) { --accent: #cdd8ea; }
+.theme-luna .dm .txt { font-size: 1.14em; font-weight: 600; color: #fff; text-shadow: 0 0 10px rgb(var(--rgb) / .5), 0 1px 2px #000b; }
+.theme-luna .dm.g3 .txt { color: #e6f1ff; }
+.theme-luna .dm.g2 .txt, .theme-luna .dm.g1 .txt { -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(0 1px 1px #0009) drop-shadow(0 0 6px rgb(var(--rgb) / .5)); }
+.theme-luna .dm.g2 .txt { background-image: linear-gradient(90deg, #e9dcff, #fff, #d6bcff); }
+.theme-luna .dm.g1 .txt { background-image: linear-gradient(90deg, #ffe3a3, #fffaf0, #ffc25e); }
+.lcard { --tone: 236 196 120; width: min(100%, 23em); box-sizing: border-box; position: relative; overflow: hidden; display: flex; align-items: center; gap: .7em; padding: .7em 1.1em .85em .75em; border-radius: 14px;
+  background: linear-gradient(135deg, rgb(var(--tone) / .34), rgba(14, 18, 36, .6) 72%); border: 1px solid rgb(var(--tone) / .45); box-shadow: 0 8px 26px #0005; text-shadow: 0 1px 2px #0008; }
+.lcard::before { content: ""; position: absolute; right: -2.2em; bottom: -2.4em; width: 6.5em; height: 6.5em; border-radius: 50%; border: 1px solid rgb(var(--tone) / .28); box-shadow: inset 0 0 0 .55em rgb(var(--tone) / .05), inset 0 0 0 .6em rgb(var(--tone) / .22); pointer-events: none; }
+.lcard::after { content: ""; position: absolute; left: 1em; right: 1em; bottom: .35em; border-bottom: 1px dashed rgb(var(--tone) / .45); }
+.lcard .portrait { --avatar-size: 2.4em; }
+.lcard .lb { flex: 1; min-width: 0; }
+.lk { font-size: .52em; letter-spacing: .32em; color: rgb(var(--tone)); font-weight: 600; }
+.lcard .name { font-size: .78em; color: #fff; }
+.lm { font-size: .92em; line-height: 1.5; overflow-wrap: anywhere; }
+.wm { position: absolute; right: .5em; top: -.05em; font: 200 2.3em/1.2 Georgia, "Times New Roman", serif; letter-spacing: -.02em; color: rgb(var(--tone)); opacity: .2; pointer-events: none; }
+.lcard .num { color: rgb(var(--tone)); font-weight: 700; }
+.theme-luna .it.lcard { border: 1px solid rgb(var(--tone) / .45); background: linear-gradient(135deg, rgb(var(--tone) / .34), rgba(14, 18, 36, .6) 72%); box-shadow: 0 8px 26px #0005; }
+.lguard { --tone: 140 190 255; flex-direction: column; align-items: center; text-align: center; gap: .25em; padding: .5em 1em .2em; }
+.lguard.l2 { --tone: 196 160 255; } .lguard.l1 { --tone: 255 204 120; }
+.emb { position: relative; width: 4.6em; height: 4.6em; display: grid; place-items: center; margin-bottom: .2em; }
+.emb img, .emb .av { width: 100%; height: 100%; object-fit: contain; position: relative; z-index: 1; }
+.emb::before { content: ""; position: absolute; inset: -.45em; border-radius: 50%; border: 1px solid rgb(var(--tone) / .7); box-shadow: 0 0 1.4em rgb(var(--tone) / .55), inset 0 0 1em rgb(var(--tone) / .25); }
+.l2 .emb::after, .l1 .emb::after { content: ""; position: absolute; inset: -1em; border-radius: 50%; border: 1px dashed rgb(var(--tone) / .55); animation: spin 8s linear 1; }
+.l1 .emb { filter: drop-shadow(0 0 .8em rgb(255 190 90 / .6)); }
+.l1 .emb > .rays { position: absolute; inset: -1.8em; border-radius: 50%; background: repeating-conic-gradient(rgb(255 214 140 / .32) 0 4deg, transparent 4deg 22deg); -webkit-mask: radial-gradient(circle, transparent 42%, #000 46%, transparent 70%); mask: radial-gradient(circle, transparent 42%, #000 46%, transparent 70%); animation: spin 14s linear 1; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.lguard.shine .llv { animation: glowt 1.6s ease-in-out 2; }
+@keyframes glowt { 50% { text-shadow: 0 0 1.4em rgb(var(--tone)), 0 1px 2px #000a; } }
+.lcap { font-size: .5em; letter-spacing: .45em; color: rgb(var(--tone)); }
+.llv { font-size: 1.15em; letter-spacing: .55em; padding-left: .55em; font-weight: 700; color: rgb(var(--tone)); text-shadow: 0 0 .6em rgb(var(--tone) / .7), 0 1px 2px #000a; }
+.lpill { margin-top: .15em; font-size: .78em; padding: .18em 1.1em; border-radius: 999px; border: 1px solid rgb(var(--tone) / .6); background: rgba(10, 14, 28, .62); color: #fff; }
+.theme-luna .it.enter { width: auto; padding: .1em .5em; font-size: .75em; color: var(--ink2); }
+.theme-luna .it.enter .identity { display: none; }
+
+/* ===== 2026-11-21 新样式（用户挑的）：月见 moon、雾凇 rime、星扣 clip（雾月系，居中、半透明）；气泡 bubble、票根 ticket（靠左的卡片）
+   字的外圈用 text-shadow 画（OBS 旧浏览器的 -webkit-text-stroke 会把字吃细）；头像、粉丝牌、名字、身份、头像框都跟着开关走 ===== */
+:root { --xo-c: rgba(26, 18, 60, .86); --xo: .07em 0 0 var(--xo-c), -.07em 0 0 var(--xo-c), 0 .07em 0 var(--xo-c), 0 -.07em 0 var(--xo-c), .05em .05em 0 var(--xo-c), -.05em .05em 0 var(--xo-c), .05em -.05em 0 var(--xo-c), -.05em -.05em 0 var(--xo-c), 0 0 .45em rgba(150, 125, 255, .55); }
+.theme-xw .it { border: 0; background: none; box-shadow: none; padding: 0; }
+.theme-xw .dm::before { display: none; }
+.xw-moon #list, .xw-rime #list, .xw-clip #list { align-items: center; }
+.theme-xw .it.dm { flex-direction: column; align-items: center; text-align: center; gap: .12em; width: auto; }
+.theme-xw .it.dm .body { display: flex; flex-direction: column; align-items: center; gap: .12em; }
+.theme-xw .txt { font-size: 1.08em; font-weight: var(--fw, 600); color: #fff; text-shadow: var(--xo); }
+.theme-xw .it.g2 .txt { color: #f4ecff; } .theme-xw .it.g1 .txt { color: #fff5df; }
+.theme-xw .name { font-size: .74em; font-weight: 700; color: var(--xn, #fff); text-shadow: var(--xo); letter-spacing: .03em; white-space: nowrap; }
+.theme-xw .it.g3 { --xn: #b4d8ff; --tr: 142 197 255; } .theme-xw .it.g2 { --xn: #e2ccff; --tr: 201 168 255; } .theme-xw .it.g1 { --xn: #ffdca8; --tr: 255 194 122; }
+.theme-xw .xn { display: flex; align-items: center; justify-content: center; gap: .4em; }
+.theme-xw .rank { margin: 0; font-size: .52em; color: #fff; border: 0; background: rgb(var(--tr, 150 150 200) / .85); text-shadow: none; }
+.theme-xw .xstar { width: .62em; height: .72em; flex: none; fill: #fff7d6; filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px rgba(200, 170, 255, .9)); }
+.theme-xw .xmoon { width: .78em; height: .78em; flex: none; fill: #fff3c8; filter: drop-shadow(0 0 3px rgba(255, 240, 190, .9)); }
+.theme-xw .xflake { width: .7em; height: .7em; flex: none; stroke: #fff; stroke-width: 1.8; fill: none; filter: drop-shadow(0 0 2px rgba(190, 210, 255, 1)); }
+.theme-xw .xclip { width: .95em; height: .95em; flex: none; filter: drop-shadow(0 0 2px rgba(255, 220, 130, .8)); }
+/* 头像 + 发夹圆扣 + 斜体等级（有粉丝牌、或者是舰长的人才有这一行） */
+.theme-xw .xf { display: flex; align-items: center; gap: .3em; }
+.theme-xw .xr { position: relative; width: calc(var(--avatar-size) * .82); height: calc(var(--avatar-size) * .82); border-radius: 50%; padding: 2px; box-sizing: border-box; background: conic-gradient(from 200deg, #fff, #cdbfff, #a9cfff, #fff); box-shadow: 0 0 .5em rgba(190, 170, 255, .8); flex: none; }
+.theme-xw .xr .av { border: 1.5px solid rgba(255, 255, 255, .9); font-size: calc(var(--avatar-size) * .36); }
+.theme-xw .xr .xclip { position: absolute; right: -.25em; top: -.2em; width: .8em; height: .8em; }
+.theme-xw .xr .xstar { position: absolute; left: -.25em; bottom: -.1em; width: .5em; height: .58em; }
+.theme-xw .xl { display: flex; flex-direction: column; line-height: 1; text-align: left; }
+.theme-xw .xl b { font: italic 800 1.1em/1 Georgia, "Times New Roman", serif; color: #fff; text-shadow: var(--xo); }
+.theme-xw .xl small { font-size: .5em; font-weight: 700; color: #efe8ff; text-shadow: var(--xo); letter-spacing: .08em; margin-top: .1em; white-space: nowrap; }
+.theme-xw .xl.dim b, .theme-xw .xl.dim small { color: #c9ccd6; }
+.noav.theme-xw .xr, .noframe.theme-xw .xr > svg { display: none; }
+.noframe.theme-xw .xr { background: rgba(255, 255, 255, .85); box-shadow: none; }
+.nonames.theme-xw .xn .name { display: none; }
+.norank.theme-xw .rank { display: none; }
+/* 月见：很淡的名字横幅，左边一弯月、右边一颗星 */
+.xw-moon .xn { padding: .08em 1.4em; min-width: 8em; background: linear-gradient(90deg, transparent, rgba(226, 218, 255, .36) 20%, rgba(246, 242, 255, .48) 50%, rgba(226, 218, 255, .36) 80%, transparent); border-top: 1px solid rgba(255, 255, 255, .5); border-bottom: 1px solid rgba(255, 255, 255, .3); }
+.xw-moon .it.g3 .xn, .xw-moon .it.g2 .xn, .xw-moon .it.g1 .xn { background: linear-gradient(90deg, transparent, rgb(var(--tr) / .3) 20%, rgba(246, 242, 255, .5) 50%, rgb(var(--tr) / .3) 80%, transparent); }
+/* 雾凇：没有底，字后面一团很淡的雾，名字两边小雪花 */
+.xw-rime .it.dm { position: relative; padding: .1em 1em; }
+.xw-rime .it.dm::after { content: ""; position: absolute; inset: -.3em -.2em; border-radius: 50%; background: radial-gradient(closest-side, rgba(236, 232, 255, .3), rgba(220, 226, 255, .12) 60%, transparent); filter: blur(4px); z-index: -1; }
+/* 星扣：名字在小胶囊里，胶囊头是主播的发夹圆扣，两边星点 */
+.xw-clip .xpill { display: inline-flex; align-items: center; gap: .3em; padding: .02em .65em .02em .15em; border-radius: 999px; background: linear-gradient(90deg, rgba(255, 255, 255, .55), rgba(214, 200, 255, .35)); border: 1px solid rgba(255, 255, 255, .7); box-shadow: 0 2px 8px rgba(60, 40, 130, .25); }
+.xw-clip .it.g3 .xpill, .xw-clip .it.g2 .xpill, .xw-clip .it.g1 .xpill { background: linear-gradient(90deg, rgba(255, 255, 255, .55), rgb(var(--tr) / .35)); }
+.xw-clip .xchain { width: 1.5em; height: .35em; background: radial-gradient(circle, rgba(255, 255, 255, .95) 1.2px, transparent 1.7px) 0 50%/.4em .35em repeat-x; filter: drop-shadow(0 0 2px #fff); }
+/* 气泡：白色聊天气泡、深色字，名字在气泡上面 */
+.xw-bubble .it.dm { flex-direction: row; align-items: flex-end; text-align: left; gap: .45em; }
+.xw-bubble .it.dm .body { align-items: flex-start; }
+.xw-bubble .bav { width: calc(var(--avatar-size) * .78); height: calc(var(--avatar-size) * .78); flex: none; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
+.xw-bubble .bav .av { font-size: calc(var(--avatar-size) * .34); }
+.noav.xw-bubble .bav, .noav.xw-ticket .tav { display: none; }
+.xw-bubble .xn { justify-content: flex-start; margin-left: .55em; }
+.xw-bubble .txt { color: #2b2850; text-shadow: none; font-size: 1em; font-weight: var(--fw, 500); background: rgba(255, 255, 255, calc(.35 + var(--bg-alpha) * .6)); padding: .32em .75em; border-radius: 1em 1em 1em .25em; box-shadow: 0 3px 10px rgba(0, 0, 0, .25); }
+.xw-bubble .it.g3 .txt { color: #24324f; background: rgba(230, 240, 255, calc(.35 + var(--bg-alpha) * .6)); box-shadow: 0 0 0 2px #8ebcff, 0 3px 10px rgba(0, 0, 0, .25); }
+.xw-bubble .it.g2 .txt { color: #33244f; background: rgba(240, 232, 255, calc(.35 + var(--bg-alpha) * .6)); box-shadow: 0 0 0 2px #c7a8ff, 0 3px 10px rgba(0, 0, 0, .25); }
+.xw-bubble .it.g1 .txt { color: #4a2c00; background: rgba(255, 244, 220, calc(.35 + var(--bg-alpha) * .6)); box-shadow: 0 0 0 2px #ffc27a, 0 3px 10px rgba(0, 0, 0, .25); }
+.xw-bubble .medal { font-size: .56em; }
+/* 票根：浅色小票，左边一截撕口（放头像），中间一道虚线 */
+.xw-ticket .it.dm { flex-direction: row; align-items: stretch; text-align: left; gap: 0; border-radius: .55em; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, .28); background: rgba(255, 253, 248, calc(.35 + var(--bg-alpha) * .6)); color: #2d2a44;
+  -webkit-mask: radial-gradient(circle .38em at 2.9em 0, transparent 98%, #000) top/100% 51% no-repeat, radial-gradient(circle .38em at 2.9em 100%, transparent 98%, #000) bottom/100% 51% no-repeat; }
+.xw-ticket .tav { flex: none; width: 2.9em; display: grid; place-items: center; background: #ece6ff; border-right: 2px dashed #b9add9; }
+.xw-ticket .tav .av { width: 1.75em; height: 1.75em; font-size: .8em; }
+.xw-ticket .it.dm .body { align-items: flex-start; padding: .35em .8em .4em; gap: .05em; }
+.xw-ticket .xn { justify-content: flex-start; }
+.xw-ticket .dm .name { color: #7a6bc4; text-shadow: none; }
+.xw-ticket .txt { color: #2d2a44; text-shadow: none; font-size: 1em; font-weight: var(--fw, 500); }
+.xw-ticket .it.g3 .tav { background: #dfeaff; } .xw-ticket .dm.g3 .name { color: #3f74d6; }
+.xw-ticket .it.g2 .tav { background: #efe2ff; } .xw-ticket .dm.g2 .name { color: #8a4fd6; }
+.xw-ticket .it.g1 .tav { background: #ffe9cc; } .xw-ticket .dm.g1 .name { color: #c46a10; }
+.xw-ticket .medal { font-size: .56em; }
+/* 礼物卡（五个新样式共用）：半透明淡紫卡，左边发夹圆扣圆章，背景月相一圈 + 雪花 */
+.theme-xw .it.xgift { width: min(100%, 22em); display: flex; align-items: center; gap: .65em; padding: .55em .8em .75em; border-radius: .8em; overflow: hidden; position: relative;
+  background: linear-gradient(120deg, rgba(214, 200, 255, calc(.15 + var(--bg-alpha) * .35)), rgba(240, 234, 255, calc(.1 + var(--bg-alpha) * .22)) 55%, rgba(190, 210, 255, calc(.12 + var(--bg-alpha) * .3))); border: 1px solid rgba(255, 255, 255, .6); box-shadow: 0 6px 18px rgba(40, 20, 90, .25); }
+.theme-xw .xgift .xmc { position: absolute; right: -2em; top: -2.2em; width: 8.5em; height: 8.5em; opacity: .5; pointer-events: none; }
+.theme-xw .xgift .xbadge { position: relative; width: 2.6em; height: 2.6em; flex: none; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff4c4, #f3c75e 60%, #d9a23a); box-shadow: 0 0 0 2px rgba(255, 255, 255, .85), 0 0 .6em rgba(255, 214, 120, .8); }
+.theme-xw .xgift .xbadge::after { content: ""; position: absolute; left: 22%; right: 22%; top: 42%; height: 16%; border-radius: 1em; background: #7a4c12; }
+.noav.theme-xw .xgift .xbadge .av { display: none; }
+.theme-xw .xgift .xbadge .av { position: absolute; inset: 12%; width: 76%; height: 76%; font-size: .9em; z-index: 1; }
+.theme-xw .xgift .body { flex: 1; min-width: 0; position: relative; display: block; text-align: left; }
+.theme-xw .xgift .name { display: block; font-size: .78em; }
+.theme-xw .xgift .gl2 { font-size: .9em; font-weight: 600; color: #fff; text-shadow: var(--xo); }
+.theme-xw .xgift .gl2 b { color: #ffe08a; }
+.theme-xw .xgift .num { color: #ffe08a; }
+.theme-xw .xgift .gi { width: 2.2em; height: 2.2em; object-fit: contain; flex: none; position: relative; }
+.theme-xw .xgift .yen { position: absolute; right: .7em; top: .45em; font-size: .62em; font-weight: 700; color: #fff; text-shadow: var(--xo); }
+/* gift_line=1：礼物卡只占一行（打游戏时少挡一块） */
+.giftline.theme-xw .it.xgift { width: auto; max-width: 100%; padding: .3em .8em .3em .35em; gap: .45em; border-radius: 999px; }
+.giftline.theme-xw .xgift .xmc, .giftline.theme-xw .xgift .deco, .giftline.theme-xw .xgift .yen { display: none; }
+.giftline.theme-xw .xgift .xbadge { width: 1.5em; height: 1.5em; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .85); }
+.giftline.theme-xw .xgift .body { display: flex; align-items: center; gap: .4em; white-space: nowrap; }
+.giftline.theme-xw .xgift .name { display: inline; font-size: .8em; }
+.giftline.theme-xw .xgift .gl2 { font-size: .85em; }
+.giftline.theme-xw .xgift .gi { width: 1.5em; height: 1.5em; }
+/* 荣耀等级（wealth=1，2026-11-21）：B 站的等级勋章图，名字旁边 */
+.wl { height: 1.05em; width: auto; vertical-align: -.18em; flex: none; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .35)); }
+.wlp { display: inline-flex; align-items: center; font-size: .55em; font-weight: 700; color: #fff; background: var(--w, #8d6cf0); border-radius: .4em; padding: 0 .4em; line-height: 1.6; text-shadow: none; flex: none; }
+.theme-xw .xgift .deco { position: absolute; left: 1em; right: 1em; bottom: .3em; height: .35em; background: radial-gradient(circle, rgba(255, 255, 255, .95) 1.2px, transparent 1.7px) 0 50%/.55em .35em repeat-x; }
+.xw-bubble .it.xgift, .xw-ticket .it.xgift { width: min(100%, 20em); }
+/* SC：SUPER CHAT 横幅 + 金额，颜色按 B 站的档位 */
+.theme-xw .it.xsc { width: min(100%, 22em); flex-direction: column; align-items: stretch; gap: 0; border-radius: .8em; overflow: hidden; border: 1px solid rgb(var(--tone) / .85); box-shadow: 0 6px 18px rgba(0, 0, 0, .25); }
+.theme-xw .xsc .st { display: flex; align-items: center; gap: .55em; padding: .4em .7em; background: linear-gradient(90deg, rgb(var(--tone) / .8), rgb(var(--tone) / .55)); }
+.theme-xw .xsc .cap { font-size: .56em; font-weight: 800; letter-spacing: .25em; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+.theme-xw .xsc .name { font-size: .8em; }
+.theme-xw .xsc .p { margin-left: auto; font: 800 .95em/1 Georgia, serif; color: #fff; text-shadow: var(--xo); }
+.theme-xw .xsc .sb { padding: .4em .8em .5em; background: rgb(var(--tone) / .25); font-size: .95em; font-weight: 600; color: #fff; text-shadow: var(--xo); text-align: center; overflow-wrap: anywhere; }
+.no-sc-bg.theme-xw .xsc { border-color: transparent; box-shadow: none; } .no-sc-bg.theme-xw .xsc .st, .no-sc-bg.theme-xw .xsc .sb { background: none; }
+/* 上舰、进房 */
+.theme-xw .it.xbuy { flex-direction: column; align-items: center; gap: .1em; text-align: center; padding: .4em 1.4em .5em; border-radius: .8em; background: radial-gradient(closest-side, rgb(var(--tr) / .35), transparent); }
+.theme-xw .xbuy .lv { font-size: 1.1em; font-weight: 800; letter-spacing: .4em; padding-left: .4em; color: var(--xn); text-shadow: var(--xo); }
+.theme-xw .xbuy .who2 { font-size: .8em; color: #fff; text-shadow: var(--xo); }
+.theme-xw .it.enter { font-size: .78em; color: #fff; text-shadow: var(--xo); gap: .35em; align-items: center; }
+.theme-xw .it.enter .name { font-size: 1em; }
+/* 用了文字设置里的描边 / 阴影时，用设置的；颜色设置照旧生效 */
+.ts.theme-xw .txt, .ts.theme-xw .name, .ts.theme-xw .xl b, .ts.theme-xw .xsc .sb, .ts.theme-xw .gl2 { text-shadow: var(--ts) !important; }
+.xw-bubble .txt, .xw-ticket .txt, .xw-ticket .dm .name { text-shadow: none !important; }
+/* ===== 风格 B「流光」：左对齐玻璃条，左侧色条分等级（2026-11-21 用户不要了，旧网址自动换成月见；样式先留着不删） ===== */
+.theme-glass .it:not(.guardbuy) { --rgb: 214 224 240; border: 0; border-radius: 10px; background: linear-gradient(90deg, rgb(var(--rgb) / .16), rgba(12, 16, 26, .64) 42%); box-shadow: inset 3px 0 0 rgb(var(--rgb) / .55), 0 6px 18px #0003; }
+.theme-glass .it.g3:not(.guardbuy), .theme-glass .it.g2:not(.guardbuy), .theme-glass .it.g1:not(.guardbuy) { background: linear-gradient(90deg, rgb(var(--rgb) / .32), rgba(12, 16, 26, .64) 48%); box-shadow: inset 3px 0 0 rgb(var(--rgb)), 0 0 18px rgb(var(--rgb) / .18), 0 6px 18px #0003; }
+.theme-glass .it.g3 { --rgb: 104 170 255; } .theme-glass .it.g2 { --rgb: 178 132 255; } .theme-glass .it.g1 { --rgb: 255 184 84; }
+.theme-glass .dm::before { display: none; }
+.theme-glass .it.dm:not([class*=" g"]) .name { color: #c9d4e6; }
+.theme-glass .it.g2 .name, .theme-glass .it.g1 .name { -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 700; }
+.theme-glass .it.g2 .name { background-image: linear-gradient(90deg, #d7c0ff, #fff, #b994ff); }
+.theme-glass .it.g1 .name { background-image: linear-gradient(90deg, #ffd27a, #fff4d6, #ffaf45); }
+.theme-glass .it.g1 { animation: slidein .25s ease-out, glowg 1.6s ease-in-out .3s 2; }
+@keyframes glowg { 50% { box-shadow: inset 3px 0 0 rgb(var(--rgb)), 0 0 30px rgb(var(--rgb) / .5), 0 6px 18px #0003; } }
+.theme-glass .gift .num { color: #ffd27a; }
+.theme-glass .sc { box-shadow: 0 6px 18px #0004; }
+.theme-glass .sc .h { background: color-mix(in srgb, var(--sc-tone, #427d9e) 42%, #0d1320) !important; box-shadow: inset 0 2px 0 var(--sc-tone, #427d9e); }
+.theme-glass .sc .m { background: color-mix(in srgb, var(--sc-tone, #5a95b5) 22%, #0d1320e6) !important; }
+.theme-glass .enter { background: none; box-shadow: inset 2px 0 0 rgb(var(--rgb) / .5); }
+
+/* ===== 文字设置（网址里的 font/fw/lh/ls/color/name_color/stroke/glow，设置页「文字」那一页） ===== */
+/* 描边和阴影都用 text-shadow 画：OBS 自带的浏览器比较旧，-webkit-text-stroke 会把字吃细 */
+.txt, .lm, .sc .m { font-weight: var(--fw, 400); line-height: var(--lh, 1.5); }
+.txt, .lm { letter-spacing: var(--ls, .01em); }
+.ts .it, .ts .lcard, .ts.theme-luna .dm .txt, .ts .sc, .ts.no-sc-bg .sc, .ts .guardbuy.artbanner, .ts .llv, .ts .lpill, .ts .lk, .ts .lw, .ts .lcap { text-shadow: var(--ts) !important; }
+/* 渐变色的字（提督、总督）透明底，text-shadow 会盖住渐变：改用 filter 画外圈 */
+.ts.theme-luna .dm.g2 .txt, .ts.theme-luna .dm.g1 .txt, .ts.theme-glass .it.g2 .name, .ts.theme-glass .it.g1 .name { text-shadow: none !important; filter: var(--tsf); }
+.tc .txt, .tc .lm, .tc .sc .m, .tc .giftverb, .tc.no-sc-bg .sc { color: var(--tc) !important; }
+.tc.theme-luna .dm.g2 .txt, .tc.theme-luna .dm.g1 .txt { background: none; -webkit-text-fill-color: var(--tc); }
+.nc .name, .nc .lw { color: var(--nc) !important; }
+.tc .gift .body { color: var(--tc) !important; }
+/* 礼物卡、SC 卡里的字（card_color） */
+.cc .gift .body, .cc .giftverb, .cc .lcard .lm, .cc .sc .m, .cc.no-sc-bg .sc { color: var(--cc) !important; }
+/* 舰长 / 提督 / 总督各自的名字颜色（c3/c2/c1）和弹幕颜色（t3/t2/t1），比上面统一的颜色优先 */
+.cn3 .it.g3 .name, .cn3 .it.g3 .lw, .cn2 .it.g2 .name, .cn2 .it.g2 .lw, .cn1 .it.g1 .name, .cn1 .it.g1 .lw { background: none; }
+.cn3 .it.g3 .name, .cn3 .it.g3 .lw { color: var(--cn3) !important; -webkit-text-fill-color: var(--cn3); }
+.cn2 .it.g2 .name, .cn2 .it.g2 .lw { color: var(--cn2) !important; -webkit-text-fill-color: var(--cn2); }
+.cn1 .it.g1 .name, .cn1 .it.g1 .lw { color: var(--cn1) !important; -webkit-text-fill-color: var(--cn1); }
+.ct3 .dm.g3 .txt, .ct2 .dm.g2 .txt, .ct1 .dm.g1 .txt { background: none; }
+.ct3 .dm.g3 .txt { color: var(--ct3) !important; -webkit-text-fill-color: var(--ct3); }
+.ct2 .dm.g2 .txt { color: var(--ct2) !important; -webkit-text-fill-color: var(--ct2); }
+.ct1 .dm.g1 .txt { color: var(--ct1) !important; -webkit-text-fill-color: var(--ct1); }
+.nc.theme-glass .it.g2 .name, .nc.theme-glass .it.g1 .name { background: none; -webkit-text-fill-color: var(--nc); }
+
+/* ===================== 主播专属风格（2026-11-21，按 GPT 的效果图做） =====================
+   style=mist  「薄雾」游戏款：没有底板，左边一根细竖线 + 四角星，名字小字，内容大号粗白字带深靛描边；只有 SC 有玻璃条；旧的往上飘、变淡变糊
+   style=diary 「留言本」聊天款：整页夜蓝手账本，卡片浅纸 / 深紫交替，名字在卡片上方小标签里 */
+.hk .it { all: unset; position: relative; display: block; box-sizing: border-box; width: 100%; animation: slidein var(--anim-ms, .6s) cubic-bezier(.22, 1, .36, 1) backwards; transition: opacity .6s, filter .6s, transform .6s; }
+.hk .it.out { opacity: 0 !important; transition: opacity .6s; }
+.hk .it .av { display: inline-grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; font-weight: 700; color: #fff; }
+.hk #list { gap: calc(var(--gap) * 1.1); }
+
+/* ---------- 薄雾 ---------- */
+.theme-mist #list { padding: 14px 16px 18px 20px; }
+.theme-mist .it { padding-left: 1.05em; --accent: #e8b84a; --rule: #ece4ff; --user: #f2edff; text-shadow: none; }
+.theme-mist .it.g3 { --accent: #9cc6ff; --rule: #9cc6ff; --user: #9cc6ff; }
+.theme-mist .it.g2, .theme-mist .it.g1 { --accent: #c7a8ff; --rule: #c7a8ff; --user: #c7a8ff; }
+.theme-mist .it.g1 { --accent: #ffc59a; --rule: #ffc59a; --user: #ffd2b0; }
+.theme-mist .it.entry::before { content: ""; position: absolute; left: .22em; top: .45em; bottom: 0; width: 2px; background: linear-gradient(var(--rule), transparent); }
+.theme-mist .star { position: absolute; top: .1em; left: -.06em; width: .68em; height: .78em; fill: var(--accent); filter: drop-shadow(0 0 2px #c7a8ff72); }
+.theme-mist .meta { display: flex; align-items: center; gap: .4em; min-height: 1.05em; color: var(--user); font-size: .78em; line-height: 1.35; font-weight: 600; letter-spacing: .2px; }
+.theme-mist .meta .name, .theme-mist .gl, .theme-mist .amount, .theme-mist .hmedal { paint-order: stroke fill; -webkit-text-stroke: 2px #1b1a44d9; text-shadow: 0 1.3px 3px #11112ee8; }
+.theme-mist .hmedal { display: inline-flex; align-items: center; border: 1px solid currentColor; border-radius: 3px; padding: 0 .35em; height: 1.1em; font-size: .72em; font-weight: 600; letter-spacing: .3px; line-height: 1; box-shadow: 0 0 1.5px #17182d; }
+.theme-mist .message { font-size: 1.333em; font-weight: 730; line-height: 1.34; letter-spacing: .35px; color: #fff; overflow-wrap: anywhere; paint-order: stroke fill; -webkit-text-stroke: 3px #1b1a44; text-shadow: 0 2px 3px #11122ad9; }
+.theme-mist .message img.emo { height: 1.2em; vertical-align: -.25em; }
+.theme-mist .message img:not(.emo) { height: 2em; vertical-align: middle; }
+.theme-mist .gl { display: flex; align-items: center; gap: .3em; font-size: .78em; line-height: 1.5; font-weight: 560; color: #f2edff; }
+.theme-mist .gl svg { width: 1.15em; height: 1.15em; color: #f2c768; flex: none; filter: drop-shadow(0 1px 1px #1b1a44); }
+.theme-mist .gl strong, .theme-mist .amount { color: #ffd47a; font-weight: 750; }
+.theme-mist .gl .gi { height: 1.5em; width: auto; margin-left: .15em; }
+.theme-mist .it.super { padding: .4em .72em .5em 1em; border: 1px solid #d8caff69; border-radius: 6px; background: linear-gradient(95deg, rgba(27, 26, 68, .45), rgba(27, 26, 68, .1)); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.theme-mist .it.super::before { content: ""; position: absolute; left: -1px; top: .35em; bottom: .35em; width: 3px; border-radius: 2px; background: #e8b84a; }
+.theme-mist .amount { font-size: 1.15em; }
+.theme-mist .it.buy .message { color: var(--user); }
+.theme-mist .it.oldest { opacity: .37; filter: blur(1px); transform: translate(3px, -3px); }
+.theme-mist .it.older { opacity: .74; filter: blur(.35px); transform: translateY(-1px); }
+.theme-mist .it.oldest::after { content: ""; position: absolute; left: -.4em; right: 20%; top: -1.1em; height: 2.4em; pointer-events: none; filter: blur(6px);
+  background: radial-gradient(60% 50% at 40% 60%, rgba(213, 203, 255, .35), transparent 70%); }
+
+/* ---------- 留言本 ---------- */
+.theme-diary #book { position: fixed; inset: 0; border-radius: 22px; overflow: hidden; pointer-events: none;
+  background:
+    radial-gradient(1.2px 1.2px at 12% 18%, #fff9 50%, transparent 51%), radial-gradient(1px 1px at 68% 9%, #fff8 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 84% 31%, #fff7 50%, transparent 51%), radial-gradient(1px 1px at 36% 42%, #fff6 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 57% 64%, #fff5 50%, transparent 51%), radial-gradient(1px 1px at 22% 77%, #fff6 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 90% 86%, #fff5 50%, transparent 51%), radial-gradient(1px 1px at 46% 24%, #fff7 50%, transparent 51%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 22px), repeating-linear-gradient(90deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 22px),
+    linear-gradient(180deg, #1b1c3a, #232548);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), inset 0 0 60px rgba(0, 0, 0, .35); }
+.theme-diary #book::before { content: ""; position: absolute; inset: 18% -10% auto 10%; height: 26%; filter: blur(28px); opacity: .55;
+  background: radial-gradient(50% 50% at 30% 50%, rgba(170, 160, 230, .35), transparent 70%), radial-gradient(40% 60% at 75% 40%, rgba(150, 140, 220, .28), transparent 70%); }
+.theme-diary #book .rings { position: absolute; left: 6px; top: 22px; bottom: 22px; width: 40px; background-repeat: repeat-y; background-size: 40px 46px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='46'%3E%3Cdefs%3E%3ClinearGradient id='m' x1='0' x2='0' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f4f6fb'/%3E%3Cstop offset='.5' stop-color='%23a9aec0'/%3E%3Cstop offset='1' stop-color='%23e6e9f2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='30' cy='23' r='5' fill='%23111228'/%3E%3Cpath d='M30 17 C 12 14, 4 20, 6 25 C 8 30, 22 30, 30 27' fill='none' stroke='url(%23m)' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.theme-diary #book .head { position: absolute; left: 64px; right: 24px; top: 18px; height: 128px; }
+.theme-diary #book .hand { font: italic 400 44px/1 "Segoe Script", "Lucida Handwriting", "Brush Script MT", cursive; color: #f4f1ff; letter-spacing: .5px; text-shadow: 0 2px 6px #0006; }
+.theme-diary #book .hand svg { width: 22px; height: 26px; fill: #f2c768; vertical-align: 14px; margin-left: 6px; filter: drop-shadow(0 0 4px #f2c76866); }
+.theme-diary #book .sub { margin-top: 10px; font-size: 16px; letter-spacing: 9px; color: #c9c6e6; font-family: "KaiTi", "STKaiti", serif; }
+.theme-diary #book .line { position: absolute; left: 0; right: 0; bottom: 0; border-top: 1.5px dashed rgba(220, 216, 255, .35); }
+.theme-diary #book .line::before, .theme-diary #book .line::after { content: "❄"; position: absolute; top: -.78em; font-size: 14px; color: #d8d4ff; }
+.theme-diary #book .line::before { left: -4px; } .theme-diary #book .line::after { right: -4px; }
+.theme-diary #book .xw { position: absolute; right: 8px; top: -6px; height: 128px; filter: drop-shadow(0 4px 8px #0006); }
+.nohead.theme-diary #list { top: 0 !important; padding-top: 22px !important; }
+.theme-diary #list { top: 160px; bottom: 0; inset-inline: 0; padding: 14px 26px 22px 68px; justify-content: flex-end; overflow: hidden; align-items: stretch; }
+.theme-diary .it { --ring: #e8b84a; color: #f2efff; font-size: 1em; }
+/* 头像圈：浅卡薰衣草、深卡金色；舰长蓝、提督紫、总督橙（设计说明 2026-11-21） */
+.theme-diary .it.paper { --ring: #b8a6ee; } .theme-diary .it.ink { --ring: #e8b84a; }
+.theme-diary .it.g3 { --ring: #8ebcff; } .theme-diary .it.g2 { --ring: #b9a0ff; } .theme-diary .it.g1 { --ring: #ffb37a; }
+.theme-diary .tag { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: .35em; margin: 0 0 -.3em 6.2em; padding: .12em .6em .12em .3em; border-radius: 6px 6px 0 0; font-size: .7em; line-height: 1.5; font-weight: 600; }
+.theme-diary .tag .pin { width: 1.15em; height: 1.15em; flex: none; }
+.theme-diary .tag .gt { font-size: .82em; padding: 0 .4em; border-radius: 4px; color: #fff; background: #4f7fe0; }
+.theme-diary .it.g2 .tag .gt { background: #8461e0; } .theme-diary .it.g1 .tag .gt { background: #e07a3f; }
+.theme-diary .card { position: relative; display: flex; align-items: center; gap: .8em; min-height: 3.3em; padding: .55em 2.4em .55em .7em; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, .35); }
+.theme-diary .ring { flex: none; width: 2.6em; height: 2.6em; border-radius: 50%; padding: 3px; background: var(--ring); box-shadow: 0 0 0 2px rgba(255, 255, 255, .25); box-sizing: border-box; }
+.theme-diary .ring .av { width: 100%; height: 100%; font-size: 1.05em; border: 2px solid rgba(255, 255, 255, .85); box-sizing: border-box; }
+.theme-diary .card .msg { flex: 1; min-width: 0; font-size: 1.08em; line-height: 1.45; overflow-wrap: anywhere; }
+.theme-diary .card .msg img.emo { height: 1.3em; vertical-align: -.3em; }
+.theme-diary .card .msg img:not(.emo) { height: 2.1em; vertical-align: middle; }
+.theme-diary .card .flake { position: absolute; right: .7em; bottom: .45em; width: 1.2em; height: 1.2em; opacity: .35; }
+.theme-diary .it.paper .tag { background: #f4f1fb; color: #3a3566; }
+.theme-diary .it.paper .card { background: linear-gradient(180deg, #f7f4fb, #ebe7f4); color: #2b2850; border: 1px solid #fff; }
+.theme-diary .it.paper .flake { color: #8d89b8; }
+.theme-diary .it.ink .tag { background: #2a2856; color: #ece8ff; }
+.theme-diary .it.ink .card { background: linear-gradient(180deg, #3a3670, #2d2a5e); color: #f2efff; border: 1px solid rgba(232, 184, 74, .55); }
+.theme-diary .it.ink .flake { color: #c9c3ff; }
+.theme-diary .note { position: relative; display: inline-flex; align-items: center; gap: .45em; margin: .35em 0 .1em 2.2em; padding: .5em 1.1em .5em 1em; max-width: 85%; transform: rotate(-1deg);
+  background: linear-gradient(180deg, #efe9fb, #e2dbf5); color: #3a3566; border-radius: 4px; box-shadow: 0 3px 8px rgba(0, 0, 0, .3); font-size: .9em; }
+.theme-diary .note::before { content: ""; position: absolute; left: -1.4em; top: -.55em; width: 4.2em; height: 1.2em; transform: rotate(-14deg);
+  background: repeating-linear-gradient(45deg, rgba(170, 196, 240, .85) 0 6px, rgba(210, 226, 250, .85) 6px 12px); box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
+.theme-diary .note svg { width: 1.2em; height: 1.2em; color: #6a5ac4; flex: none; }
+.theme-diary .note b { color: #6a4fd0; font-weight: 700; }
+.theme-diary .note .gi { height: 1.6em; width: auto; }
+.theme-diary .env { position: relative; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, .4); }
+.theme-diary .env .top { position: relative; display: flex; align-items: center; gap: .8em; padding: .55em 5em .55em .7em; background: linear-gradient(180deg, #c9b8f2, #b7a3ea); color: #2b2552; }
+.theme-diary .env .top small { display: block; font-size: .72em; opacity: .85; }
+.theme-diary .env .top b { font-size: 1.25em; font-weight: 800; color: #2b2552; }
+.theme-diary .env .seal { position: absolute; right: .8em; top: .3em; width: 3.6em; height: 3.6em; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .35)); }
+.theme-diary .env .paper { padding: .55em 1em .65em; background: repeating-linear-gradient(180deg, transparent 0 1.55em, rgba(120, 110, 170, .25) 1.55em calc(1.55em + 1px)), linear-gradient(180deg, #f7f4fb, #ece8f4); color: #2b2850; font-size: 1.04em; line-height: 1.55; overflow-wrap: anywhere; }
+.theme-diary .it.buy .card { background: linear-gradient(180deg, #f8edd2, #efdcae); color: #4a3a14; border: 1px solid #fff3; }
+.theme-diary .it.buy .tag { background: #f8edd2; color: #5b4718; }
+.theme-diary .it.enter .note { background: linear-gradient(180deg, #e6e3f5, #d8d3ee); }
+.theme-diary .it.oldest { opacity: .45; filter: blur(1px); }
+.theme-diary .it.older { opacity: .8; }
+#peek { position: fixed; right: 10px; bottom: 0; width: min(28vw, 150px); pointer-events: none; filter: drop-shadow(0 2px 6px #0006); animation: peek 3.2s ease-in-out infinite alternate; }
+@keyframes peek { to { transform: translateY(4px); } }
+/* 这两个风格自己管描边 / 阴影，弹幕姬通用的「描边、文字阴影」设置不套上来（纸面卡片上会糊） */
+.hk .it, .hk .it * { text-shadow: none; }
+.theme-diary .it, .theme-diary .it * { -webkit-text-stroke: 0 !important; }
+.theme-diary .it::before { content: none; }
+.theme-mist .meta .name, .theme-mist .gl, .theme-mist .amount, .theme-mist .hmedal { text-shadow: 0 1.3px 3px #11112ee8; }
+.theme-mist .message { text-shadow: 0 2px 3px #11122ad9; }
+.theme-mist .rep { display: inline-block; margin-left: .3em; font-size: .7em; color: #ffd47a; -webkit-text-stroke: 2px #1b1a44; paint-order: stroke fill; }
+.theme-mist .it.buy .message { font-size: 1.12em; }
+.theme-diary .rep { margin-left: .4em; font-size: .8em; font-weight: 700; color: #8a6cf0; }
+.hk .it .name { font-size: 1em; color: inherit; font-weight: inherit; }
+.hk .it .txt { display: inline; }
+</style>
+</head>
+<body>
+<div id="list"></div>
+<script>
+// ---------- 网址参数（都可以不写；用 /obs-setup 页面调最方便） ----------
+// size=18       字号（像素）
+// max=12        同时最多显示几条
+// fade=0        每条显示多少秒后淡出，0 = 不淡出（SC 停留 3 倍、上舰 2 倍时间）
+// style=card    card = 圆角卡片，plain = 只有文字（带描边）
+// bubble=1     弹幕/礼物/进房卡片底色（0=关），不影响整页透明
+// border=1     卡片边框；shadow=0 卡片阴影；sc_bg=1 SC底色
+// frame=1      专属头像框；badge=1 头像前身份徽章；rank=1 身份文字；names=1 用户名
+// avatar_size=46 头像尺寸；gap=10 弹幕间距；radius=12 圆角
+// layout=stacked 名字与正文分行，inline 同行；width=full 整行，fit 随内容
+// demo=static  固定样例（仅预览使用）
+// bg=70         卡片底色的不透明度 0~100
+// light=0       1 = 浅色卡片
+// square=0      1 = 小圆角
+// right=0       1 = 靠右对齐
+// anim=slide    出现的动画：slide 上滑 / fade 淡入 / none 没有
+// avatar=1      0 = 不显示头像
+// medal=all     粉丝牌：all 都显示 / own 只显示本直播间的 / 0 不显示
+// merge=1       一样的弹幕合并成一条「×3」（0 = 不合并）
+// gifts=1       0 = 不显示礼物；gift_min=1 只显示 1 元以上的礼物；price=1 礼物后面显示价格
+// sc=1          0 = 不显示醒目留言
+// guardbuy=1    0 = 不显示上舰横幅
+// enter=guard   进房：guard 只显示舰长以上 / all 全部 / 0 不显示
+// bot=0         1 = 显示机器人发的弹幕
+// block=        屏蔽词，空格隔开（这些词的弹幕 / SC 不上屏）
+// demo=0        1 = 不连直播间，自己造假弹幕（设置页预览用）
+const P = new URLSearchParams(location.search);
+const num = (k, d) => { const v = parseFloat(P.get(k)); return isFinite(v) ? v : d; };
+const str = (k, d) => P.get(k) ?? d;
+const opt = {
+  size: Math.max(12, Math.min(40, num('size', 18))), max: Math.max(1, num('max', 12)), fade: num('fade', 0), bg: Math.min(100, Math.max(0, num('bg', 70))),
+  medal: str('medal', 'all'), merge: str('merge', '1') !== '0',
+  gifts: str('gifts', '1') !== '0', giftMin: num('gift_min', 0), price: str('price', '0') === '1',
+  sc: str('sc', '1') !== '0', guardbuy: str('guardbuy', '1') !== '0',
+  enter: str('enter', 'guard'), bot: str('bot', '0') === '1', demo: ['1', 'static'].includes(str('demo', '0')),
+  // block=词1 词2  屏蔽词（空格或逗号隔开）：弹幕、SC 里带这些词的不上屏，弹幕姬主页面照样看得到
+  block: str('block', '').toLowerCase().split(/[\s,，、;；]+/).filter(Boolean).slice(0, 100),
+};
+const B = document.body.classList, light = str('light', '0') === '1';
+document.documentElement.style.setProperty('--size', opt.size + 'px');
+document.documentElement.style.setProperty('--card', `rgba(${light ? '255,255,255' : '16,22,32'},${opt.bg / 100})`);
+if (light) B.add('light');
+// pal=sakura / mint / night / lilac  配色，跟弹幕姬的配色方案一样：普通弹幕的边框、名字换色
+{ const PAL = { sakura: ['236 160 192', '#f6b3cc', '#c4507c'], mint: ['130 205 178', '#9fe0c7', '#23865f'], night: ['165 170 238', '#bfc2fa', '#5055b8'], lilac: ['180 168 238', '#cbc2ff', '#6a5ac4'] }[str('pal', '')];
+  if (PAL) { document.documentElement.style.setProperty('--pal-rgb', PAL[0]); document.documentElement.style.setProperty('--pal-ink', light ? PAL[2] : PAL[1]); } }
+// 2026-11-21 用户不要「流光、卡片、轻透、悬浮」了：style=glass / card / plain（还有不写 style 的旧网址）一律换成月见
+const XWS = ['moon', 'rime', 'clip', 'bubble', 'ticket'];
+const THEME = ['luna', 'mist', 'diary', ...XWS].includes(str('style', '')) ? str('style', '') : 'moon', LUNA = THEME === 'luna';
+if (LUNA) B.add('theme-luna');
+// 新样式（2026-11-21）：月见 moon、雾凇 rime、星扣 clip（雾月系，居中半透明）；气泡 bubble、票根 ticket（靠左卡片）
+const XW = XWS.includes(THEME) ? THEME : '';
+if (XW) B.add('theme-xw', 'xw-' + XW);
+// 主播专属的两个风格（2026-11-21）：mist 薄雾（游戏款）、diary 留言本（聊天款）
+const HK = THEME === 'mist' || THEME === 'diary' ? THEME : '';
+if (HK) { B.add('hk', 'theme-' + HK); }
+// peek=1：薄雾右下角放一张探头的主播（可选）
+if (HK === 'mist' && str('peek', '0') === '1') { const pk = document.createElement('img'); pk.id = 'peek'; pk.src = 'static/art/mist-peek.webp'; pk.alt = ''; document.body.append(pk); }
+const SPARK = '<svg class="star" viewBox="0 0 12 14"><path d="M6 0C6.8 4.85 7.8 6.1 12 7C7.65 7.95 6.8 9.35 6 14C5.2 9.25 4.3 7.95 0 7C4.3 6.1 5.25 4.9 6 0Z"/></svg>';
+const GIFT_SVG = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.4 7.5h15.2v3H2.4zM3.7 10.5v7.1h12.6v-7.1M10 7.5v10M10 7.4C7 7.5 4.2 6.7 4.2 4.6c0-2.7 4.2-3.6 5.8 2.8Zm0 0c3.1.1 5.8-.7 5.8-2.8 0-2.7-4.2-3.6-5.8 2.8Z"/></svg>';
+const FLAKE = '<svg class="flake" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M12 2l-2 2.2M12 2l2 2.2M12 22l-2-2.2M12 22l2-2.2"/></svg>';
+const PIN_CLIP = '<svg class="pin" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.2" fill="#e9b949" stroke="#8a5a14" stroke-width="1.3"/><circle cx="10" cy="10" r="6" fill="#f3cd6a"/><rect x="5.2" y="8.9" width="9.6" height="2.2" rx="1" fill="#6b4512"/></svg>';
+const PIN_STAR = '<svg class="pin" viewBox="0 0 12 14"><path d="M6 0C6.8 4.85 7.8 6.1 12 7C7.65 7.95 6.8 9.35 6 14C5.2 9.25 4.3 7.95 0 7C4.3 6.1 5.25 4.9 6 0Z" fill="#f2c24e" stroke="#9a6a12" stroke-width=".7"/></svg>';
+let hkN = 0;
+if (HK === 'diary') {
+  const bk = document.createElement('div');
+  bk.id = 'book';
+  // 2026-11-21 用户：上面的小人和标题字都能关。xw=0 不要小人，htitle=0 不要标题（标题字用 hname / hsub 改）；两个都关就整条头去掉，弹幕往上铺满
+  const xw = str('xw', '0') !== '0', ttl = str('htitle', '1') !== '0';
+  const hesc = t => String(t).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+  bk.innerHTML = `<div class="rings"></div>${xw || ttl ? `<div class="head">${ttl ? `<div class="hand">${hesc(str('hname', 'Diary'))}<svg viewBox="0 0 12 14"><path d="M6 0C6.8 4.85 7.8 6.1 12 7C7.65 7.95 6.8 9.35 6 14C5.2 9.25 4.3 7.95 0 7C4.3 6.1 5.25 4.9 6 0Z"/></svg></div><div class="sub">${hesc(str('hsub', '留言本'))}</div><div class="line"></div>` : ''}${xw ? '<img class="xw" src="static/art/diary-xw.webp" alt="" onerror="this.remove()">' : ''}</div>` : ''}`;
+  if (!xw && !ttl) document.body.classList.add('nohead');
+  document.body.prepend(bk);
+}
+const hkMedal = d => (d.medal && opt.medal !== '0' && !(opt.medal === 'own' && realRoom && d.medal_room && d.medal_room !== realRoom)) ? `<span class="hmedal">${esc(d.medal)} ${d.medal_level}</span>` : '';
+const hkRing = (face, name) => `<span class="ring">${avatar(face, name)}</span>`;
+// ---- 新样式用的小图 ----
+const XSTAR = '<svg class="xstar" viewBox="0 0 12 14"><path d="M6 0C6.8 4.85 7.8 6.1 12 7C7.65 7.95 6.8 9.35 6 14C5.2 9.25 4.3 7.95 0 7C4.3 6.1 5.25 4.9 6 0Z"/></svg>';
+const XMOON = '<svg class="xmoon" viewBox="0 0 20 20"><path d="M13.5 2.5a8 8 0 1 0 4 13.5A7 7 0 0 1 13.5 2.5Z"/></svg>';
+const XFLAKE = '<svg class="xflake" viewBox="0 0 24 24" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M12 2l-2 2.2M12 2l2 2.2M12 22l-2-2.2M12 22l2-2.2"/></svg>';
+const XCLIP = PIN_CLIP.replace('class="pin"', 'class="xclip"');  // 主播的发夹圆扣
+const XMC = '<svg class="xmc" viewBox="0 0 100 100" fill="none" stroke="#fff" stroke-width=".8"><circle cx="50" cy="50" r="44"/><circle cx="50" cy="50" r="36" stroke-dasharray="1.5 3"/><g fill="#fff" stroke="none"><circle cx="50" cy="6" r="3"/><path d="M94 50a3 3 0 1 1-3-3 2.2 2.2 0 0 0 3 3Z"/><path d="M6 50a3 3 0 0 1 3-3v6a3 3 0 0 1-3-3Z"/></g><circle cx="50" cy="94" r="3"/><path d="M50 30v40M32.7 40l34.6 20M32.7 60l34.6-20" stroke-linecap="round"/><circle cx="50" cy="50" r="6"/></svg>';
+const medalOk = d => !!d.medal && opt.medal !== '0' && !(opt.medal === 'own' && realRoom && d.medal_room && d.medal_room !== realRoom);
+// 新样式的一条弹幕：头像、粉丝牌、名字、身份都跟着设置里的开关走（noav / medal / nonames / norank / noframe）
+function xwDm(d, txt) {
+  const mo = medalOk(d), rank = d.guard ? `<span class="rank">${GN[d.guard]}</span>` : '', nm = `<span class="name">${esc(d.name)}</span>${wealth(d)}`;
+  if (XW === 'bubble' || XW === 'ticket') {
+    const head = `<div class="xn">${nm}${mo ? medal(d) : ''}${rank}</div>`;
+    return `<span class="${XW === 'bubble' ? 'bav' : 'tav'}">${avatar(d.face, d.name)}</span><div class="body">${head}<span class="txt">${txt}</span></div>`;
+  }
+  const av = d.guard || mo;  // 居中的三款：有粉丝牌、或者是舰长的人才带头像那一行，普通弹幕只有名字和字，最不挡画面
+  const fan = av ? `<div class="xf"><span class="xr">${avatar(d.face, d.name)}${XCLIP}${XSTAR}</span>${mo ? `<span class="xl${d.medal_dim ? ' dim' : ''}"><b>${d.medal_level}</b><small>${esc(d.medal)}</small></span>` : ''}</div>` : '';
+  const head = XW === 'clip' ? `<div class="xn"><span class="xchain"></span><span class="xpill">${XCLIP}${nm}${rank}${XSTAR}</span><span class="xchain"></span></div>`
+    : XW === 'rime' ? `<div class="xn">${XFLAKE}${nm}${rank}${XFLAKE}</div>` : `<div class="xn">${XMOON}${nm}${rank}${XSTAR}</div>`;
+  return `<div class="body">${fan}${head}<span class="txt">${txt}</span></div>`;
+}
+// 旧的往上飘、变淡变糊：最老一条最淡，第二老的淡一点（太少的时候不做）
+function hkAge() {
+  if (!HK) return;
+  const kids = [...$list.children].filter(x => !x.classList.contains('out'));
+  kids.forEach(x => x.classList.remove('oldest', 'older'));
+  if (kids.length >= 4) kids[0].classList.add('oldest');
+  if (kids.length >= 5) kids[1].classList.add('older');
+}
+
+if (str('square', '0') === '1') B.add('square');
+if (str('gift_line', '0') === '1') B.add('giftline');
+// 荣耀等级：有 B 站官方的等级勋章图就用图，没拿到用小色块（跟主页面一样）
+const WEALTH = str('wealth', '0') === '1';
+let WEALTH_ICON = {};
+if (WEALTH) fetch('api/wealth_icons').then(r => r.json()).then(j => { WEALTH_ICON = j || {}; }).catch(() => {});
+const WEALTH_TIERS = [[50, '#ff6a3d'], [40, '#e85bd0'], [30, '#8d6cf0'], [20, '#3f8cf4'], [10, '#27b0a0'], [1, '#8fa2b5']];
+const wealth = d => {
+  const lv = Number(d.wealth) || 0;
+  if (!WEALTH || lv < 1) return '';
+  const u = WEALTH_ICON[lv];
+  if (u) return `<img class="wl" src="img?u=${encodeURIComponent(u)}&s=big" alt="荣耀 ${lv}">`;
+  return `<span class="wlp" style="--w:${(WEALTH_TIERS.find(x => lv >= x[0]) || WEALTH_TIERS[5])[1]}">${lv}</span>`;
+};
+if (str('right', '0') === '1') B.add('right');
+if (str('avatar', '1') === '0') B.add('noav');
+B.add('anim-' + str('anim', 'slide'));
+// anim_ms=600 动画时长（毫秒），不写就用默认
+if (num('anim_ms', 0) > 0) { B.add('hasms'); document.documentElement.style.setProperty('--anim-ms', Math.max(50, Math.min(3000, num('anim_ms', 0))) + 'ms'); }
+
+// 整页透明与每条卡片的底色是两件事；只改变卡片，不设置 body 背景。
+document.documentElement.style.setProperty('--bg-alpha', opt.bg / 100);
+document.documentElement.style.setProperty('--avatar-size', Math.max(24, Math.min(72, num('avatar_size', 46))) + 'px');
+document.documentElement.style.setProperty('--gap', Math.max(0, Math.min(30, num('gap', 10))) + 'px');
+document.documentElement.style.setProperty('--radius', Math.max(0, Math.min(30, num('radius', 12))) + 'px');
+const switches = { bubble: 'no-bubble', border: 'no-border', shadow: 'no-shadow', frame: 'noframe', badge: 'nobadge', rank: 'norank', names: 'nonames', sc_bg: 'no-sc-bg' };
+for (const [key, cls] of Object.entries(switches)) if (str(key, key === 'shadow' ? '0' : '1') === '0') B.add(cls);
+if (opt.bg === 0) B.add('no-bubble');
+if (str('layout', 'stacked') === 'inline') B.add('inline');
+if (str('width', 'full') === 'fit') B.add('fitwidth');
+
+// ---------- 文字：字体、粗细、行距、颜色、描边、阴影 ----------
+// font=hei      字体：yahei 雅黑 / hei 黑体 / round 圆体 / kai 楷体 / song 宋体，不写 = 默认
+// fw=700        正文粗细 300~900；lh=1.5 行距；ls=0.01 字间距（em）
+// color=ffffff  正文颜色；name_color=ffd27a 名字颜色（不写 = 跟风格走）；card_color 礼物卡 / SC 卡的字
+// c3/c2/c1     舰长 / 提督 / 总督的名字颜色；t3/t2/t1 他们的弹幕颜色（比上面统一的优先）
+// stroke=1      描边粗细（像素，0 = 不描）；stroke_color=000000（不写：深色字描白边，浅色字描黑边）
+// glow=4        阴影大小（像素，0 = 没有）；glow_color=000000（不写 = 跟描边同色）
+// 2026-11-12 起默认带 1px 描边 + 4px 阴影，透明背景上也看得清
+{
+  const FONTS = { yahei: '"Microsoft YaHei UI", "Microsoft YaHei", sans-serif', hei: '"SimHei", "黑体", "Microsoft YaHei", sans-serif',
+    round: '"YouYuan", "幼圆", "HarmonyOS Sans SC", sans-serif', kai: '"KaiTi", "楷体", "STKaiti", serif', song: '"SimSun", "宋体", "Songti SC", serif',
+    // 2026-11-21 新加的开源字体（static/fonts/fonts.css），缺的字用系统字体顶上
+    wenkai: '"XW 霞鹜文楷", "KaiTi", "Microsoft YaHei", sans-serif', smiley: '"XW 得意黑", "Microsoft YaHei", sans-serif',
+    marker: '"XW 霞鹜漫黑", "Microsoft YaHei", sans-serif', kuaile: '"XW 站酷快乐体", "Microsoft YaHei", sans-serif',
+    xiaowei: '"XW 站酷小薇", "SimSun", serif', huangyou: '"XW 站酷黄油体", "Microsoft YaHei", sans-serif',
+    notosans: '"XW 思源黑体", "Microsoft YaHei", sans-serif', notoserif: '"XW 思源宋体", "SimSun", serif',
+    mashan: '"XW 马善政", "KaiTi", serif', longcang: '"XW 龙藏体", "KaiTi", serif' };
+  const R = document.documentElement.style;
+  const hex = k => { const v = str(k, '').replace(/^#/, ''); return /^[0-9a-f]{6}$/i.test(v) ? '#' + v : ''; };
+  if (FONTS[str('font', '')]) R.setProperty('--ff', FONTS[str('font', '')]);
+  const fw = num('fw', 0); if (fw >= 100 && fw <= 900) R.setProperty('--fw', fw);
+  const lh = num('lh', 0); if (lh >= 1 && lh <= 3) R.setProperty('--lh', lh);
+  if (P.has('ls')) R.setProperty('--ls', Math.max(0, Math.min(.5, num('ls', .01))) + 'em');
+  const tc = hex('color'), nc = hex('name_color');
+  if (tc) { R.setProperty('--tc', tc); B.add('tc'); }
+  if (nc) { R.setProperty('--nc', nc); B.add('nc'); }
+  // card_color 礼物卡 / SC 卡的字；c3 c2 c1 舰长 / 提督 / 总督的名字；t3 t2 t1 他们的弹幕
+  const cc = hex('card_color'); if (cc) { R.setProperty('--cc', cc); B.add('cc'); }
+  for (const g of [3, 2, 1]) {
+    const n = hex('c' + g), x = hex('t' + g);
+    if (n) { R.setProperty('--cn' + g, n); B.add('cn' + g); }
+    if (x) { R.setProperty('--ct' + g, x); B.add('ct' + g); }
+  }
+  const sw = Math.max(0, Math.min(4, num('stroke', 1))), gl = Math.max(0, Math.min(24, num('glow', 4)));
+  const scol = hex('stroke_color') || (light || (tc && parseInt(tc.slice(1), 16) < 0x666666) ? '#ffffff' : '#000000');
+  const gcol = hex('glow_color') || scol;
+  const parts = [];
+  if (sw) {
+    const n = sw > 1.5 ? 16 : 8;  // 细描边 8 个方向就够圆，粗的多画几圈
+    for (let a = 0; a < n; a++) { const r = a * 2 * Math.PI / n; parts.push(`${(Math.cos(r) * sw).toFixed(2)}px ${(Math.sin(r) * sw).toFixed(2)}px 0 ${scol}`); }
+  }
+  if (gl) parts.push(`0 0 ${gl}px ${gcol}`, `0 ${Math.max(1, gl / 4).toFixed(1)}px ${(gl / 2).toFixed(1)}px ${gcol}`);
+  if (parts.length) {
+    // 主播专属风格、新样式、雾月自己画外圈；在设置里改过描边 / 阴影才用设置的
+    const own = HK || ((XW || LUNA) && !['stroke', 'glow', 'stroke_color', 'glow_color'].some(k => P.has(k)));
+    if (!own) B.add('ts');
+    R.setProperty('--ts', parts.join(', '));
+    const f = [];
+    if (sw) f.push(`drop-shadow(0 0 ${(sw * .6).toFixed(2)}px ${scol})`, `drop-shadow(0 0 ${(sw * .6).toFixed(2)}px ${scol})`);
+    if (gl) f.push(`drop-shadow(0 0 ${(gl / 2).toFixed(1)}px ${gcol})`);
+    R.setProperty('--tsf', f.join(' '));
+  }
+}
+
+
+// 自己画的图：放在 static/art/ 里，名字对上就自动用（没有就用默认的颜色样式）
+// guard1.png 总督图标、guard2.png 提督图标、guard3.png 舰长图标；banner1~3.png 上舰横幅背景
+const art = {};
+for (const n of ['guard1', 'guard2', 'guard3', 'banner1', 'banner2', 'banner3']) {
+  const im = new Image();
+  im.onload = () => { art[n] = im.src; art[n + '_r'] = im.naturalWidth / im.naturalHeight; };
+  im.src = 'static/art/' + n + '.png?v=2';  // 换了图就改一下 v，免得 OBS 用旧的缓存
+}
+
+const $list = document.getElementById('list');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const GN = { 1: '总督', 2: '提督', 3: '舰长' };
+const COLORS = ['#7fb3dd', '#9cc4e4', '#f2a7bf', '#a7c8a1', '#c3a6e0', '#e8b77a', '#88b9c9'];
+let botUids = [], realRoom = 0;
+function avatar(face, name) {
+  const ch = esc([...String(name || '?')][0]);
+  if (face) return `<img class="av" src="img?u=${encodeURIComponent(face)}" onerror="this.outerHTML='<span class=&quot;av&quot;>${ch.replace(/'/g, '')}</span>'">`;
+  const c = COLORS[[...String(name)].reduce((a, x) => a + x.charCodeAt(0), 0) % COLORS.length];
+  return `<span class="av" style="background:${c}">${ch}</span>`;
+}
+// 粉丝牌颜色（等级越高颜色越「贵」）
+// B 站新版粉丝牌：每 10 级一个颜色，后一个是舰长牌子的亮边（2026-11-12 实测，跟主页面一样）
+const MEDAL_COLORS = [[51, '#EC4F6E', '#F18087'], [41, '#A773F1', '#D47AFF'], [31, '#4C7DFF', '#58A1F8'], [21, '#3FB4F6', '#5FC7F4'],
+  [11, '#C770A4', '#DD92C0'], [1, '#5762A7', '#7F89CC']];
+const medalTier = lv => MEDAL_COLORS.find(x => lv >= x[0]) || MEDAL_COLORS[MEDAL_COLORS.length - 1];
+function medalColor(lv) { return medalTier(lv)[1]; }
+function medal(d) {
+  if (!d.medal || opt.medal === '0') return '';
+  if (opt.medal === 'own' && realRoom && d.medal_room && d.medal_room !== realRoom) return '';
+  const t = medalTier(d.medal_level);
+  if (d.medal_dim) return `<span class="medal" style="--mc:#a9adb6;--mb:#a9adb6"><b>${esc(d.medal)}</b><i>${d.medal_level}</i></span>`;  // 灰牌子（没点亮）
+  return `<span class="medal" style="--mc:${t[1]}${d.guard ? ';--mb:' + t[2] : ''}"><b>${esc(d.medal)}</b><i>${d.medal_level}</i></span>`;
+}
+const gtag = g => !g ? '' : art['guard' + g] ? `<img class="gicon" src="${art['guard' + g]}" alt="${GN[g]}">` : `<span class="gtag g${g}">${GN[g]}</span>`;
+// 身份徽章在头像前；边框与头像一起隐藏，关闭头像后仍显示身份徽章。
+// noBadge：礼物卡、SC 卡里只留头像框，不在头像前面再放身份徽章（2026-11-12 用户要求）
+function identity(face, name, guard, noBadge) {
+  const g = GN[guard] ? Number(guard) : 0;
+  const frame = g ? `<img class="avatar-frame" src="static/art/frame${g}-v2.png" alt="" onerror="this.parentElement.classList.remove('has-art');this.remove()">` : '';
+  return `<span class="identity${g ? ' tier' + g : ''}">${noBadge ? '' : gtag(g)}<span class="portrait${g ? ' has-art' : ''}">${avatar(face, name)}${frame}</span></span>`;
+}
+const rankLabel = g => GN[g] ? `<span class="rank rank${g}">${GN[g]}</span>` : '';
+function scColor(p) {
+  if (p >= 2000) return ['#ab1a32', '#c43450']; if (p >= 1000) return ['#e54d4d', '#ef7272'];
+  if (p >= 500) return ['#e09443', '#eaa964']; if (p >= 100) return ['#e2b52b', '#e8c34c'];
+  if (p >= 50) return ['#427d9e', '#5a95b5']; return ['#2a60b2', '#4778c4'];
+}
+const yuan = n => '¥' + (Math.round(n * 100) / 100);
+
+// 加一条；太多了把最老的去掉；设置了 fade 就到时间淡出（stay = 停留时间的倍数）
+// 新的一条进来时，上面已有的几条一起平滑地往上挪（先把整列放回原位，再滑到新位置），不再一下跳上去
+const GLIDE = !document.body.classList.contains('anim-none') && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+function glide(h) {
+  if (!GLIDE || !h) return;
+  const cur = new DOMMatrixReadOnly(getComputedStyle($list).transform).m42 || 0;
+  $list.style.transition = 'none';
+  $list.style.transform = `translateY(${cur + h}px)`;
+  void $list.offsetHeight;
+  $list.style.transition = `transform ${getComputedStyle(document.documentElement).getPropertyValue('--anim-ms').trim() || '.6s'} cubic-bezier(.22, 1, .36, 1)`;
+  $list.style.transform = 'translateY(0)';
+}
+function add(html, cls = '', key = '', stay = 1) {
+  const el = document.createElement('div');
+  el.className = 'it ' + cls;
+  if (key) el.dataset.k = key;
+  el.innerHTML = html;
+  $list.append(el);
+  glide(el.offsetHeight + (parseFloat(getComputedStyle($list).rowGap) || 0));
+  while ($list.children.length > opt.max) $list.firstElementChild.remove();
+  if (opt.fade > 0) setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); hkAge(); }, 700); }, opt.fade * stay * 1000);
+  hkAge();
+  return el;
+}
+function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+const recent = new Map();  // 弹幕内容 -> 屏幕上那一条，用来合并一样的弹幕
+const blocked = text => opt.block.length > 0 && opt.block.some(w => String(text ?? '').toLowerCase().includes(w));
+// 弹幕里夹的小表情（[妙]、[哇] 这种）换成图：B 站在每条弹幕里给了图片地址，见过的都记在 EMO 里，旧弹幕也能显示
+const EMO = {};
+function emoText(d) {
+  const map = d.emots ? Object.assign(EMO, d.emots) : EMO;
+  const s = esc(d.text);
+  return s.includes('[') ? s.replace(/\[[^\[\]\s]{1,12}\]/g, k => map[k] ? `<img class="emo" src="img?u=${encodeURIComponent(map[k])}" alt="${k}" title="${k}">` : k) : s;
+}
+function showDm(d, quiet) {
+  if (d.kind) return;  // 禁言提示只在弹幕姬里显示，不上直播画面
+  if (!opt.bot && botUids.includes(d.uid)) return;
+  if (blocked(d.text)) return;
+  if (opt.merge && !d.emoticon && !d.guard) {
+    const r = recent.get(d.text);
+    if (r && r.el.isConnected && !r.el.classList.contains('out') && Date.now() - r.t < 10000) {
+      r.n++; r.t = Date.now();
+      let b = r.el.querySelector('.rep');
+      if (!b) { b = document.createElement('span'); b.className = 'rep'; (XW ? r.el.querySelector('.txt') : r.el.querySelector('.body')).append(b); }  // 新样式：「×2」跟在字后面，不掉到下一行
+      b.textContent = '×' + r.n; bump(b);
+      return;
+    }
+  }
+  const txt = d.emoticon ? `<img src="img?u=${encodeURIComponent(d.emoticon)}" alt="${esc(d.text)}">` : emoText(d);
+  const html = HK === 'mist'
+    ? `${SPARK}<div class="meta"><span class="name">${esc(d.name)}</span>${wealth(d)}${hkMedal(d)}${d.guard ? `<span class="hmedal grk">${GN[d.guard]}</span>` : ''}</div><div class="message body"><span class="txt">${txt}</span></div>`
+    : HK === 'diary'
+    ? `<div class="tag">${hkN % 2 ? PIN_STAR : PIN_CLIP}<span class="name">${esc(d.name)}</span>${wealth(d)}${d.guard ? `<span class="gt">${GN[d.guard]}</span>` : ''}</div><div class="card">${hkRing(d.face, d.name)}<div class="msg body"><span class="txt">${txt}</span></div>${FLAKE}</div>`
+    : XW ? xwDm(d, txt)
+    : LUNA
+    ? `<div class="body"><div class="lw"><span class="lav">${avatar(d.face, d.name)}</span>${d.guard ? gtag(d.guard) : ''}<span class="name">${esc(d.name)}</span>${wealth(d)}${medal(d)}</div><span class="txt">${txt}</span></div>`
+    : `${identity(d.face, d.name, d.guard)}<div class="body"><span class="who"><span class="name">${esc(d.name)}</span>${wealth(d)}${medal(d)}${rankLabel(d.guard)}</span><span class="txt">${txt}</span></div>`;
+  const el = add(html, 'dm' + (d.guard ? ' g' + d.guard : '') + (HK === 'mist' ? ' entry' : HK === 'diary' ? (hkN++ % 2 ? ' ink' : ' paper') : ''));
+  if (d.guard === 1 && !quiet) el.classList.add('shine');
+  if (quiet) { el.style.animation = 'none'; $list.style.transition = 'none'; $list.style.transform = ''; }
+  if (opt.merge && !d.emoticon && !d.guard) {
+    recent.set(d.text, { el, n: 1, t: Date.now() });
+    if (recent.size > 60) recent.delete(recent.keys().next().value);
+  }
+}
+function giftHtml(g) {
+  const name = g.blind ? `${esc(g.blind)} 爆出 ${esc(g.gift)}` : esc(g.gift);
+  const gimg = g.img ? `<img class="gi" src="img?u=${encodeURIComponent(g.img)}">` : '';
+  if (HK === 'mist') return `<div class="gl">${GIFT_SVG}<span>${esc(g.name)} 送出</span><strong>${name} <span class="num">×${g.num}</span></strong>${opt.price ? `<span class="amount">${yuan(g.yuan)}</span>` : ''}${gimg}</div>`;
+  if (HK === 'diary') return `<div class="note">${GIFT_SVG}<span>${esc(g.name)} 送出</span><b>${name} <span class="num">×${g.num}</span></b>${opt.price ? `<b>${yuan(g.yuan)}</b>` : ''}${gimg}</div>`;
+  if (XW) return `${XMC}<span class="xbadge">${avatar(g.face, g.name)}</span><div class="body"><span class="name">${esc(g.name)}</span><div class="gl2">投喂 <b>${name}</b><span class="num"> ×${g.num}</span></div></div>${gimg}${opt.price ? `<span class="yen">${yuan(g.yuan)}</span>` : ''}<i class="deco"></i>`;
+  if (LUNA) return `${identity(g.face, g.name, g.guard, true)}<div class="lb"><div class="lk">PRESENT</div><span class="name">${esc(g.name)}</span><div class="lm">${name}<span class="num"> ×${g.num}</span></div></div>${g.img ? `<img class="gi" src="img?u=${encodeURIComponent(g.img)}">` : ''}${opt.price ? `<span class="wm">${yuan(g.yuan)}</span>` : ''}`;
+  return `${identity(g.face, g.name, g.guard, true)}<div class="body"><span class="who"><span class="name">${esc(g.name)}</span>${rankLabel(g.guard)}</span><span class="giftverb">送出</span> ${name}<span class="num">×${g.num}</span>${opt.price ? `<span class="yuan">${yuan(g.yuan)}</span>` : ''}</div>${g.img ? `<img class="gi" src="img?u=${encodeURIComponent(g.img)}">` : ''}`;
+}
+function showGift(g) {
+  if (!opt.gifts || g.gm_ok === false || (g.yuan != null && g.yuan < opt.giftMin)) return;
+  // 连击：同一个礼物的那条还在屏幕上就只改数量，跳一下
+  const old = $list.querySelector(`[data-k="g${CSS.escape(String(g.id))}"]`);
+  if (old) {
+    old.innerHTML = giftHtml(g);
+    bump(old.querySelector('.num'));
+    $list.append(old);  // 挪到最下面（最新）
+    return;
+  }
+  const big = g.big ?? g.yuan >= 50;
+  add(giftHtml(g), (LUNA ? 'lcard ' : XW ? 'xgift ' : '') + 'gift' + (big ? ' big' : '') + (g.guard ? ' g' + g.guard : ''), 'g' + g.id, big ? 2 : 1);
+}
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(' ');
+function showSc(s) {
+  if (!opt.sc || blocked(s.text)) return;
+  const [c1, c2] = scColor(s.price);
+  if (HK === 'mist') { add(`<div class="meta"><span class="name">${esc(s.name)}</span><strong class="amount">¥${s.price}</strong></div><div class="message">${esc(s.text)}</div>`, 'super', '', 3); return; }
+  if (HK === 'diary') { add(`<div class="env"><div class="top">${hkRing(s.face, s.name)}<div><small>${esc(s.name)}</small><b>¥${s.price}</b></div><img class="seal" src="static/art/diary-seal.webp" alt="" onerror="this.remove()"></div><div class="paper">${esc(s.text)}</div></div>`, 'sc-env g' + (s.guard || 0), '', 3); return; }
+  if (XW) { add(`<div class="st"><span class="cap">SUPER CHAT</span><span class="name">${esc(s.name)}</span><span class="p">¥${s.price}</span></div><div class="sb">${esc(s.text)}</div>`, 'xsc', '', 3).style.setProperty('--tone', hexRgb(c1)); return; }
+  if (LUNA) {
+    const el = add(`${identity(s.face, s.name, s.guard, true)}<div class="lb"><div class="lk">SUPER CHAT</div><span class="name">${esc(s.name)}</span><div class="lm">${esc(s.text)}</div></div><span class="wm">¥${s.price}</span>`, 'lcard sc-l', '', 3);
+    el.style.setProperty('--tone', hexRgb(c2));
+    return;
+  }
+  add(`<div class="h" style="--sc-tone:${c1};background:${c1}">${identity(s.face, s.name, s.guard, true)}<span class="name" style="color:#fff">${esc(s.name)}</span>${rankLabel(s.guard)}<span class="p">${yuan(s.price)}</span></div><div class="m" style="--sc-tone:${c2};background:${c2}">${esc(s.text)}</div>`, 'sc', '', 3);
+}
+function showGuard(g) {
+  if (!opt.guardbuy) return;
+  if (HK === 'mist') { add(`${SPARK}<div class="meta"><span class="name">${esc(g.name)}</span><span class="hmedal">${g.level_name}</span></div><div class="message">开通了${g.level_name} · ${g.num}${esc(g.unit)}</div>`, `entry buy g${g.level}`, '', 2); return; }
+  if (HK === 'diary') { add(`<div class="tag">${PIN_STAR}<span class="name">${esc(g.name)}</span><span class="gt">${g.level_name}</span></div><div class="card">${hkRing('', g.name)}<div class="msg">开通了${g.level_name} · ${g.num}${esc(g.unit)}，欢迎上船～</div>${FLAKE}</div>`, `buy g${g.level}`, '', 2); return; }
+  if (XW) { add(`${XSTAR}<div class="lv">${g.level_name}</div><div class="who2"><span class="name">${esc(g.name)}</span> · 开通了 ${g.num}${esc(g.unit)}</div>`, `xbuy g${g.level}`, '', 2); return; }
+  if (LUNA && (str('buy', 'banner') === 'badge' || !art['banner' + g.level])) {
+    // 徽章式：中间一个大船锚徽章（舰长单圈 / 提督双圈 / 总督双圈 + 光芒），下面等级和名字
+    const icon = art['guard' + g.level] ? `<img src="${art['guard' + g.level]}" alt="">` : avatar('', g.name);
+    add(`<div class="emb">${g.level === 1 ? '<span class="rays"></span>' : ''}${icon}</div><div class="lcap">WELCOME ABOARD</div><div class="llv">${g.level_name}</div><div class="lpill">${esc(g.name)} · ${g.num}${esc(g.unit)}</div>`,
+      `lguard l${g.level}${g.level === 1 ? ' shine' : ''}`, '', 2);
+    return;
+  }
+  const banner = art['banner' + g.level];
+  if (banner) {
+    // 有自己画的横幅：整张图当底（图里已经有船锚和主播），名字写在中间空的地方
+    const el = add(`<div class="body"><div class="l1">${esc(g.name)}</div><small>开通了${g.level_name} · ${g.num}${esc(g.unit)}</small></div>`, `guardbuy artbanner l${g.level}`, '', 2);
+    el.style.backgroundImage = `url("${banner}")`;
+    el.style.aspectRatio = art['banner' + g.level + '_r'] || 4;
+    return;
+  }
+  const icon = art['guard' + g.level] ? `<img class="gicon" src="${art['guard' + g.level]}">` : avatar('', g.name);
+  const el = add(`${icon}<div class="body">🎉 ${esc(g.name)} 开通了${g.level_name}<small>${g.num}${esc(g.unit)} · 欢迎上船～</small></div>`, `guardbuy l${g.level} shine`, '', 2);
+  const av = el.querySelector('.av');
+  if (av) av.style.boxShadow = '0 0 0 2px rgba(255,255,255,.8)';
+}
+function showEnter(e) {
+  if (opt.enter === '0' || e.kind !== 'enter') return;
+  if (opt.enter !== 'all' && !e.guard) return;
+  $list.querySelector(`[data-k="e${e.uid}"]`)?.remove();  // 同一个人进房的消息可能来两条（普通 + 舰长特效），只留一条
+  if (HK === 'mist') { add(`<div class="gl">${SPARK.replace('class="star"', 'style="width:1em;height:1em;fill:#e8b84a"')}<span>${e.guard ? `欢迎${GN[e.guard]} ` : ''}<b class="name">${esc(e.name)}</b> 进入直播间</span></div>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid); return; }
+  if (HK === 'diary') { add(`<div class="note">${PIN_STAR}<span>${e.guard ? `欢迎${GN[e.guard]} ` : ''}<b>${esc(e.name)}</b> 进入直播间</span></div>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid); return; }
+  if (XW) { add(`${XSTAR}<span>${e.guard ? `欢迎${GN[e.guard]} ` : ''}<span class="name">${esc(e.name)}</span> 进入直播间</span>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid); return; }
+  add(`${identity(e.face, e.name, e.guard)}<div class="body">${e.guard ? `欢迎${GN[e.guard]} ` : ''}<span class="name">${esc(e.name)}</span> 进入直播间</div>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid);
+}
+// 弹幕姬上线了新版：OBS 里这一页自己刷新，不用手动点「刷新」
+let myVer = 0;
+function checkVer(v) {
+  const n = v?.['obs.html'];
+  if (!n || opt.demo) return;
+  if (!myVer) { myVer = n; return; }
+  if (n !== myVer) location.reload();
+}
+function handle(type, data) {
+  if (type === 'emots') { Object.assign(EMO, data); return; }
+  if (type === 'ver') { checkVer(data); return; }
+  if (type === 'snapshot') {
+    checkVer(data.ver);
+    Object.assign(EMO, data.emots || {});
+    botUids = data.bot_uids || [];
+    realRoom = data.room?.room_real || data.room_id || 0;
+    // 刚打开（或 OBS 刷新）时先把最近几条弹幕摆上，不做动画
+    $list.innerHTML = ''; recent.clear();
+    (data.dm || []).slice(-Math.min(opt.max, 8)).forEach(d => showDm(d, true));
+  } else if (type === 'room') realRoom = data.room_real || realRoom;
+  else if (type === 'dm') showDm(data);
+  else if (type === 'gift') showGift(data.item);
+  else if (type === 'sc') showSc(data.item);
+  else if (type === 'guard') showGuard(data.item);
+  else if (type === 'enter' || type === 'enter_update') showEnter(data);
+}
+// 设置页的「发一条试试」按钮会发消息过来
+addEventListener('message', e => { if (e.origin === location.origin && e.data?.type) handle(e.data.type, e.data.data); });
+
+// ---------- 演示模式：自己造假弹幕 ----------
+function demo() {
+  realRoom = 1000001;
+  if (str('demo', '0') === 'static') {
+    setTimeout(() => {
+      const people = [['雾里看花',0,8,'主播晚上好～今天唱什么呀'],['路过的舰长',3,21,'来了来了，今晚也陪你听歌。'],['紫色提督',2,25,'这首歌的氛围好温柔。'],['橙色总督',1,30,'把今天的好心情都留在这里。']];
+      people.forEach(([name,guard,medal_level,text],i)=>showDm({uid:8000+i,name,guard,medal:'雾锁胃',medal_level,medal_room:1000001,text,face:''},true));
+      showGift({id:'sample-gift',uid:8004,name:'主播的猫',face:'',gift:'情书',num:2,yuan:104,guard:3});
+      showSc({uid:8005,name:'冬天的鱼',face:'',price:50,text:'主播辛苦啦，今天的歌超好听～',guard:0});
+    }, 400);
+    return;
+  }
+
+  const names = ['雾里看花', '冬天的鱼', '主播的猫', '晚安主播', '雪糕不化', '今天也想听歌', '路过的舰长', '紫色提督', '橙色总督'];
+  const texts = ['主播晚上好～', '这首好好听！', '哈哈哈哈哈', '唱晴天吗', '来了来了', '雾雾今天好可爱', '打卡', '想听稻香', '好听好听好听', '下一首唱什么呀'];
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  let i = 0;
+  const user = () => { const k = Math.floor(Math.random() * names.length); return { uid: 1000 + k, name: names[k], g: k === 6 ? 3 : k === 7 ? 2 : k === 8 ? 1 : 0, lv: 4 + k * 3 }; };
+  const step = () => {
+    i++;
+    const u = user(), r = Math.random(), t = Math.floor(Date.now() / 1000);
+    if (r < 0.66) handle('dm', { t, uid: u.uid, name: u.name, face: '', text: pick(texts), medal: u.uid % 4 ? '雾锁胃' : '别家', medal_level: u.lv, medal_room: u.uid % 4 ? 1000001 : 1, guard: u.g, emoticon: '' });
+    else if (r < 0.86) { const g = pick([['小花花', 0.1], ['打call', 0.5], ['这个好诶', 1], ['情书', 52]]), n = 1 + Math.floor(Math.random() * 5); handle('gift', { item: { id: 'd' + i, uid: u.uid, name: u.name, face: '', gift: g[0], num: n, yuan: g[1] * n, img: '', guard: u.g, blind: '' } }); }
+    else if (r < 0.93) handle('sc', { item: { id: i, uid: u.uid, name: u.name, face: '', price: pick([30, 50, 100]), text: '主播辛苦啦，今天的歌超好听，早点休息哦～', guard: u.g } });
+    else if (r < 0.97) handle('enter', { uid: u.uid, name: u.name, face: '', kind: 'enter', guard: u.g || 3 });
+    else { const lv = pick([3, 3, 2, 1]); handle('guard', { item: { uid: u.uid, name: u.name, level: lv, level_name: GN[lv], num: 1, unit: '月', yuan: 198 } }); }
+    setTimeout(step, 700 + Math.random() * 1100);
+  };
+  // 先等一下图片探测完再开始，免得第一批用不上自己画的图
+  setTimeout(() => { for (let k = 0; k < 5; k++) { const u = user(); handle('dm', { uid: u.uid, name: u.name, face: '', text: pick(texts), medal: '雾锁胃', medal_level: u.lv, medal_room: 1000001, guard: u.g, emoticon: '' }); } step(); }, 400);
+}
+
+// ---------- 连接（断了自动重连） ----------
+let retry = 0;
+function connect() {
+  // 后台照网址里的设置挑着发：没开「显示价格」就不发礼物价格，只告诉大不大、够不够最低价；room = 切房名单里的别的直播间（2026-11-21）
+  const q = new URLSearchParams({ client: 'obs', price: opt.price ? '1' : '0', gm: String(opt.giftMin || 0) });
+  if (/^\d{1,12}$/.test(str('room', ''))) q.set('room', str('room', ''));
+  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + location.pathname.replace(/[^/]*$/, '') + 'ws?' + q);
+  ws.onopen = () => { retry = 0; };
+  ws.onclose = () => setTimeout(connect, Math.min(30000, 2000 * 2 ** retry++));
+  ws.onmessage = ev => { const m = JSON.parse(ev.data); handle(m.type, m.data); };
+}
+if (opt.demo) demo(); else connect();
+</script>
+</body>
+</html>
