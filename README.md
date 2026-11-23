@@ -155,7 +155,7 @@ python tests/run_tests.py     # 离线后端测试
 python tests/smoke_demo.py    # 在 8390 端口启动演示服务器，检查页面和 WebSocket
 ```
 
-打 Windows 包：`powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Version 1.0.0`，输出在 `dist\`。
+打 Windows 包：`powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Version 0.9.0`，输出在 `dist\`。
 
 ## 更新日志
 
@@ -323,7 +323,7 @@ python tests/run_tests.py     # offline backend tests
 python tests/smoke_demo.py    # starts a demo server on port 8390 and checks the pages and WebSocket
 ```
 
-Build the Windows package: `powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Version 1.0.0`; output goes to `dist\`.
+Build the Windows package: `powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Version 0.9.0`; output goes to `dist\`.
 
 ## Changelog
 

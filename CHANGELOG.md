@@ -5,15 +5,15 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
-## v1.0.0 · 2026-11-23
+## v0.9.0 · 2026-11-23
 
-第一个正式版本。弹幕姬原本是给一位主播自用的工具，这一版整理成通用版本公开：直播间号、主播名字、登录文件、掉线提醒都改成在 `config.json` 里设置，去掉了所有专属美术和链接。
+第一个公开发布的版本。弹幕姬原本是给一位主播自用的工具，开源前已经在直播间里用了两周、更新过 62 次（分在 9 个更新日），所以版本号从 0.9 开始；等更多人用过、稳定下来再出 1.0。这一版整理成通用版本公开：直播间号、主播名字、登录文件、掉线提醒都改成在 `config.json` 里设置，去掉了所有专属美术和链接。
 
-First public release. The dashboard started as a tool for one streamer; this version is the general-purpose edition, with room id, streamer name, login file and alerts all set in `config.json`, and no bundled artwork or private links.
+First public release. The dashboard started as a tool for one streamer and had already been used live for two weeks, with 62 updates over 9 release days, hence 0.9 rather than 1.0; 1.0 will come once more people have used it. This version is the general-purpose edition, with room id, streamer name, login file and alerts all set in `config.json`, and no bundled artwork or private links.
 
 ### 下载 · Download
 
-- **Windows（推荐）**：`bili-danmaku-board-v1.0.0-windows-x64.zip`，自带 Python 3.13，解压后双击 `start.bat`。
+- **Windows（推荐）**：`bili-danmaku-board-v0.9.0-windows-x64.zip`，自带 Python 3.13，解压后双击 `start.bat`。
   Windows (recommended): Python 3.13 bundled; unzip and double-click `start.bat`.
 - **源码 · Source**：页面下方的 Source code，需要 Python 3.11 以上，见 README「从源码运行」。
   Source code: needs Python 3.11+, see "Running from source" in the README.

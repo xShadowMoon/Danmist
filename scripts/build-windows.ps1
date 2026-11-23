@@ -1,7 +1,7 @@
 # Build the portable Windows package for a GitHub Release.
 # 打包带 Python 的 Windows 版（解压就能用，不用装 Python）。
 #
-#   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Version 1.0.0
+#   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Version 0.9.0
 #
 # Output: dist\bili-danmaku-board-v<Version>-windows-x64.zip
 # Needs: git, and any Python 3 with pip on this machine (only used to download wheels).
