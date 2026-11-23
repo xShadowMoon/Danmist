@@ -19,3 +19,7 @@ tests/retention-*/
 static/art/*
 !static/art/README.md
 !static/art/icon-*.png
+
+# Portable Windows build (scripts/build-windows.ps1)
+python/
+dist/
