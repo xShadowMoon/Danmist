@@ -157,6 +157,20 @@ function checkVer(v) {
   tick();
 }
 $('verbar').onclick = () => location.reload();
+// GitHub 上出了新版本（0.9.1 起）：顶栏状态标签旁边一个小标签，点开发布页看更新内容、下载；✕ 之后这个版本不再提示。
+// 只给管理身份看（主播专属链接、普通链接都不显示）；程序不会自己更新，怎么更新见 README。
+const updSkipped = () => { try { return localStorage.getItem('xw-upd-skip') || ''; } catch { return ''; } };
+function drawUpd() {
+  const u = S.update, bar = $('updbar');
+  const show = !!(u && u.v && S.admin && !S.host && updSkipped() !== u.v);
+  bar.hidden = !show;
+  if (!show) return;
+  const a = $('updlink');
+  a.textContent = `有新版本 v${u.v}`;
+  a.href = /^https:\/\/github\.com\//.test(u.url) ? u.url : 'https://github.com/xShadowMoon/bili-danmaku-board/releases/latest';
+  a.title = `现在是 v${S.app_version || '?'}。点开看更新内容和下载；更新方法：关掉弹幕姬，把新的压缩包解压覆盖到原来的文件夹（设置和存档都会保留）`;
+}
+$('updclose').onclick = () => { try { localStorage.setItem('xw-upd-skip', S.update?.v || ''); } catch {} $('updbar').hidden = true; };
 // 连接状态：网页 ↔ 电脑（wsOpen），电脑 ↔ B 站（S.room.bili_ok）
 let wsOpen = false;
 function drawConn() {

@@ -220,6 +220,61 @@ document.addEventListener('click', e => {
   }
   window._ws?.send(JSON.stringify({ cmd: 'gift_thank', id: String(it.id), done }));
 }, true);
+// 2026-11-23 找回：11-20 16:08 上线时这两个函数整段丢了，历史里点某一场会报 ReferenceError 打不开
+async function openHistItem(sid) {
+  $('hbody').innerHTML = '<div class="empty">加载中…</div>';
+  try {
+    const d = await (await fetch('api/history/' + encodeURIComponent(sid), { cache: 'no-store' })).json();
+    H.detail = d; renderHistDetail(d);
+  } catch { $('hbody').innerHTML = '<div class="empty">加载失败</div>'; }
+}
+function renderHistDetail(d) {
+  $('htitle').innerHTML = `${icon('history')} ${fmtDay(d.start)} 的直播`; $('hback').style.display = '';
+  const f = d.flow || {}, st = d.stats || {};
+  const gmax = Math.max(...(d.gift_stats || []).map(g => g.yuan), 1);
+  // 分类在左边，点哪类看哪类（记住上次看的那一类）；手机上分类排在顶上
+  const tabs = [['sum', 'grid', '概览', ''], ['rank', 'trophy', '送礼榜', ''], ['sc', 'p-sc', 'SC', d.sc_count || ''], ['gift', 'p-gift', '礼物', ''], ['guard', 'anchor', '上舰', d.guard_count || '']];
+  if (d.has_dm) tabs.push(['dm', 'p-dm', '弹幕', num(d.dm_total)]);
+  if (!tabs.some(t => t[0] === H.tab)) H.tab = 'sum';
+  $('hbody').innerHTML = `<div class="hd">
+    <nav class="hnav" id="hnav">${tabs.map(([k, ic, n, c]) => `<button data-hn="${k}"${k === H.tab ? ' class="on"' : ''}>${icon(ic)}<span>${n}</span>${c ? `<small>${c}</small>` : ''}</button>`).join('')}</nav>
+    <div class="hpages">
+    <div class="hp" data-hp="sum">
+    <div class="hmeta">${esc(d.title || '（没有标题）')}${d.area ? ' · ' + esc(d.area) : ''} · ${hhmm(d.start)} – ${hhmm(d.end)}（${dur(d.end - d.start)}）${d.reason && d.reason !== '下播' ? ' · ' + esc(d.reason) : ''}</div>
+    <div class="hsum">
+      ${H.admin ? `<div class="stat money" title="收益 = 流水 × 50%"><div class="k">${icon('coin')} 收益</div><div class="v">${yuan(d.income)}</div><div class="s">流水 ${yuan(d.total)} · 礼物 ${yuan(f.gift || 0)} · SC ${yuan(f.sc || 0)} · 上舰 ${yuan(f.guard || 0)}</div></div>` : `<div class="stat"><div class="k">${icon('clock')} 时长</div><div class="v">${dur(d.end - d.start)}</div><div class="s">${hhmm(d.start)} – ${hhmm(d.end)}</div></div>`}
+      <div class="stat"><div class="k">${icon('p-dm')} 弹幕</div><div class="v">${num(d.dm_total)}</div><div class="s">来过 ${num(d.user_count)} 人 · 新关注 ${num(st.follows || 0)}</div></div>
+      <div class="stat"><div class="k">${icon('snow')} 在线最多</div><div class="v">${num(d.peak_online || 0)}</div><div class="s">看过 ${num(st.watched || 0)} · 点赞 ${num(st.likes || 0)}</div></div>
+      <div class="stat"><div class="k">${icon('p-sc')} SC / ${icon('anchor')} 上舰</div><div class="v">${d.sc_count} / ${d.guard_count}</div><div class="s">${H.admin ? `SC ${yuan(f.sc || 0)} · 上舰 ${yuan(f.guard || 0)}` : '条 / 位'}</div></div>
+    </div>
+    <div class="hboxes">
+      <div class="hbox"><h4>${icon('trophy')} 送礼榜<a data-go="rank">全部</a></h4>${(d.rank || []).length ? d.rank.slice(0, 5).map(rankRow).join('') : '<div class="empty sm">无</div>'}</div>
+      <div class="hbox"><h4>${icon('p-gift')} 收到最多的礼物<a data-go="gift">全部</a></h4>${(d.gift_stats || []).length ? d.gift_stats.slice(0, 5).map(g => `<div class="row"><span class="n">${esc(g.name)}</span><span style="color:var(--ink3);margin:0 8px">× ${num(g.num)}</span><span class="r money">${yuan(g.yuan)}</span></div>`).join('') : '<div class="empty sm">无</div>'}</div>
+      <div class="hbox"><h4>${icon('anchor')} 上舰<a data-go="guard">全部</a></h4>${(d.guards || []).length ? d.guards.slice(0, 4).map(g => guardRow(g, 0, 0, true)).join('') : '<div class="empty sm">这场没有人上舰</div>'}</div>
+      <div class="hbox"><h4>${icon('p-sc')} SC<a data-go="sc">全部</a></h4>${(d.scs || []).length ? d.scs.slice().sort((a, b) => (b.price || 0) - (a.price || 0)).slice(0, 3).map(s => `<div class="row"><span class="n">${esc(s.name)}</span><span style="flex:1;margin:0 8px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.text || '')}</span><span class="r money">${yuan(s.price || 0)}</span></div>`).join('') : '<div class="empty sm">这场没有 SC</div>'}</div>
+    </div>
+    ${H.admin ? `<div style="margin-top:16px;text-align:right"><button class="btn sm danger" id="hdel">删除这场记录</button></div>` : ''}
+    </div>
+    <div class="hp" data-hp="rank" title="礼物 + SC + 上舰"><div class="lst">${(d.rank || []).length ? d.rank.map(rankRow).join('') : '<div class="empty">无</div>'}</div></div>
+    <div class="hp" data-hp="sc"><div class="lst">${(d.scs || []).length ? d.scs.slice().reverse().map(s => scHtml(s)).join('') : '<div class="empty">无</div>'}</div></div>
+    <div class="hp" data-hp="gift"><div class="lst">${(d.gift_stats || []).length ? d.gift_stats.map(g => `<div class="row"><span class="n" style="width:42%">${esc(g.name)}</span><span style="color:var(--ink3)">× ${num(g.num)}</span><span style="flex:1;margin:0 8px" class="bar"><span style="display:block;height:6px;border-radius:3px;background:var(--money-ink);opacity:.7;width:${Math.max(2, g.yuan / gmax * 100)}%"></span></span><span class="r money">${yuan(g.yuan)}</span></div>`).join('') : '<div class="empty">无</div>'}</div></div>
+    <div class="hp" data-hp="guard"><div class="lst">${(d.guards || []).length ? d.guards.map(g => guardRow(g, 0, 0, true)).join('') : '<div class="empty">无</div>'}</div></div>
+    ${d.has_dm ? `<div class="hp hdm" data-hp="dm"><input id="hdmq" placeholder="搜名字或内容"><div class="lst" id="hdmlist"><div class="empty">加载中…</div></div></div>` : ''}
+    </div></div>`;
+  const showTab = k => { H.tab = k; $('hnav').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.hn === k)); $('hbody').querySelectorAll('.hp').forEach(x => x.classList.toggle('on', x.dataset.hp === k)); if (k === 'dm') { const l = $('hdmlist'); if (l) l.scrollTop = l.scrollHeight; } };
+  $('hnav').onclick = e => { const x = e.target.closest('[data-hn]'); if (x) showTab(x.dataset.hn); };
+  $('hbody').querySelectorAll('.hbox [data-go]').forEach(a => a.onclick = () => showTab(a.dataset.go));
+  showTab(H.tab);
+  if (d.has_dm) histDm(d.id, '');
+  if (H.admin) {
+    let arm = 0;
+    $('hdel').onclick = async () => {
+      if (Date.now() - arm > 3000) { arm = Date.now(); $('hdel').textContent = '再点一次删除'; return; }
+      try { await fetch(`api/history/${encodeURIComponent(d.id)}/delete`, { method: 'POST' }); } catch {}
+      loadHistList();
+    };
+  }
+}
 // 历史场次的整场弹幕：先给最后 300 条，往上翻 / 点「更早」接着加载；搜索是搜整场
 async function histDm(sid, q, before) {
   const box = $('hdmlist');

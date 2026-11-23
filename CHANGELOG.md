@@ -5,6 +5,34 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.1 · 2026-11-23
+
+### 修复 · Fix
+
+- 「历史」里点某一场打不开详情（页面报错，一直停在列表）。这个问题 0.9.0 里就有，现在点进去能看到概览、送礼榜、SC、礼物、上舰和整场弹幕。
+  Clicking a stream in History did nothing (a script error kept it on the list). This was broken in 0.9.0; the detail view with summary, rankings, SC, gifts, guards and full danmaku works again.
+
+### 有新版本时提醒 · Update reminder
+
+- GitHub 上出了新版本时，顶栏「已连接」旁边会出现「有新版本 vX.Y.Z · 看看」，点开就是更新内容和下载页；点 ✕ 这个版本就不再提示。
+  When a new version is on GitHub, a "new version vX.Y.Z" tag appears next to the connection status at the top; it links to the release notes and download. Click ✕ to hide it for that version.
+- 只有管理身份能看到（普通链接、主播专属链接、OBS 都不显示）。程序不会自己下载或更新任何东西。
+  Only admins see it (not the public link, host link or OBS). The app never downloads or updates anything by itself.
+- 启动后查一次，之后每天一次，只读 GitHub 上最新 Release 的版本号。不想检查：`config.json` 写 `"update_check": false`，或者加 `--no-update-check`。
+  Checked at startup and then once a day, reading only the latest release's version number. Turn it off with `"update_check": false` in `config.json` or `--no-update-check`.
+- 新增 `python server.py --version` 查看当前版本。
+  New `python server.py --version`.
+- README 加了「更新到新版本」的步骤。
+  The README now has update steps.
+
+### 怎么更新 · How to update
+
+**从 0.9.0 升级这一次要手动来**（0.9.0 还没有提醒功能）：关掉弹幕姬 → 下载下面的 zip → 解压覆盖到原来的文件夹、全部替换 → 双击 `start.bat`。`config.json` 和 `data\` 不在压缩包里，设置和存档都会保留。
+
+**Updating from 0.9.0 is manual this once** (0.9.0 has no reminder): close the app → download the zip below → unzip over your existing folder, replacing files → run `start.bat`. `config.json` and `data\` are not in the zip, so settings and archives are kept.
+
+---
+
 ## v0.9.0 · 2026-11-23
 
 第一个公开发布的版本。弹幕姬原本是给一位主播自用的工具，开源前已经在直播间里用了两周、更新过 62 次（分在 9 个更新日），所以版本号从 0.9 开始；等更多人用过、稳定下来再出 1.0。这一版整理成通用版本公开：直播间号、主播名字、登录文件、掉线提醒都改成在 `config.json` 里设置，去掉了所有专属美术和链接。

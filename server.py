@@ -39,6 +39,7 @@ from admin_links import AdminLinks, AdminSafeFormatter
 from daily_health import DailyHealth
 from public_limits import PublicLimits, client_ip
 import history_maintenance
+import updates
 from backend_limits import OperationError, OperationRate, WS_IMPORT_LIMIT, WS_NORMAL_LIMIT, operation_info, parse_operation
 
 import aiohttp
@@ -2678,6 +2679,10 @@ async def main():
                           ('public-http-rate', 600), ('gequ-http-rate', 3000), ('obs-max', 50), ('obs-ip-max', 10)):
         ap.add_argument('--' + name, type=int, default=default)
     ap.add_argument('--no-alert', action='store_true', help='不发掉线提醒（测试直播间用）')
+    ap.add_argument('--no-update-check', action='store_true', default=cfg.get('update_check') is False,
+                    help='不去 GitHub 查有没有新版本（也可以在 config.json 写 "update_check": false）')
+    ap.add_argument('--update-url', default='', help=argparse.SUPPRESS)  # 测试用：换一个地址模拟「有新版本」
+    ap.add_argument('--version', action='version', version=f'bili-danmaku-board {updates.VERSION}')
     args = ap.parse_args()
     if not args.demo and not args.room:
         ap.error('要告诉我连哪个直播间：加 --room 房间号，或者在 config.json 里写 "room"')
@@ -2709,6 +2714,7 @@ async def main():
             pass
 
     links = AdminLinks(os.path.join(DIR, 'data', 'admin-links.json') if not args.demo else None, write_json, args.admin_key)
+    new_release = [None]  # GitHub 上查到的新版本（updates.watch 填）
     health = DailyHealth(DIR, write_json, persist=not args.demo, hour=args.health_hour)
     limits = PublicLimits(args.public_max, args.public_ip_max, args.public_connect_rate, args.public_http_rate,
                           args.gequ_http_rate, args.obs_max, args.obs_ip_max)
@@ -2908,7 +2914,9 @@ async def main():
                 links.record_open(link_id, where=open_where(request))
             snap['guardlist'] = viewer_view('guardlist', h.guardlist) if viewer else h.guardlist  # 舰长名单 B 站上本来就公开（不带到期时间）
             snap['ver'] = page_vers()
+            snap['app_version'] = updates.VERSION
             if admin:
+                snap['update'] = new_release[0]  # GitHub 上有新版本时：{'v', 'url', 'name'}，没有就是 None
                 snap['songbook'] = hub.songbook_list()
                 snap['library'] = hub.library_list()
             snap['emots'] = {**hub.emots, **h.emots}
@@ -3867,6 +3875,13 @@ async def main():
     log.info('网页已启动：http://%s:%d  直播间 %s', args.host, args.port, 'demo' if args.demo else args.room)
 
     tasks = [asyncio.create_task(watch_static()), asyncio.create_task(watch_access()), asyncio.create_task(watch_gift_anim(bare, args.room))]
+    # 有新版本就在管理页面上提示（只读 GitHub 最新 Release 的版本号，不下载任何东西）；演示模式只在测试时查
+    if not args.no_update_check and (not args.demo or args.update_url):
+        def on_new_release(info):
+            new_release[0] = info
+            hub.emit_admin('update', info)
+        tasks.append(asyncio.create_task(updates.watch(bare, on_new_release, args.update_url or updates.LATEST_API,
+                                                       first_delay=2 if args.update_url else updates.FIRST_DELAY)))
     client = None
     if args.demo:
         tasks.append(asyncio.create_task(demo_feed(hub)))

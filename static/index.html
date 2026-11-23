@@ -25,8 +25,7 @@
 <div id="snow"></div>
 <div id="netbar" title="正在重新连接"></div>
 <div id="warnbar" hidden></div>
-<button id="verbar" hidden title="弹幕姬上线了新版本，点一下刷新页面（下播后会自己刷新）">有新版本 · 点这里更新</button>
-<div id="reconn" aria-live="polite"><img src="/static/art/xw-connect.webp" alt="" onerror="this.remove()"><span>正在重新连接…</span></div>
+<button id="verbar" hidden title="弹幕姬上线了新版本，点一下刷新页面（下播后会自己刷新）">有新版本 · 点这里更新</button><div id="reconn" aria-live="polite"><img src="/static/art/xw-connect.webp" alt="" onerror="this.remove()"><span>正在重新连接…</span></div>
 <div class="app">
   <div class="top">
     <div class="brand">
@@ -52,6 +51,7 @@
     <span class="pill" id="live">未开播</span>
     <span class="pill" id="conn">连接中</span>
     <span class="pill rank" id="rankpill" title="B 站人气榜和分区小时榜的排名" hidden></span>
+    <span class="pill upd" id="updbar" hidden><a id="updlink" target="_blank" rel="noopener">有新版本</a><button id="updclose" title="这个版本不再提示" aria-label="不再提示">✕</button></span>
     <span id="ttsbar"><span><i class="ic" data-ic="volume"></i></span><span class="now" id="ttsnow"></span><span class="q" id="ttsq"></span><button class="btn sm" id="ttsskip">跳过</button><button class="btn sm" id="ttsclear">清空</button></span>
     <span id="ttshint"> 点一下开始朗读</span>
     <div class="spacer"></div>

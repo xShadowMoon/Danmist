@@ -6,5 +6,6 @@
   "login_file": "data/bili-login.json",
   "public_url": "",
   "discord_webhook": "",
-  "bot_say_url": ""
+  "bot_say_url": "",
+  "update_check": true
 }

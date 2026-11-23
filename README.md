@@ -34,6 +34,19 @@
 3. 在 OBS 里添加「浏览器」来源，把网址粘进去，宽高按设置页下面写的填。
 4. 歌单也一样：设置页顶上切到「歌单」，复制网址再加一个浏览器来源。
 
+### 更新到新版本
+
+出了新版本时，弹幕姬顶栏「已连接」旁边会出现「有新版本 vX.Y.Z · 看看」，点开就是下载页（0.9.1 起才有这个提醒）。程序不会自己更新，按下面做：
+
+1. 关掉弹幕姬的黑色窗口。
+2. 从 [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases/latest) 下载新的 `windows-x64.zip`。
+3. 解压后把里面的文件**覆盖**到原来的文件夹，提示重名时选「替换」。
+4. 双击 `start.bat`。
+
+直播间号、存档、观众备注、登录信息都在 `config.json` 和 `data\` 里，压缩包里没有这两样，所以覆盖不会丢；自己放进 `static\art\` 的图片也不会被换掉。保险起见，更新前可以先把 `data\` 复制一份。
+
+从源码运行的话：`git pull`，再 `pip install -r requirements.txt`，然后重启。
+
 ---
 
 ## 能做什么
@@ -52,6 +65,7 @@
 | OBS 歌单 | `/obs-songs` 5 种样式（卡片、细条、唱片、薄雾、留言本） |
 | 直播间 | 改标题和分区、常用标题一键切换、直播画面小窗、人气榜和小时榜、超管警告和切断提醒 |
 | 开播前自检 | 一键检查和 B 站的连接、登录、OBS 能不能收到；工作模式（唱歌 / 聊天 / 房管）一键换布局 |
+| 更新提醒 | GitHub 上出了新版本时，在顶栏提示（只有管理身份能看到），点开看更新内容和下载 |
 | 布局 | 模块随意拖动、改大小、加减；主题色、配色、深色模式、紧凑模式；设置方案可以导出导入；能装成桌面应用（PWA） |
 | 分享 | 只读的普通链接、可以随时新建和作废的管理链接、给主播本人用的专属链接（`/host`） |
 | 切换直播间 | 临时去看你列出来的别的直播间，不影响自己的记录 |
@@ -107,6 +121,7 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 | `public_url` | 如果你把页面放到了公网，填公网地址（用于「隧道断了」提醒）。 |
 | `discord_webhook` | 掉线提醒和每日体检发到的 Discord webhook。留空就不发。 |
 | `bot_say_url` | 可选：用机器人账号发弹幕的本地接口（POST `{"text": ...}`，请求头 `X-Local-Token` 读自 `bot.token`）。 |
+| `update_check` | 是否检查有没有新版本，默认 `true`。写 `false` 就不检查（也可以加命令行参数 `--no-update-check`）。 |
 
 其他本地文件（都不会进 git，也不会打进 Release 压缩包）：
 
@@ -139,6 +154,7 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 | 扫码登录没反应 | 用的是旧版的话缺 `qrcode` 依赖：源码运行时执行 `pip install -r requirements.txt`，或者下载新版 Windows 包。 |
 | 别人打开我的公网链接看不到收益和历史 | 这是故意的：普通链接是只读视角。给信任的人发「管理链接」。 |
 | 改标题、改分区提示没权限 | 这些操作要用**主播本人**的 B 站号扫码登录（发送框左边的头像）。 |
+| 怎么看现在是哪个版本 | 鼠标停在「有新版本」标签上会写现在的版本；也可以在文件夹里运行 `python\python.exe server.py --version`（源码运行是 `python server.py --version`）。 |
 | 浏览器不朗读 | 浏览器要求网页先被点过一下才能出声；点一下页面再试。声音列表来自系统，Windows 自带中文语音即可。 |
 
 ## 数据与隐私
@@ -146,7 +162,7 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 - 所有数据（直播存档、观众备注、设置、登录信息）都只存在本机的 `data/` 文件夹里，不会上传到任何地方。
 - 页面里扫码登录的 B 站账号只存在电脑的 `data/accounts/` 里，浏览器只拿到一串随机口令。
 - 管理链接只以哈希形式保存，作废后立即失效。
-- 不收集任何使用数据。唯一的对外连接是 B 站本身，以及你自己填的 Discord webhook。
+- 不收集任何使用数据。对外连接只有 B 站本身、你自己填的 Discord webhook，以及每天一次去 GitHub 查最新版本号（只读版本号，不带任何账号或直播间信息，可以用 `update_check` 关掉）。
 
 ## 测试
 
@@ -202,6 +218,19 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 3. In OBS, add a **Browser** source, paste the URL and use the width/height shown on the setup page.
 4. Same for the song list: switch the setup page to **歌单** and add a second browser source.
 
+### Updating to a new version
+
+When a new version is out, a "有新版本 vX.Y.Z · 看看" (new version) tag appears next to the connection status at the top of the dashboard; click it to open the download page (this reminder exists from 0.9.1 on). The app never updates itself:
+
+1. Close the console window.
+2. Download the new `windows-x64.zip` from [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases/latest).
+3. Unzip it and copy the files **over** your existing folder, replacing files when asked.
+4. Double-click `start.bat`.
+
+Your room id, archives, viewer notes and logins live in `config.json` and `data\`, which are not in the zip, so nothing is lost; images you put in `static\art\` are kept too. To be extra safe, copy `data\` somewhere first.
+
+Running from source: `git pull`, `pip install -r requirements.txt`, then restart.
+
 ---
 
 ## Features
@@ -220,6 +249,7 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 | OBS song overlay | `/obs-songs` with 5 styles (card, strip, vinyl, mist, diary) |
 | Live room | Change title and area, saved title presets, live video pop-out, popularity and hourly ranks, warnings from Bilibili moderators |
 | Pre-stream check | One click to check the Bilibili connection, login and OBS; work modes (singing / chatting / moderating) switch layouts |
+| Update reminder | Shows a tag at the top when a new version is on GitHub (admins only), linking to the release notes and download |
 | Layout | Drag, resize, add and remove panels; accent colour, palettes, dark mode, compact mode; export and import presets; installable as a desktop app (PWA) |
 | Sharing | Read-only public link, revocable admin links, and a separate host link (`/host`) for the streamer |
 | Room switching | Peek at other live rooms from a list you control without touching your own records |
@@ -275,6 +305,7 @@ The danmaku connection uses [blivedm](https://github.com/xfgryujk/blivedm) by xf
 | `public_url` | Your public address if you expose the page (for the "tunnel is down" alert). |
 | `discord_webhook` | Discord webhook for connection alerts and the daily health check. Empty = no alerts. |
 | `bot_say_url` | Optional local endpoint that sends danmaku from a bot account (POST `{"text": ...}`, header `X-Local-Token` read from `bot.token`). |
+| `update_check` | Check GitHub for new versions, default `true`. Set `false` to turn it off (or pass `--no-update-check`). |
 
 Other local files (ignored by git and never included in release zips):
 
@@ -307,6 +338,7 @@ No artwork is included apart from the app icon. See [`static/art/README.md`](sta
 | QR login does nothing | Older copies were missing the `qrcode` dependency: run `pip install -r requirements.txt`, or download the new Windows package. |
 | People with the public link can't see revenue or history | By design: the public link is read-only. Send trusted people an admin link. |
 | Changing the title or area says no permission | These need the **streamer's own** Bilibili account, logged in by QR code (avatar left of the send box). |
+| Which version am I on? | Hover over the "new version" tag, or run `python\python.exe server.py --version` in the folder (`python server.py --version` from source). |
 | Text-to-speech is silent | Browsers only play sound after you've clicked the page once. Voices come from your operating system. |
 
 ## Data and privacy
@@ -314,7 +346,7 @@ No artwork is included apart from the app icon. See [`static/art/README.md`](sta
 - All data (archives, viewer notes, settings, login info) stays in the local `data/` folder and is never uploaded.
 - Accounts logged in from the page are stored only in `data/accounts/` on the computer; the browser just gets a random token.
 - Admin links are stored only as hashes and stop working as soon as they're revoked.
-- No analytics. The only outside connections are to Bilibili itself and to the Discord webhook you configure.
+- No analytics. The only outside connections are to Bilibili itself, the Discord webhook you configure, and a once-a-day request to GitHub for the latest version number (no account or room info is sent; turn it off with `update_check`).
 
 ## Tests
 

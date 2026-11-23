@@ -962,6 +962,14 @@ body.fdrag iframe { pointer-events: none; }
 #warnbar[hidden] { display: none; }
 #verbar { position: fixed; right: 16px; bottom: 16px; z-index: 155; padding: 8px 14px; border: 0; border-radius: 999px; background: var(--mist-d); color: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow); animation: gfx-in .3s ease both; }
 #verbar[hidden] { display: none; }
+/* GitHub 上有新版本：顶栏一个小标签（0.9.1） */
+.pill.upd { gap: 2px; padding: 1px 2px 1px 10px; background: var(--mist-d); color: #fff; font-weight: 600; }
+.pill.upd[hidden] { display: none; }
+.pill.upd a { color: inherit; text-decoration: none; }
+.pill.upd a::after { content: " · 看看"; font-weight: 400; opacity: .85; }
+.pill.upd a:hover { text-decoration: underline; }
+.pill.upd button { border: 0; background: none; color: inherit; font: inherit; font-size: 11px; width: 20px; height: 20px; padding: 0; border-radius: 50%; cursor: pointer; opacity: .8; }
+.pill.upd button:hover { background: rgb(255 255 255 / .2); opacity: 1; }
 #warnbar .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #warnbar small { opacity: .8; }
 #warnbar .btn { background: rgb(255 255 255 / .2); color: #fff; border: 0; }

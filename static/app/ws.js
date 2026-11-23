@@ -74,7 +74,7 @@ function connect() {
         mine.forEach((id, i) => setTimeout(() => window._ws?.readyState === 1 && window._ws.send(JSON.stringify({ cmd: 'sc_read', id, read: true })), 200 * (i + 1)));
         scRead = new Set([...have, ...mine]);
       }
-      renderLayout(); drawBanner(); drawConn(); drawSayAs(); drawPsets(); drawLinks();
+      renderLayout(); drawBanner(); drawConn(); drawSayAs(); drawPsets(); drawLinks(); drawUpd();
       if (S.admin && acct) window._ws.send(JSON.stringify({ cmd: 'acct_info', acct: acct.token }));  // 看看之前登录的号还在不在
       renderAll();
     } else if (type === 'dm') {
@@ -145,6 +145,8 @@ function connect() {
       S.sc_read = data; scRead = new Set(data.map(String)); renderSc();
     } else if (type === 'mutes') {
       askMutes();  // 有人被禁言 / 解除了：开着名单的话重新查一次
+    } else if (type === 'update') {  // GitHub 上出了新版本
+      S.update = data; drawUpd();
     } else if (type === 'connections') {
       S.connections = data; drawLinks();
     } else if (type === 'profiles') {
