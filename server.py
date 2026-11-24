@@ -39,6 +39,7 @@ from admin_links import AdminLinks, AdminSafeFormatter
 from daily_health import DailyHealth
 from public_limits import PublicLimits, client_ip
 import history_maintenance
+from ai_voice import AIVoice, Busy as VoiceBusy, VoiceError
 import updates
 from backend_limits import OperationError, OperationRate, WS_IMPORT_LIMIT, WS_NORMAL_LIMIT, operation_info, parse_operation
 
@@ -3837,6 +3838,36 @@ async def main():
         except validation.InputError as e:
             return web.json_response({'ok': False, 'msg': str(e)}, status=400)
 
+    # AI 音色（可选）：config.json 的 "ai_voice"，接本机的 GPT-SoVITS（见 README「AI 音色」）。
+    # 只给管理身份用（不然谁都能借这个声音说任意的话）。网页拿到 wav 自己播；服务没开、太忙就退回浏览器语音
+    ai_voice = AIVoice(cfg.get('ai_voice'))
+    if ai_voice.enabled:
+        log.info('AI 音色：%s（%s）', ai_voice.url, ai_voice.api)
+
+    async def tts_voices(request):
+        if not is_admin(request, links, args.port):
+            return web.json_response({'ok': False, 'voices': [], 'online': False}, status=403)
+        rows, online = await ai_voice.voices(bare)
+        return web.json_response({'ok': True, 'enabled': ai_voice.enabled, 'online': online, 'voices': rows},
+                                 headers={'Cache-Control': 'no-store'})
+
+    async def tts_speak(request):
+        if not is_admin(request, links, args.port):
+            raise web.HTTPForbidden(text='AI 音色需要管理身份')
+        q = request.query
+        try:
+            speed = float(q.get('speed') or 1)
+        except ValueError:
+            speed = 1.0
+        try:
+            wav = await ai_voice.speak(bare, q.get('voice', ''), q.get('text', ''), speed)
+        except VoiceBusy as e:
+            return web.json_response({'ok': False, 'msg': str(e)}, status=503)
+        except (VoiceError, aiohttp.ClientError, asyncio.TimeoutError) as e:
+            log.warning('AI 音色合成失败：%s', e or type(e).__name__)
+            return web.json_response({'ok': False, 'msg': str(e) or '合成失败'}, status=502)
+        return web.Response(body=wav, content_type='audio/wav', headers={'Cache-Control': 'private, max-age=3600'})
+
     app = web.Application(middlewares=[input_errors, public_rate, auth, remember_admin])
     app.router.add_get('/', index)
     app.router.add_get('/host', index)  # 主播专属链接用这个地址
@@ -3863,6 +3894,8 @@ async def main():
     app.router.add_get('/api/preflight', preflight)
     app.router.add_get('/api/viewer/{uid}', viewer_info)
     app.router.add_get('/api/xrooms', xrooms_list)
+    app.router.add_get('/api/tts/voices', tts_voices)
+    app.router.add_get('/api/tts', tts_speak)
     app.router.add_static('/static', os.path.join(DIR, 'static'))
 
     cookies = make_cookies(load_cookie()) if not args.demo else {}

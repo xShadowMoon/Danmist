@@ -1,23 +1,75 @@
 // 弹幕姬主页面 · 语音朗读、提示声
 // 这几个文件按顺序加载，共用同一套全局变量。加载时只能直接用前面文件里的东西，用后面文件的函数要放进回调里
-/* ---------- 语音朗读（浏览器自带语音） ---------- */
+/* ---------- 语音朗读（浏览器自带语音 + AI 音色） ---------- */
 const synth = window.speechSynthesis;
-const tts = { queue: [], cur: null, startedAt: 0, utt: null };
+const tts = { queue: [], cur: null, startedAt: 0, utt: null, audio: null };
 let voices = [];
 function loadVoices() { voices = synth ? synth.getVoices() : []; fillVoices(); }
 function fillVoices() {
   const sel = $('voicesel');
   const zh = voices.filter(v => /^zh|cmn/i.test(v.lang));
   const rest = voices.filter(v => !/^zh|cmn/i.test(v.lang));
+  // AI 音色（2026-11-24）：服务器上的 GPT-SoVITS，值写成 ai:名字；只有管理身份看得到
+  const cur = cfg.tts.voice, ais = AI.voices.map(v => [v.id, v.name + (AI.online ? '' : '（服务没开）')]);
+  if (isAiVoice(cur) && !ais.some(([id]) => 'ai:' + id === cur)) ais.push([cur.slice(3), cur.slice(3) + '（暂时用不了）']);
   sel.innerHTML = '<option value="">自动（优先中文女声）</option>' +
+    (ais.length ? '<optgroup label="AI 音色">' + ais.map(([id, n]) => `<option value="ai:${esc(id)}">${esc(n)}</option>`).join('') + '</optgroup>' : '') +
     zh.map(v => `<option value="${esc(v.name)}">${esc(v.name)}${v.localService ? '' : '（要联网）'}</option>`).join('') +
     (rest.length ? '<optgroup label="其它语言">' + rest.map(v => `<option value="${esc(v.name)}">${esc(v.name)}</option>`).join('') + '</optgroup>' : '');
-  sel.value = cfg.tts.voice;
-  if (sel.value !== cfg.tts.voice) sel.value = '';
+  sel.value = cur;
+  if (sel.value !== cur) sel.value = '';
+  drawAiRows();
 }
+/* AI 音色：网页把要念的字发给服务器（/api/tts），服务器交给本机的 GPT-SoVITS 合成，拿回 wav 播放。
+   正在念这一句时就把后面两句先合成好；合成失败、太慢（AI_WAIT）就这一句改用浏览器语音，不会卡住。 */
+const AI = { voices: [], online: false, failAt: 0 };
+const AI_WAIT = 10000;
+const isAiVoice = v => String(v || '').startsWith('ai:');
+const aiId = () => isAiVoice(cfg.tts.voice) ? cfg.tts.voice.slice(3) : '';
+// 浏览器语音的语速默认 1.15 倍，AI 声音 1 倍就是正常说话的速度，所以按比例换算
+const aiSpeed = () => Math.min(1.6, Math.max(0.6, Math.round(cfg.tts.rate / 1.15 * 100) / 100));
+function loadAiVoices() {
+  if (!S.admin) { if (AI.voices.length) { AI.voices = []; fillVoices(); } return; }
+  fetch('api/tts/voices', { cache: 'no-store' }).then(r => r.json()).then(j => {
+    const was = JSON.stringify([AI.voices, AI.online]);
+    AI.voices = Array.isArray(j.voices) ? j.voices : []; AI.online = !!j.online;
+    if (JSON.stringify([AI.voices, AI.online]) !== was) fillVoices();
+  }).catch(() => {});
+}
+setTimeout(loadAiVoices, 1500); setTimeout(loadAiVoices, 6000);  // 刚打开时还不知道是不是管理身份，多问一次
+setInterval(loadAiVoices, 60000);
+// 弹幕和 SC 是观众自己写的字（free）；默认 AI 声音只念感谢礼物、上舰这些固定的话，免得有人借主播的声音说怪话
+function useAi(it) {
+  const id = aiId();
+  if (!id || !AI.online || !AI.voices.some(v => v.id === id) || Date.now() - AI.failAt < 20000) return false;
+  return cfg.tts.aiScope === 'all' || !it.free;
+}
+function aiFetch(it) {
+  if (it.ai !== undefined) return;
+  it.ai = false;
+  if (!useAi(it)) return;
+  const ctl = new AbortController();
+  it.abort = () => ctl.abort();
+  it.ai = fetch('api/tts?' + new URLSearchParams({ voice: aiId(), text: it.text, speed: aiSpeed() }), { signal: ctl.signal })
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+    .then(b => it.dropped ? null : (it.url = URL.createObjectURL(b)))
+    .catch(e => { if (e.name !== 'AbortError') { AI.failAt = Date.now(); if (String(e.message) === '403') AI.voices = []; } return null; });
+}
+const prefetch = () => tts.queue.slice(0, 2).forEach(aiFetch);
+function dropItem(it) { it.dropped = true; it.abort?.(); if (it.url) URL.revokeObjectURL(it.url); it.url = null; }
+// 选了 AI 音色才显示「AI 声音念哪些」；音调对 AI 声音不起作用
+function drawAiRows() {
+  const on = isAiVoice(cfg.tts.voice);
+  document.querySelectorAll('.ai-only').forEach(el => el.style.display = on ? '' : 'none');
+  const n = $('ainote');
+  if (n) n.textContent = !on ? '' : !AI.online ? 'AI 音色服务现在没开，会先用浏览器的声音念。'
+    : cfg.tts.aiScope === 'all' ? '弹幕和 SC 也用 AI 声音念。观众写什么就会念什么，屏蔽词照样有用。'
+    : '弹幕和 SC 是观众自己写的字，照常用浏览器的声音念；礼物、上舰、关注、进房的感谢用 AI 声音。';
+}
+document.addEventListener('change', e => { if (e.target.id === 'voicesel' || e.target.dataset?.k === 'tts.aiScope') drawAiRows(); });
 if (synth) { loadVoices(); synth.onvoiceschanged = loadVoices; }
 function pickVoice() {
-  if (cfg.tts.voice) { const v = voices.find(x => x.name === cfg.tts.voice); if (v) return v; }
+  if (cfg.tts.voice && !isAiVoice(cfg.tts.voice)) { const v = voices.find(x => x.name === cfg.tts.voice); if (v) return v; }
   const zh = voices.filter(v => /^zh[-_]CN|cmn/i.test(v.lang));
   return zh.find(v => /Xiaoxiao|晓晓/.test(v.name)) || zh.find(v => /Natural/.test(v.name)) || zh.find(v => /Huihui|慧慧|Yaoyao|瑶瑶/.test(v.name))
     || zh.find(v => v.localService) || zh[0] || voices.find(v => /^zh/i.test(v.lang)) || null;
@@ -45,44 +97,79 @@ function blocked(text) {
   const words = String(cfg.tts.block).split(/[\s,，、;；]+/).filter(Boolean);
   return words.some(w => String(text).toLowerCase().includes(w.toLowerCase()));
 }
-// prio：2 = SC/上舰，1 = 礼物，0 = 弹幕/进房
-function say(text, prio = 0, force = false) {
-  if (!synth || (!cfg.tts.on && !force) || !text) return;
+// prio：2 = SC/上舰，1 = 礼物，0 = 弹幕/进房；free：里面有观众自己写的字（弹幕、SC）
+function say(text, prio = 0, force = false, free = false) {
+  if ((!synth && !aiId()) || (!cfg.tts.on && !force) || !text) return;
   if (S.side && !force) return;  // 正在看别的直播间：不读（2026-11-21 用户要求；回到主播自动恢复，设置不变）
-  const item = { text, prio };
+  const item = { text, prio, free };
   const i = tts.queue.findIndex(x => x.prio < prio);
   if (i < 0) tts.queue.push(item); else tts.queue.splice(i, 0, item);
   const low = tts.queue.filter(x => x.prio === 0);
   const keep = cfg.tts.zeroDelay ? 1 : 15;
-  if (low.length > keep) { const drop = new Set(low.slice(0, low.length - keep)); tts.queue = tts.queue.filter(x => !drop.has(x)); }
-  if (tts.queue.length > 40) tts.queue.splice(40);
+  if (low.length > keep) { const drop = new Set(low.slice(0, low.length - keep)); drop.forEach(dropItem); tts.queue = tts.queue.filter(x => !drop.has(x)); }
+  if (tts.queue.length > 40) tts.queue.splice(40).forEach(dropItem);
   pump();
 }
 function pump() {
   updateTtsBar();
-  if (!synth || tts.cur || !tts.queue.length) return;
+  if (tts.cur) prefetch();  // 正在念的时候，后面排着的先合成
+  if (tts.cur || !tts.queue.length) return;
   if (!activated()) { ttsUnlockHint(); return; }
   const it = tts.queue.shift();
+  tts.cur = it; tts.startedAt = Date.now();
+  aiFetch(it);
+  prefetch();
+  if (it.ai) {
+    // 等 AI 合成好再念；等太久就这一句改用浏览器语音
+    const late = setTimeout(() => { if (tts.cur === it && !it.started) { dropItem(it); speakBrowser(it); } }, AI_WAIT);
+    it.ai.then(url => {
+      clearTimeout(late);
+      if (tts.cur !== it || it.started) return;
+      if (url) playAi(it, url); else speakBrowser(it);
+    });
+  } else speakBrowser(it);
+  updateTtsBar();
+}
+const ttsNext = it => { if (tts.cur !== it) return; dropItem(it); tts.cur = null; tts.utt = null; tts.audio = null; updateTtsBar(); setTimeout(pump, 80); };
+function playAi(it, url) {
+  it.started = true;
+  const a = new Audio(url);
+  a.volume = Math.min(1, Math.max(0, cfg.tts.volume));
+  tts.audio = a; tts.startedAt = Date.now();
+  a.onended = () => ttsNext(it);
+  a.onerror = () => ttsNext(it);
+  a.play().catch(() => { if (tts.cur === it && tts.audio === a) { tts.audio = null; dropItem(it); speakBrowser(it); } });
+}
+function speakBrowser(it) {
+  it.started = true;
+  if (!synth) return ttsNext(it);
   const u = new SpeechSynthesisUtterance(it.text);
   const v = pickVoice();
   if (v) u.voice = v;
   u.lang = v?.lang || 'zh-CN';
   u.volume = cfg.tts.volume; u.rate = cfg.tts.rate; u.pitch = cfg.tts.pitch;
-  const done = () => { if (tts.utt !== u) return; tts.cur = null; tts.utt = null; updateTtsBar(); setTimeout(pump, 80); };
+  const done = () => { if (tts.utt === u) ttsNext(it); };
   u.onend = done; u.onerror = done;
-  tts.cur = it; tts.utt = u; tts.startedAt = Date.now();  // 留着引用，不然 Chrome 有时不触发 onend
+  tts.utt = u; tts.startedAt = Date.now();  // 留着引用，不然 Chrome 有时不触发 onend
   synth.speak(u);
-  updateTtsBar();
+}
+// 停掉正在念的这一句（不管是浏览器语音、AI 声音，还是还在等 AI 合成）
+function stopCur() {
+  const it = tts.cur;
+  tts.cur = null; tts.utt = null;
+  if (tts.audio) { tts.audio.onended = tts.audio.onerror = null; tts.audio.pause(); tts.audio = null; }
+  if (it) dropItem(it);
+  if (synth) synth.cancel();
 }
 setInterval(() => {
   if (!tts.cur) return;
   const v = tts.utt?.voice;
-  // Chrome 的联网语音读太久会卡住，掐掉继续下一条
-  if (Date.now() - tts.startedAt > 30000) { synth.cancel(); tts.cur = null; tts.utt = null; pump(); }
-  else if (v && !v.localService && synth.speaking) { synth.pause(); synth.resume(); }
+  // Chrome 的联网语音读太久会卡住，掐掉继续下一条；AI 声音一句最多 150 字，给 90 秒
+  if (Date.now() - tts.startedAt > (tts.audio ? 90000 : tts.utt ? 30000 : AI_WAIT + 5000)) { stopCur(); pump(); }
+  else if (tts.utt && v && !v.localService && synth.speaking) { synth.pause(); synth.resume(); }
 }, 5000);
-function ttsSkip() { if (synth) synth.cancel(); tts.cur = null; tts.utt = null; setTimeout(pump, 50); }
-function ttsClear() { tts.queue = []; if (tts.cur && synth) synth.cancel(); tts.cur = null; tts.utt = null; updateTtsBar(); }
+function ttsSkip() { stopCur(); setTimeout(pump, 50); }
+function ttsClear() { tts.queue.forEach(dropItem); tts.queue = []; stopCur(); updateTtsBar(); }
 function updateTtsBar() {
   const bar = $('ttsbar'), show = !!tts.cur;
   if (bar.classList.contains('show') !== show) bar.classList.toggle('show', show);
@@ -92,11 +179,12 @@ function updateTtsBar() {
 $('ttsskip').onclick = ttsSkip;
 $('ttsclear').onclick = ttsClear;
 // 插队马上读（试听、重听 SC 用）：朗读开关关着也读；正在读的那句先停掉
-function sayNow(text) {
-  if (!synth || !text) return;
+function sayNow(text, free = false) {
+  if ((!synth && !aiId()) || !text) return;
+  tts.queue.filter(x => x.now).forEach(dropItem);
   tts.queue = tts.queue.filter(x => !x.now);
-  tts.queue.unshift({ text, prio: 9, now: true });
-  if (tts.cur) { synth.cancel(); tts.cur = null; tts.utt = null; }
+  tts.queue.unshift({ text, prio: 9, now: true, free });
+  if (tts.cur) stopCur();
   setTimeout(pump, 50);
 }
 // 每种消息读出来的话：真实朗读和试听用同一套，试听听到的就是直播时会读的
@@ -112,7 +200,7 @@ const SAMPLE = {
   enter: () => fill(cfg.tts.tpl.enter, { name: '晚安主播' }),
   follow: () => fill(cfg.tts.tpl.follow, { name: '今天也想听歌' }),
 };
-document.addEventListener('click', e => { const b = e.target.closest('[data-tryt]'); if (b) sayNow(SAMPLE[b.dataset.tryt]()); });
+document.addEventListener('click', e => { const b = e.target.closest('[data-tryt]'); if (b) sayNow(SAMPLE[b.dataset.tryt](), ['dm', 'sc'].includes(b.dataset.tryt)); });
 
 // 各种消息怎么读
 function speakDm(d) {
@@ -124,12 +212,12 @@ function speakDm(d) {
   if (blocked(d.text) || blocked(d.name)) return;
   const text = clean(d.text, T.maxLen);
   if (!text) return;
-  say(fill(T.readName ? T.tpl.dm : '{text}', { name: shortName(d.name), text }), 0);
+  say(fill(T.readName ? T.tpl.dm : '{text}', { name: shortName(d.name), text }), 0, false, true);
 }
 function speakSc(s) {
   const T = cfg.tts;
   if (!T.on || !T.sc || isMuted(s.uid) || blocked(s.text)) return;
-  say(scText(s), 2);
+  say(scText(s), 2, false, true);
 }
 const giftWait = new Map();
 function speakGiftLater(g) {

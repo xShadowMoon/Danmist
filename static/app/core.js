@@ -31,7 +31,7 @@ const DEF = {
   sc: { size: 14.5, read: 'dim', avatar: true, bar: true, unreadTop: false, autoRead: false, min: 0 },
   accent: '', bgAlpha: 85, fs: { sc: 100, gift: 100, enter: 100, users: 100, req: 100 },
   layout: clone(DEF_LAYOUT),
-  tts: { on: false, voice: '', volume: 1, rate: 1.15, pitch: 1,
+  tts: { on: false, voice: '', aiScope: 'thanks', volume: 1, rate: 1.15, pitch: 1,
     dm: true, sc: true, gift: true, giftMin: 1, guard: true, enter: false, enterGuardOnly: true, follow: false,
     readName: true, readEmoticon: false, readPrice: true, zeroDelay: false, maxLen: 40, block: '', muted: [],
     skipBot: true, skipAnchor: true, tpl: { ...DEF_TPL } },

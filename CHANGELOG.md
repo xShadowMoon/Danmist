@@ -5,6 +5,26 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.2 · 2026-11-24
+
+### 朗读可以用 AI 音色（GPT-SoVITS）· AI voices for text-to-speech
+
+- 可选：在 `config.json` 里接上本机的 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)（官方 `api_v2.py`），「设置 → 朗读 → 声音」里就会多出「AI 音色」，可以用自己训练的声音朗读。怎么训练、怎么写配置见 README 的「AI 音色」。
+  Optional: connect a local GPT-SoVITS server (the official `api_v2.py`) in `config.json` and "AI voices" appear under Settings → Text-to-speech → Voice, so you can read aloud in a voice you trained. See "AI voices" in the README for training and setup.
+- 默认 AI 声音只念礼物、上舰、关注、进房的感谢；弹幕和 SC 是观众写的字，照常用浏览器的声音。想全部用 AI 声音，把「AI 声音念」改成「全部」。
+  By default the AI voice only reads the thank-you lines for gifts, guards, follows and entries; danmaku and SC (written by viewers) keep the browser voice. Switch "AI voice reads" to "everything" to change that.
+- 只有管理身份能用。正在念的时候后面两句先合成好；AI 声音没开或者 10 秒还没合成好，这一句就改用浏览器的声音。
+  Admins only. The next two lines are prepared while one plays; if the AI server is off or a line takes more than 10 seconds, that line falls back to the browser voice.
+- 弹幕姬本身不带模型和 PyTorch，不接 GPT-SoVITS 就和以前完全一样。
+  No models or PyTorch are bundled; without GPT-SoVITS nothing changes.
+
+### 怎么更新 · How to update
+
+关掉弹幕姬 → 下载下面的 zip → 解压覆盖到原来的文件夹、全部替换 → 双击 `start.bat`。`config.json` 和 `data\` 不在压缩包里，设置和存档都会保留。
+Close the board, download the zip below, extract it over your existing folder (replace all) and run `start.bat`. `config.json` and `data\` are not in the zip, so your settings and archives are kept.
+
+---
+
 ## v0.9.1 · 2026-11-23
 
 ### 修复 · Fix

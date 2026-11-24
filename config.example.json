@@ -7,5 +7,10 @@
   "public_url": "",
   "discord_webhook": "",
   "bot_say_url": "",
-  "update_check": true
+  "update_check": true,
+  "ai_voice": {
+    "url": "",
+    "api": "api_v2",
+    "voices": []
+  }
 }

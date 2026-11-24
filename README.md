@@ -59,7 +59,7 @@
 | 礼物和上舰 | 礼物记录、刚送的礼物播 B 站官方动图、大礼物和上舰特效（优先用 B 站官方特效）、送礼榜（本场 / 本周 / 本月）、「开通 / 续费」「陪伴第 N 天」、下播期间收到的单独列出并可以标「已感谢」 |
 | 观众 | 观众卡片（本场弹幕、送了多少、以前来过的记录）、备注、舰长名单和到期时间、在线的人、进房和新关注 |
 | 点歌 | 歌单和完整曲库、弹幕点歌和点歌规则、「正在唱」「已唱」、拖动排序和分组、歌词提词小窗 |
-| 朗读和提示音 | 用浏览器自带的声音朗读弹幕、SC、礼物，可以设过滤条件和屏蔽词；不同事件可以配不同提示音 |
+| 朗读和提示音 | 用浏览器自带的声音朗读弹幕、SC、礼物，可以设过滤条件和屏蔽词；可选接本机的 GPT-SoVITS，用自己训练的 AI 音色念；不同事件可以配不同提示音 |
 | 历史 | 每场完整保存弹幕、礼物、SC 和上舰，概览里有收益、送礼榜、礼物和上舰统计 |
 | OBS 弹幕 | `/obs` 8 种样式（月见、雾凇、星扣、雾月、气泡、票根、薄雾、留言本），10 款开源字体，描边阴影、按身份配色、屏蔽词，全部在 `/obs-setup` 里点选 |
 | OBS 歌单 | `/obs-songs` 5 种样式（卡片、细条、唱片、薄雾、留言本） |
@@ -122,11 +122,51 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 | `discord_webhook` | 掉线提醒和每日体检发到的 Discord webhook。留空就不发。 |
 | `bot_say_url` | 可选：用机器人账号发弹幕的本地接口（POST `{"text": ...}`，请求头 `X-Local-Token` 读自 `bot.token`）。 |
 | `update_check` | 是否检查有没有新版本，默认 `true`。写 `false` 就不检查（也可以加命令行参数 `--no-update-check`）。 |
+| `ai_voice` | 可选：朗读用的 AI 音色（GPT-SoVITS），见下面「AI 音色」。`url` 留空就不用。 |
 
 其他本地文件（都不会进 git，也不会打进 Release 压缩包）：
 
 - `admin.key`：里面写一串随机字符就能开启一把长期管理链接（`/?admin=<那串字符>`）。更推荐在页面「设置 → 链接」里新建可作废的管理链接。
 - `data/`：直播存档、设置、观众备注和登录的账号。记得备份，千万别公开。
+
+### AI 音色（GPT-SoVITS，可选）
+
+朗读除了浏览器自带的声音，还可以用 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 训练出来的声音，比如你自己的声音。弹幕姬只负责把要念的字发给本机的 GPT-SoVITS，拿回声音在网页里播放，安装包里不带模型，也不带 PyTorch。
+
+**需要**：NVIDIA 显卡（显存 6 GB 以上比较稳）和 GPT-SoVITS（官方整合包或源码都行）。没有显卡也能跑，只是很慢，不适合直播时用。
+
+1. **训练**：打开 GPT-SoVITS 的 WebUI，准备几分钟去掉背景音乐的干净人声，按 WebUI 的步骤切分、转写、训练，得到一个 GPT 模型（`.ckpt`）和一个 SoVITS 模型（`.pth`）。再挑一段 3 到 10 秒、说话清楚的录音当参考音频，记下它说的是什么。也可以直接用别人分享的模型（注意授权）。
+2. **开服务**：在 GPT-SoVITS 文件夹里用它自带的 Python 运行 `api_v2.py -a 127.0.0.1 -p 9880`，看到监听 9880 就好了。
+3. **写配置**：在 `config.json` 里加上（路径换成你自己的，Windows 路径里的反斜杠要写成 `/` 或者两个反斜杠）：
+
+   ```json
+   "ai_voice": {
+     "url": "http://127.0.0.1:9880",
+     "api": "api_v2",
+     "voices": [
+       {
+         "name": "我的声音",
+         "ref_audio": "D:/GPT-SoVITS/参考音频/我.wav",
+         "ref_text": "参考音频里说的那句话",
+         "ref_lang": "zh",
+         "gpt": "D:/GPT-SoVITS/GPT_weights_v2Pro/我的声音-e15.ckpt",
+         "sovits": "D:/GPT-SoVITS/SoVITS_weights_v2Pro/我的声音_e8_s200.pth"
+       }
+     ]
+   }
+   ```
+
+   可以写好几个音色，切换音色时会自动换模型。每个音色还能加 `"speed": 1.1`（语速）、`"text_lang"`（念的语言，默认 `zh`）、`top_k`、`top_p`、`temperature`。`ref_lang` 是参考音频的语言：`zh`、`ja`、`en`、`ko`、`yue`。
+4. **重启弹幕姬**，在「设置 → 朗读 → 声音」里选「AI 音色」下面的声音。
+
+**说明**
+
+- 只有管理身份能用 AI 音色（普通链接看不到），不然谁都能拿这个接口让你的声音说任意的话。声音在打开页面的那台电脑上播放。
+- 「AI 声音念」默认是「只念感谢」：礼物、上舰、关注、进房的感谢用 AI 声音；弹幕和 SC 是观众自己写的字，照常用浏览器的声音，免得有人借你的声音说怪话被剪出去。想全部用 AI 声音，改成「全部」（屏蔽词照样有用）。
+- 正在念一句时，后面两句会先合成好。第一次合成要装模型，可能要半分钟；之后一句一般几秒。等了 10 秒还没好，或者服务没开，这一句就改用浏览器的声音，不会卡住。
+- 声音的语速跟着「语速」滑块走（1.15 倍算正常速度），「音调」对 AI 声音不起作用。
+- 也支持「一个音色一个文件夹」的服务：`"api": "folder"`，服务要提供 `GET /voices`（返回 `{"voices": ["名字", ...]}`）和 `POST /tts?voice=名字&speed=1.0`（请求体是要念的文字，返回 wav）。`names` 可以给音色起显示的名字，`hide` 可以藏掉不想显示的。
+- 用真人的声音之前，先征得本人同意；对外发的时候说明是 AI 合成。
 
 ### 分享给房管或主播
 
@@ -243,7 +283,7 @@ Running from source: `git pull`, `pip install -r requirements.txt`, then restart
 | Gifts and guards | Gift log, official animated gift icons, big gift and guard purchase effects (official Bilibili effects when available), gift ranking for this stream / week / month, "new / renewed" and "day N together", gifts received while offline listed separately with a "thanked" checkbox |
 | Viewers | Viewer card (this stream's messages, total spent, past visits), notes, guard list with expiry, who is online, entries and new follows |
 | Song requests | Song list and full song library, requests from danmaku with rules, "now singing" / "done", drag to reorder, groups, lyrics prompter |
-| Text-to-speech and sounds | Read danmaku, SC and gifts aloud with the browser's voices, with filters and blocked words; separate notification sounds per event |
+| Text-to-speech and sounds | Read danmaku, SC and gifts aloud with the browser's voices, with filters and blocked words; optionally use your own trained voice through a local GPT-SoVITS; separate notification sounds per event |
 | History | Every stream archived with full danmaku, gifts, SC and guards; per-stream summary with revenue and rankings |
 | OBS danmaku overlay | `/obs` with 8 styles (moon, rime, clip, luna, bubble, ticket, mist, diary), 10 open-source fonts, outline and shadow, colours by guard level, blocked words, all configured visually at `/obs-setup` |
 | OBS song overlay | `/obs-songs` with 5 styles (card, strip, vinyl, mist, diary) |
@@ -306,11 +346,51 @@ The danmaku connection uses [blivedm](https://github.com/xfgryujk/blivedm) by xf
 | `discord_webhook` | Discord webhook for connection alerts and the daily health check. Empty = no alerts. |
 | `bot_say_url` | Optional local endpoint that sends danmaku from a bot account (POST `{"text": ...}`, header `X-Local-Token` read from `bot.token`). |
 | `update_check` | Check GitHub for new versions, default `true`. Set `false` to turn it off (or pass `--no-update-check`). |
+| `ai_voice` | Optional AI voices for text-to-speech (GPT-SoVITS), see "AI voices" below. Leave `url` empty to turn it off. |
 
 Other local files (ignored by git and never included in release zips):
 
 - `admin.key`: put a random string in it to enable a long-lived admin link (`/?admin=<string>`). Revocable admin links created under Settings → Links are the better option.
 - `data/`: stream archives, settings, viewer notes and logged-in accounts. Back it up; never publish it.
+
+### AI voices (GPT-SoVITS, optional)
+
+Besides the browser's voices, text-to-speech can use a voice trained with [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS), for example your own. The board only sends the text to a GPT-SoVITS server on your computer and plays the audio in the page; no models or PyTorch are bundled.
+
+**You need** an NVIDIA GPU (6 GB of VRAM or more is comfortable) and GPT-SoVITS (the official bundle or source). It runs on CPU too, but too slowly for live use.
+
+1. **Train**: in the GPT-SoVITS WebUI, take a few minutes of clean speech without music and follow the WebUI steps (slice, transcribe, train) to get a GPT model (`.ckpt`) and a SoVITS model (`.pth`). Pick a clear 3–10 second clip as the reference audio and note what it says. Shared models work too (mind their licence).
+2. **Start the server**: in the GPT-SoVITS folder, run `api_v2.py -a 127.0.0.1 -p 9880` with its Python.
+3. **Configure**: add this to `config.json` (use your own paths; write Windows paths with `/` or double backslashes):
+
+   ```json
+   "ai_voice": {
+     "url": "http://127.0.0.1:9880",
+     "api": "api_v2",
+     "voices": [
+       {
+         "name": "My voice",
+         "ref_audio": "D:/GPT-SoVITS/ref/me.wav",
+         "ref_text": "What the reference clip says",
+         "ref_lang": "zh",
+         "gpt": "D:/GPT-SoVITS/GPT_weights_v2Pro/me-e15.ckpt",
+         "sovits": "D:/GPT-SoVITS/SoVITS_weights_v2Pro/me_e8_s200.pth"
+       }
+     ]
+   }
+   ```
+
+   You can list several voices; models are switched automatically. Each voice can also set `"speed"`, `"text_lang"` (language to speak, default `zh`), `top_k`, `top_p` and `temperature`. `ref_lang` is the reference clip's language: `zh`, `ja`, `en`, `ko` or `yue`.
+4. **Restart the board** and pick the voice under "AI voices" in Settings → Text-to-speech → Voice.
+
+**Notes**
+
+- Only admins can use AI voices (the public link doesn't see them); otherwise anyone could make your voice say anything. Audio plays on the computer that has the page open.
+- "AI voice reads" defaults to "thanks only": gifts, guards, follows and entries are thanked in the AI voice, while danmaku and SC (written by viewers) keep the browser voice, so nobody can put words in your mouth. Switch it to "everything" if you like (blocked words still apply).
+- The next two lines are synthesised while the current one plays. The very first line loads the model and can take half a minute; after that a line usually takes a few seconds. If a line isn't ready within 10 seconds, or the server is off, that line falls back to the browser voice.
+- Speed follows the "Speed" slider (1.15× is normal speed); "Pitch" doesn't apply to AI voices.
+- A "one folder per voice" server is also supported with `"api": "folder"`: it must offer `GET /voices` (returning `{"voices": ["name", ...]}`) and `POST /tts?voice=name&speed=1.0` (the body is the text; returns wav). `names` sets display names and `hide` hides voices.
+- Get the person's consent before cloning a real voice, and say it's AI-generated when you share it.
 
 ### Sharing with moderators or the streamer
 
