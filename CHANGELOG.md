@@ -5,6 +5,20 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.7 · 2026-11-25
+
+### 新图标和看板娘 · New icon and mascot
+
+- 图标换成带看板娘的定稿版（雾冬Hanaki 坐在左下角，小尺寸自动用不带小人的版本）。设置 → 更多 → 「关于」里能看到版本号和看板娘的直播间。
+  The icon now shows the mascot 雾冬Hanaki in the corner (small sizes use a plain version). Settings → More → About shows the version and the mascot's live room.
+
+### 怎么更新 · How to update
+
+v0.9.5 起：顶栏点「下载更新」→「重启生效」。更早的版本：下载安装包直接装，或者下载 zip 解压覆盖。
+From v0.9.5: click **download update** → **restart** in the top bar. Older versions: run the installer, or extract the zip over your folder.
+
+---
+
 ## v0.9.6 · 2026-11-25
 
 ### 安装包 · Installer

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>雾幕</title>
-<link rel="icon" href="/static/art/icon-64.png">
+<link rel="icon" href="/static/art/icon-32.png" sizes="32x32"><link rel="icon" href="/static/art/icon-64.png" sizes="64x64">
 <link rel="manifest" id="manifest" href="/static/manifest.json">
 <link rel="apple-touch-icon" href="/static/art/icon-192.png">
 <script>if (location.pathname.startsWith('/host')) document.getElementById('manifest').href = '/static/manifest-host.json';</script>
@@ -423,6 +423,9 @@
 
     <div class="spage" data-sp="more">
       <h2 class="ptitle">更多</h2>
+      <fieldset><legend>关于</legend>
+        <div class="about"><img src="/static/art/icon-64.png" alt=""><div><b>雾幕 Danmist</b><small id="aboutver"></small><span>看板娘 <a href="https://live.bilibili.com/373317" target="_blank" rel="noopener">雾冬Hanaki</a> · <a href="https://github.com/xShadowMoon/Danmist" target="_blank" rel="noopener">GitHub</a></span></div></div>
+      </fieldset>
       <fieldset id="dkbox" hidden><legend>桌面版</legend>
         <div class="opt r" title="下次打开雾幕时用哪种（双击 start.bat 或桌面上的「雾幕」）"><span>打开方式</span><div class="ctl"><span class="seg" id="dkmode"><button type="button" data-val="app">软件窗口</button><button type="button" data-val="web">浏览器</button></span></div><span></span></div>
         <div class="chips"><button class="btn sm" id="dkshortcut"><i class="ic" data-ic="download"></i> 桌面快捷方式</button><button class="btn sm" id="dkcheck" title="去 GitHub 看有没有新版本">检查更新</button><span class="mtip" id="dkver"></span></div>

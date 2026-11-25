@@ -1228,6 +1228,12 @@ body.side .saybar, body.side #tprebtn, body.side #tedit, body.side #golive { dis
 .pill.upd button.updact:hover { background: #eaf3fb; }
 .pill.upd button.updact:disabled { opacity: .75; cursor: default; }
 .pill.upd:has(.updact:not([hidden])) a::after { content: none; }
+.about { display: flex; align-items: center; gap: 12px; padding: 4px 2px; }
+.about img { width: 48px; height: 48px; border-radius: 24%; flex: none; }
+.about b { display: block; font-size: 14px; }
+.about small { color: var(--ink3); margin-left: 6px; }
+.about span { display: block; margin-top: 3px; font-size: 12.5px; color: var(--ink2); }
+.about a { color: var(--mist-d); }
 .disc { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--ink3); }
 .lk-tip { display: block; color: var(--ink3); padding: 2px 2px 4px; }
 .lkrow { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px dashed var(--line-soft); }

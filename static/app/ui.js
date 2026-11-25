@@ -397,7 +397,7 @@ function setHostLook() {
   const logo = document.querySelector('.brand .logo');
   if (logo && !logo.querySelector('img')) logo.innerHTML = '<img src="/static/art/icon-256.png" alt="">';
   const fav = document.querySelector('link[rel="icon"]');
-  if (fav) fav.href = '/static/art/icon-64.png';
+  if (fav) fav.href = "/static/art/icon-32.png";
 }
 
 /* ---------- 手机：一次只看一栏，底下一排按钮切换（2026-11-21） ---------- */

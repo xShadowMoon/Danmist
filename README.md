@@ -9,6 +9,8 @@
 [![Release](https://img.shields.io/github/v/release/xShadowMoon/Danmist?label=%E4%B8%8B%E8%BD%BD)](https://github.com/xShadowMoon/Danmist/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+看板娘：**[雾冬Hanaki](https://live.bilibili.com/373317)**（图标里的小人就是她，欢迎来直播间玩）
+
 给 B 站主播用的弹幕工作台。在自己电脑上运行，连上你的直播间：弹幕、礼物、SC、上舰、点歌都在一个网页里看，还能直接给 OBS 当弹幕和歌单的浏览器源。每一场直播都会自动存档，下播后随时回看。
 
 全部运行在你自己的电脑上，不需要服务器，也不会把数据传到别的地方。
@@ -259,6 +261,8 @@ python tests/smoke_demo.py    # 在 8390 端口启动演示服务器，检查页
 # Danmist (雾幕)
 
 [中文](#zh) | **English**
+
+Mascot: **[雾冬Hanaki](https://live.bilibili.com/373317)**, the girl in the icon. Come say hi on her stream!
 
 A self-hosted live-stream dashboard for **Bilibili Live** streamers. It runs on your own computer, connects to your live room, and puts danmaku, gifts, Super Chats, guard purchases and song requests in one customizable web page. It also serves OBS browser sources for on-stream danmaku and song-list overlays, and archives every stream so you can look back later.
 

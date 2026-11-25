@@ -186,6 +186,7 @@ document.addEventListener('click', e => {
   window._ws?.send(JSON.stringify({ cmd: b.dataset.cmd }));
 });
 function drawDesktop() {
+  if ($('aboutver')) $('aboutver').textContent = S.app_version ? 'v' + S.app_version : '';
   const D = S.desktop, box = $('dkbox');
   if (!box) return;
   box.hidden = !D;
