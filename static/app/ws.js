@@ -1,4 +1,4 @@
-// 弹幕姬主页面 · 和后台的连接：收消息、断线重连
+// 雾幕主页面 · 和后台的连接：收消息、断线重连
 // 这几个文件按顺序加载，共用同一套全局变量。加载时只能直接用前面文件里的东西，用后面文件的函数要放进回调里
 function drawBanner() {
   const b = $('banner'), show = !!S.admin && S.room.login_ok === false;
@@ -63,7 +63,7 @@ function connect() {
       S.userCount = data.user_count;
       S.dmTotal = data.dm_total ?? (data.users || []).reduce((a, u) => a + (u.dm || 0), 0);
       $('roomid').textContent = data.room_id ? '' : '演示';
-      if (!S.admin) { S.notes = null; for (const k of ['sc_read', 'admin_links', 'connections', 'library', 'songbook', 'profiles', 'title_presets', 'lan', 'music_rules']) delete S[k]; }  // 切到普通视角时，把管理身份才有的东西从页面里清掉
+      if (!S.admin) { S.notes = null; for (const k of ['sc_read', 'admin_links', 'connections', 'library', 'songbook', 'profiles', 'title_presets', 'lan', 'music_rules', 'desktop']) delete S[k]; }  // 切到普通视角时，把管理身份才有的东西从页面里清掉
       document.body.classList.toggle('nomoney', !S.admin);
       setViewer(!S.admin);
       document.body.classList.toggle('host', !!S.host);  // 主播专属链接：藏掉普通视角、链接管理、清零这些后台的东西
@@ -139,6 +139,7 @@ function connect() {
       if (String(data.cmd).startsWith('profile_')) { profileResult(data); return; }
       if (String(data.cmd).startsWith('admin_link_')) { linkResult(data); return; }
       if (data.cmd === 'lan_set') { note(data.msg, data.ok); if (!data.ok) drawLinks(); return; }
+      if (['update_download', 'update_restart', 'open_mode', 'make_shortcut'].includes(data.cmd)) { note(data.msg, data.ok); if (!data.ok && data.cmd === 'update_download') { updPct = -1; drawUpd(); } return; }
       if (['music_qr', 'music_poll', 'music_logout'].includes(data.cmd)) { musicLoginResult(data); return; }
       if (data.cmd === 'mute_list' || data.cmd === 'unmute') { muteResult(data); return; }
       if (data.cmd === 'news_get' || data.cmd === 'news_set') { newsResult(data); return; }
@@ -156,6 +157,10 @@ function connect() {
       askMutes();  // 有人被禁言 / 解除了：开着名单的话重新查一次
     } else if (type === 'update') {  // GitHub 上出了新版本
       S.update = data; drawUpd();
+    } else if (type === 'update_progress') {  // 桌面版：下载更新的进度（-1 = 失败）
+      updPct = data.pct; drawUpd();
+    } else if (type === 'desktop') {
+      S.desktop = data; updPct = null; drawUpd();
     } else if (type === 'face') {  // 没头像的人，后台去 B 站名片查到了（2026-11-25）：补上再画
       const f = data.face, uid = data.uid;
       const u = userOf(uid); if (u && !u.face) u.face = f;

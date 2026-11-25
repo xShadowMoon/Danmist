@@ -74,5 +74,34 @@ class FetchTests(unittest.TestCase):
         self.assertIsNone(asyncio.run(run()))
 
 
+class ApplyTests(unittest.TestCase):
+    def test_apply_keeps_settings_and_data(self):
+        import os, tempfile
+        with tempfile.TemporaryDirectory() as app:
+            for name, text in (('server.py', 'old'), ('config.json', 'mine'), ('start.bat', 'old bat')):
+                with open(os.path.join(app, name), 'w', encoding='utf-8') as f:
+                    f.write(text)
+            os.makedirs(os.path.join(app, 'data'))
+            with open(os.path.join(app, 'data', 'keep.json'), 'w', encoding='utf-8') as f:
+                f.write('x')
+            new = os.path.join(updates.update_dir(app), 'v9.9.9', 'pkg')
+            os.makedirs(os.path.join(new, 'static'))
+            for name, text in (('server.py', 'new'), ('config.json', 'theirs'), ('start.bat', 'new bat'), ('static/a.js', 'js')):
+                with open(os.path.join(new, name), 'w', encoding='utf-8') as f:
+                    f.write(text)
+            with open(os.path.join(updates.update_dir(app), 'ready.txt'), 'w', encoding='utf-8') as f:
+                f.write('9.9.9\n' + new + '\n')
+            self.assertEqual(updates.staged(app)[0], '9.9.9')
+            self.assertEqual(updates.apply(app, say=lambda t: None, later=('start.bat',)), '9.9.9')
+            read = lambda *p: open(os.path.join(app, *p), encoding='utf-8').read()
+            self.assertEqual(read('server.py'), 'new')
+            self.assertEqual(read('config.json'), 'mine')
+            self.assertEqual(read('data', 'keep.json'), 'x')
+            self.assertEqual(read('static', 'a.js'), 'js')
+            self.assertEqual(read('start.bat'), 'old bat')
+            self.assertEqual(read('start.bat.new'), 'new bat')
+            self.assertEqual(updates.staged(app), (None, None))
+
+
 if __name__ == '__main__':
     unittest.main()

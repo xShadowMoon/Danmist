@@ -1,4 +1,4 @@
-// 弹幕姬主页面 · 观众卡片、历史场次
+// 雾幕主页面 · 观众卡片、历史场次
 // 这几个文件按顺序加载，共用同一套全局变量。加载时只能直接用前面文件里的东西，用后面文件的函数要放进回调里
 /* ---------- 用户卡片 ---------- */
 document.addEventListener('click', e => {
@@ -302,7 +302,7 @@ async function histDm(sid, q, before) {
   $('hdmq').oninput = e => { clearTimeout(t); t = setTimeout(() => { box.innerHTML = '<div class="empty">搜索中…</div>'; histDm(sid, e.target.value.trim()); }, 300); };
 }
 $('histbtn').onclick = openHist;
-// OBS 弹幕设置：直接在弹幕姬里打开（第一次点才加载，平时不占资源；关掉就卸载预览）
+// OBS 弹幕设置：直接在雾幕里打开（第一次点才加载，平时不占资源；关掉就卸载预览）
 $('obsbtn').onclick = () => { closeAll(); $('obsframe').src = 'obs-setup'; $('obsbox').classList.add('open'); $('mask').classList.add('show'); };
 $('obsclose').onclick = closeAll;
 $('hback').onclick = loadHistList;

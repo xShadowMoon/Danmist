@@ -5,6 +5,34 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.5 · 2026-11-25
+
+### 改名「雾幕 Danmist」· Renamed to Danmist
+
+- 弹幕姬正式改名「雾幕」（英文 Danmist），换了新图标。功能、设置、存档都不变。
+  The app is now called 雾幕 (Danmist) with a new icon. Features, settings and archives are unchanged.
+
+### 桌面版 · Desktop app
+
+- 打开方式二选一：**软件窗口**（单独一个窗口，没有黑色窗口，桌面上有「雾幕」图标；关掉窗口就停）或者**浏览器**（跟以前一样）。第一次双击 `start.bat` 时会问，以后在「设置 → 更多 → 桌面版」里改，也能在那里补建桌面快捷方式。软件窗口用的是 Windows 自带的 Edge（没有就用 Chrome），不用另外装东西。
+  Choose how it opens: an **app window** (its own window, no console, a 雾幕 shortcut on the desktop; closing it stops the board) or the **browser** as before. `start.bat` asks the first time; change it later under Settings → More → Desktop, where you can also recreate the desktop shortcut. The app window uses the Edge (or Chrome) already on Windows.
+- 软件内更新：有新版本时顶栏出现「下载更新」，下载并核对校验码后变成「重启生效」，点了几秒后换成新版本，窗口不用关。`config.json`、`data\`、`python\` 不会被动。只有在运行雾幕的这台电脑上能点。
+  In-app updates: a **download update** button appears when a new version is out; after the download is verified it becomes **restart**, and a few seconds later you're on the new version without closing the window. `config.json`, `data\` and `python\` are left alone. Only available on the computer running the board.
+- 关掉软件窗口时会先把这一场存好再退出。
+  Closing the app window saves the current session before quitting.
+
+### 修复 · Fixes
+
+- 点歌放歌的网易云扫码：二维码带上新版 App 要的参数；扫完以后被拒绝时，以前一直停在「等扫码」看起来没反应，现在会显示原因并可以换一张。QQ 音乐扫码同样显示原因。
+  Song-request QR login: the NetEase code now carries the parameter newer apps expect, and a rejected login shows the reason (with a new-code button) instead of waiting forever. QQ Music login failures show their reason too.
+
+### 怎么更新 · How to update
+
+这一版还要手动更新一次：关掉雾幕 → 下载下面的 zip → 解压覆盖到原来的文件夹、全部替换 → 双击 `start.bat`。以后的版本就能在软件里直接更新了。
+Update by hand one last time: close the board, download the zip below, extract it over your existing folder (replace all) and run `start.bat`. From then on you can update inside the app.
+
+---
+
 ## v0.9.4 · 2026-11-25
 
 ### 修复 · Fixes

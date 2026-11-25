@@ -1,4 +1,4 @@
-// 弹幕姬主页面 · 功能一览和更新公告（内容在 static/news.json）、新版自动刷新
+// 雾幕主页面 · 功能一览和更新公告（内容在 static/news.json）、新版自动刷新
 // 这几个文件按顺序加载，共用同一套全局变量。加载时只能直接用前面文件里的东西，用后面文件的函数要放进回调里
 /* ---------- 功能一览 + 更新公告（内容在 static/news.json，上线新功能时改那个文件） ---------- */
 let NEWS = null;
@@ -160,16 +160,46 @@ $('verbar').onclick = () => location.reload();
 // GitHub 上出了新版本（0.9.1 起）：顶栏状态标签旁边一个小标签，点开发布页看更新内容、下载；✕ 之后这个版本不再提示。
 // 只给管理身份看（主播专属链接、普通链接都不显示）；程序不会自己更新，怎么更新见 README。
 const updSkipped = () => { try { return localStorage.getItem('xw-upd-skip') || ''; } catch { return ''; } };
+// 桌面版（2026-11-25）：在运行雾幕的这台电脑上，可以直接「下载更新」→「重启生效」，不用自己解压覆盖
+let updPct = null;
 function drawUpd() {
-  const u = S.update, bar = $('updbar');
-  const show = !!(u && u.v && S.admin && !S.host && updSkipped() !== u.v);
+  const u = S.update, bar = $('updbar'), D = S.desktop;
+  const ready = D?.staged && (!u || D.staged === u.v);
+  const show = !!(((u && u.v) || ready) && S.admin && !S.host && (ready || updSkipped() !== u.v));
   bar.hidden = !show;
+  drawDesktop();
   if (!show) return;
-  const a = $('updlink');
-  a.textContent = `有新版本 v${u.v}`;
-  a.href = /^https:\/\/github\.com\//.test(u.url) ? u.url : 'https://github.com/xShadowMoon/bili-danmaku-board/releases/latest';
-  a.title = `现在是 v${S.app_version || '?'}。点开看更新内容和下载；更新方法：关掉弹幕姬，把新的压缩包解压覆盖到原来的文件夹（设置和存档都会保留）`;
+  const a = $('updlink'), v = ready ? D.staged : u.v;
+  a.href = u && /^https:\/\/github\.com\//.test(u.url) ? u.url : 'https://github.com/xShadowMoon/bili-danmaku-board/releases/latest';
+  a.title = `现在是 v${S.app_version || '?'}。点开看更新内容`;
+  a.textContent = `新版本 v${v}`;
+  let act = $('updact');
+  if (!act) { act = document.createElement('button'); act.id = 'updact'; act.className = 'updact'; a.after(act); }
+  act.hidden = !D;  // 不是这台电脑（远程链接）就只给链接
+  if (ready) { act.textContent = '重启生效'; act.disabled = false; act.dataset.cmd = 'update_restart'; }
+  else if (updPct != null && updPct >= 0 && updPct < 100) { act.textContent = `下载中 ${updPct}%`; act.disabled = true; }
+  else { act.textContent = updPct === -1 ? '重新下载' : '下载更新'; act.disabled = false; act.dataset.cmd = 'update_download'; }
 }
+document.addEventListener('click', e => {
+  const b = e.target.closest('#updact'); if (!b || b.disabled) return;
+  if (b.dataset.cmd === 'update_download') { updPct = 0; drawUpd(); }
+  window._ws?.send(JSON.stringify({ cmd: b.dataset.cmd }));
+});
+function drawDesktop() {
+  const D = S.desktop, box = $('dkbox');
+  if (!box) return;
+  box.hidden = !D;
+  if (!D) return;
+  $('dkmode').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === D.open));
+  $('dkshortcut').hidden = !D.win;
+  $('dkver').textContent = `现在是 v${S.app_version || '?'}${D.staged ? ` · v${D.staged} 已下载，重启生效` : S.update?.v ? ` · 有新版本 v${S.update.v}` : ''}`;
+}
+$('dkmode')?.addEventListener('click', e => { const b = e.target.closest('button'); if (b) window._ws?.send(JSON.stringify({ cmd: 'open_mode', mode: b.dataset.val })); });
+$('dkshortcut')?.addEventListener('click', () => window._ws?.send(JSON.stringify({ cmd: 'make_shortcut' })));
+$('dkcheck')?.addEventListener('click', () => {
+  if (S.update?.v) { $('updbar').hidden = false; try { localStorage.removeItem('xw-upd-skip'); } catch {} drawUpd(); note(`有新版本 v${S.update.v}，点顶上的「下载更新」`, true); }
+  else note('现在没有新版本（每天会自动查一次）', true);
+});
 $('updclose').onclick = () => { try { localStorage.setItem('xw-upd-skip', S.update?.v || ''); } catch {} $('updbar').hidden = true; };
 // 连接状态：网页 ↔ 电脑（wsOpen），电脑 ↔ B 站（S.room.bili_ok）
 let wsOpen = false;

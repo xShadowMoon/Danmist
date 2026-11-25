@@ -178,6 +178,7 @@ COMMAND_FIELDS = {
     'room_edit': {'acct', 'title', 'area_id'}, 'acct_poll': {'key'}, 'acct_info': {'acct'}, 'acct_logout': {'acct'},
     'tpre_set': {'list'}, 'xrooms_set': {'open', 'rooms'}, 'live_start': {'acct', 'area_id', 'title'}, 'live_stop': {'acct'},
     'lan_set': {'on'},
+    'update_download': set(), 'update_restart': set(), 'open_mode': {'mode'}, 'make_shortcut': set(),
     'music_rules': {'on', 'mode', 'src', 'need_ok', 'skip', 'max', 'medal', 'guard', 'wealth', 'follow', 'maxdur'},
     'music_next': set(), 'music_ok': {'id'}, 'music_del': {'id'}, 'music_top': {'id'},
     'music_qr': {'src'}, 'music_poll': {'src', 'key'}, 'music_logout': {'src'},
@@ -258,6 +259,9 @@ def validate_command(c, clean_rules):
         boolean(c.get('done'), '已感谢')
     elif cmd == 'tpre_set':
         title_presets(c.get('list'))
+    elif cmd == 'open_mode':
+        if c.get('mode') not in ('app', 'web'):
+            raise InputError('打开方式只能是软件窗口或浏览器')
     elif cmd == 'lan_set':
         boolean(c.get('on'), '手机打开')
     elif cmd in ('music_ok', 'music_del', 'music_top'):

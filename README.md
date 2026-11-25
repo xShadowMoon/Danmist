@@ -1,6 +1,8 @@
 <a id="zh"></a>
 
-# 弹幕姬 bili-danmaku-board
+<img src="static/art/icon-256.png" width="88" align="right" alt="">
+
+# 雾幕 Danmist
 
 **中文** | [English](#english)
 
@@ -11,34 +13,39 @@
 
 全部运行在你自己的电脑上，不需要服务器，也不会把数据传到别的地方。
 
-![弹幕姬主界面](docs/screenshots/01-dashboard.webp)
+![雾幕主界面](docs/screenshots/01-dashboard.webp)
 
 ---
 
 ## 怎么用（Windows）
 
 1. 打开 [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases/latest)，下载 `bili-danmaku-board-vX.Y.Z-windows-x64.zip`（自带 Python，不用另外安装）。
-2. 解压到一个固定的文件夹（不要直接在压缩包里双击运行），比如 `D:\弹幕姬\`。
-3. 双击 `start.bat`。第一次会问你的**直播间号**（直播间网址 `live.bilibili.com/` 后面那串数字），填完自动保存。
-4. 浏览器会自动打开 <http://127.0.0.1:8373>。在这台电脑上打开的页面拥有全部管理权限。
-5. 要停止，关掉那个黑色窗口就行。下次再用还是双击 `start.bat`。
+2. 解压到一个固定的文件夹（不要直接在压缩包里双击运行），比如 `D:\雾幕\`。
+3. 双击 `start.bat`。第一次会问你的**直播间号**（直播间网址 `live.bilibili.com/` 后面那串数字），再问**打开方式**：
+   - **软件窗口**（推荐，v0.9.5 起）：雾幕像一个软件一样单独开一个窗口，没有黑色窗口；桌面上会多一个「雾幕」图标，以后双击它就行。关掉窗口，雾幕就停了。
+   - **浏览器**：跟以前一样，用浏览器打开 <http://127.0.0.1:8373>，关掉黑色窗口就停了。
+
+   以后想换，在雾幕「设置 → 更多 → 桌面版」里改。
+4. 在这台电脑上打开的页面拥有全部管理权限。
 
 - 没开播也能先看看效果：双击 `demo.bat`，会在 <http://127.0.0.1:8375> 随机生成假弹幕、礼物和 SC，每种样式都能看一遍。
 - 想换直播间、改端口，编辑文件夹里的 `config.json`（见下面「配置」）。
-- 想让观众名字不被 B 站打码：点发弹幕框左边的头像，扫码登录一个 B 站号（建议小号），弹幕姬会用它连直播间。见「常见问题」。
+- 想让观众名字不被 B 站打码：点发弹幕框左边的头像，扫码登录一个 B 站号（建议小号），雾幕会用它连直播间。见「常见问题」。
 
 ### 接到 OBS
 
-1. 在弹幕姬右上角点「OBS 弹幕」，进入可视化设置页（`/obs-setup`），选样式、字号、颜色、要显示的内容，右边是实时预览。
+1. 在雾幕右上角点「OBS 弹幕」，进入可视化设置页（`/obs-setup`），选样式、字号、颜色、要显示的内容，右边是实时预览。
 2. 点左下角「复制网址」。
 3. 在 OBS 里添加「浏览器」来源，把网址粘进去，宽高按设置页下面写的填。
 4. 歌单也一样：设置页顶上切到「歌单」，复制网址再加一个浏览器来源。
 
 ### 更新到新版本
 
-出了新版本时，弹幕姬顶栏「已连接」旁边会出现「有新版本 vX.Y.Z · 看看」，点开就是下载页（0.9.1 起才有这个提醒）。程序不会自己更新，按下面做：
+**v0.9.5 起可以在软件里更新**：出了新版本时，顶栏「已连接」旁边会出现「新版本 vX.Y.Z」和「下载更新」。点一下，雾幕会从 GitHub 下载、核对校验码；下载好按钮变成「重启生效」，点了几秒后就换成新版本，窗口不用关（只能在运行雾幕的这台电脑上点）。`config.json`、`data\`、`python\` 不会被动。
 
-1. 关掉弹幕姬的黑色窗口。
+v0.9.4 及以前，或者想手动更新，按下面做：
+
+1. 关掉雾幕的黑色窗口。
 2. 从 [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases/latest) 下载新的 `windows-x64.zip`。
 3. 解压后把里面的文件**覆盖**到原来的文件夹，提示重名时选「替换」。
 4. 双击 `start.bat`。
@@ -132,7 +139,7 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 
 ### AI 音色（GPT-SoVITS，可选）
 
-朗读除了浏览器自带的声音，还可以用 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 训练出来的声音，比如你自己的声音。弹幕姬只负责把要念的字发给本机的 GPT-SoVITS，拿回声音在网页里播放，安装包里不带模型，也不带 PyTorch。
+朗读除了浏览器自带的声音，还可以用 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 训练出来的声音，比如你自己的声音。雾幕只负责把要念的字发给本机的 GPT-SoVITS，拿回声音在网页里播放，安装包里不带模型，也不带 PyTorch。
 
 **需要**：NVIDIA 显卡（显存 6 GB 以上比较稳）和 GPT-SoVITS（官方整合包或源码都行）。没有显卡也能跑，只是很慢，不适合直播时用。
 
@@ -158,7 +165,7 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
    ```
 
    可以写好几个音色，切换音色时会自动换模型。每个音色还能加 `"speed": 1.1`（语速）、`"text_lang"`（念的语言，默认 `zh`）、`top_k`、`top_p`、`temperature`。`ref_lang` 是参考音频的语言：`zh`、`ja`、`en`、`ko`、`yue`。
-4. **重启弹幕姬**，在「设置 → 朗读 → 声音」里选「AI 音色」下面的声音。
+4. **重启雾幕**，在「设置 → 朗读 → 声音」里选「AI 音色」下面的声音。
 
 **说明**
 
@@ -201,9 +208,9 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 |---|---|
 | 观众名字被打码（中间变成 `*`） | B 站不给未登录的连接看完整名字。点发弹幕框左边的头像扫码登录一个 B 站号（建议小号）：v0.9.4 起，还没有连直播间的登录时会自动用这个号连，几秒后新弹幕就是完整名字（之前的弹幕不会变）。v0.9.3 及以前扫码登录只用来发弹幕，要更新到新版。也可以手动把 Cookie 存成 `data/bili-login.json`：`{"cookie": "SESSDATA=...; bili_jct=...; DedeUserID=..."}`。**登录信息等于账号密码**，只在自己电脑上。 |
 | 双击 `start.bat` 一闪就没了 | 多半是解压不完整，或者在压缩包里直接运行。完整解压到一个普通文件夹再试；还不行就在那个文件夹里打开命令行运行 `start.bat` 看报错。 |
-| 提示端口 8373 被占用 | 可能已经开着一个弹幕姬，直接打开 <http://127.0.0.1:8373> 就行；要换端口，改 `config.json` 里的 `port`。 |
+| 提示端口 8373 被占用 | 可能已经开着一个雾幕，直接打开 <http://127.0.0.1:8373> 就行；要换端口，改 `config.json` 里的 `port`。 |
 | 想换直播间 | 改 `config.json` 里的 `room`，关掉窗口重新打开。 |
-| OBS 里什么都不显示 | 先在浏览器里打开同一个网址看看有没有弹幕；确认弹幕姬那个黑色窗口还开着；OBS 浏览器源的网址必须是从设置页复制的完整网址。也可以用顶栏「开播前自检 → OBS 测试」。 |
+| OBS 里什么都不显示 | 先在浏览器里打开同一个网址看看有没有弹幕；确认雾幕那个黑色窗口还开着；OBS 浏览器源的网址必须是从设置页复制的完整网址。也可以用顶栏「开播前自检 → OBS 测试」。 |
 | 扫码登录没反应 | 用的是旧版的话缺 `qrcode` 依赖：源码运行时执行 `pip install -r requirements.txt`，或者下载新版 Windows 包。 |
 | 别人打开我的公网链接看不到收益和历史 | 这是故意的：普通链接是只读视角。给信任的人发「管理链接」。 |
 | 改标题、改分区提示没权限 | 这些操作要用**主播本人**的 B 站号扫码登录（发送框左边的头像）。 |
@@ -213,7 +220,7 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 ## 免责声明
 
 - 本工具是第三方的非官方工具，与哔哩哔哩无关。
-- 在弹幕姬里扫码登录、保存 Cookie、用账号发弹幕 / 禁言 / 改标题 / 开播，都是在用你自己的账号操作。B 站可能限制、风控或封禁使用第三方工具的账号，**由此造成的任何损失（包括账号被封禁）由使用者自己承担，作者不承担任何责任**。建议连接直播间用小号。
+- 在雾幕里扫码登录、保存 Cookie、用账号发弹幕 / 禁言 / 改标题 / 开播，都是在用你自己的账号操作。B 站可能限制、风控或封禁使用第三方工具的账号，**由此造成的任何损失（包括账号被封禁）由使用者自己承担，作者不承担任何责任**。建议连接直播间用小号。
 - 使用本工具即表示你同意以上内容。
 
 ## 数据与隐私
@@ -246,7 +253,7 @@ python tests/smoke_demo.py    # 在 8390 端口启动演示服务器，检查页
 
 <a id="english"></a>
 
-# bili-danmaku-board
+# Danmist (雾幕)
 
 [中文](#zh) | **English**
 
@@ -262,9 +269,12 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 
 1. Go to [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases/latest) and download `bili-danmaku-board-vX.Y.Z-windows-x64.zip`. Python is bundled; nothing else to install.
 2. Unzip it to a normal folder (don't run it from inside the zip).
-3. Double-click `start.bat`. The first time, it asks for your **live room id** (the number after `live.bilibili.com/`) and saves it.
-4. Your browser opens <http://127.0.0.1:8373>. Pages opened on this computer have full admin rights.
-5. To stop, close the console window. Next time just double-click `start.bat` again.
+3. Double-click `start.bat`. The first time, it asks for your **live room id** (the number after `live.bilibili.com/`) and how to open it:
+   - **App window** (recommended, from v0.9.5): the board opens in its own window with no console; a 雾幕 shortcut appears on the desktop for next time. Closing the window stops the board.
+   - **Browser**: as before, your browser opens <http://127.0.0.1:8373>; close the console window to stop.
+
+   Change it later under Settings → More → Desktop.
+4. Pages opened on this computer have full admin rights.
 
 - Try it without going live: `demo.bat` generates fake danmaku, gifts and Super Chats at <http://127.0.0.1:8375>.
 - To change room or port, edit `config.json` (see Configuration).
@@ -279,7 +289,9 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 
 ### Updating to a new version
 
-When a new version is out, a "有新版本 vX.Y.Z · 看看" (new version) tag appears next to the connection status at the top of the dashboard; click it to open the download page (this reminder exists from 0.9.1 on). The app never updates itself:
+**From v0.9.5 you can update inside the app**: when a new version is out, a "new version vX.Y.Z" tag with a **download update** button appears next to the connection status. The board downloads it from GitHub and checks the checksum; then the button turns into **restart**, and a few seconds later you're on the new version without closing the window (only on the computer running the board). `config.json`, `data\` and `python\` are left alone.
+
+Up to v0.9.4, or to update by hand:
 
 1. Close the console window.
 2. Download the new `windows-x64.zip` from [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases/latest).

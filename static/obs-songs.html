@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <link rel="icon" href="/static/art/icon-64.png">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>弹幕姬 · OBS 歌单</title>
+<title>雾幕 · OBS 歌单</title>
 <link rel="stylesheet" href="static/fonts/fonts.css">
 <style>
 /* OBS 浏览器源用：整页透明，只画歌单那一块。没有一直在动的动画（OBS 里一直动会一直占显卡） */
@@ -86,7 +86,7 @@ li.new { animation: pop .5s ease-out; }
 // bg=55         底板浓度 0~100（0 = 没有底板，只有字）     light=0   1 = 浅色底板
 // now_color=ffd27a 正在唱那首的颜色；color=ffffff 其他歌名的颜色
 // font / lh / stroke / stroke_color / glow / glow_color 跟 OBS 弹幕页一样（默认细描边 + 阴影）
-// demo=1        不连弹幕姬，用示例歌单（设置页预览用）
+// demo=1        不连雾幕，用示例歌单（设置页预览用）
 const P = new URLSearchParams(location.search);
 const num = (k, d) => { const v = parseFloat(P.get(k)); return isFinite(v) ? v : d; };
 const str = (k, d) => P.get(k) ?? d;
@@ -103,7 +103,7 @@ R.setProperty('--size', Math.max(12, Math.min(60, num('size', 20))) + 'px');
 R.setProperty('--bg', bg / 100);
 if (bg === 0) B.add('nobg');
 if (light) B.add('light');
-// pal=sakura / mint / night / lilac  配色，跟弹幕姬一样
+// pal=sakura / mint / night / lilac  配色，跟雾幕一样
 { const PAL = { sakura: ['236 170 196', '#f4a9c4', '#cc5d87'], mint: ['150 210 188', '#8fdcbf', '#2b9670'], night: ['175 178 240', '#b3b6f7', '#5a5fc4'], lilac: ['180 168 238', '#cbc2ff', '#6a5ac4'] }[str('pal', '')];  // 主播配色 2026-11-19 补上（之前歌单页漏了，选主播跟雾蓝一样）
   if (PAL) { R.setProperty('--line', PAL[0]); R.setProperty('--accent', light ? PAL[2] : PAL[1]); } }
 B.add(str('align', 'left'));

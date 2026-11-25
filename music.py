@@ -1,7 +1,7 @@
 """弹幕点歌直接放（2026-11-25）：观众发「点歌 歌名」，按主播定的规则排进队列，从网易云 / QQ 音乐找到歌直接放。
 
 两种放法（主播自己选）：
-- web：弹幕姬去音乐平台拿播放地址，由 OBS 的「放歌」浏览器源（/obs-music）或者开着「这页出声」的弹幕姬页面播放；
+- web：雾幕去音乐平台拿播放地址，由 OBS 的「放歌」浏览器源（/obs-music）或者开着「这页出声」的雾幕页面播放；
 - app：叫电脑上的网易云音乐客户端放（orpheus:// 链接，只有 Windows 上装了网易云才行）。
 服务器按每首歌的时长自己往下走，播放页只管放「现在该放的那首」，所以几个页面开着也不会乱。
 登录信息（Cookie）只存在本机 data/music-login.json，不发给网页。
@@ -123,13 +123,22 @@ class NetEase:
         key = str((j or {}).get('unikey') or '')
         if not key:
             raise ValueError('网易云没给二维码')
-        return key, {'svg': qr_svg(f'https://music.163.com/login?codekey={key}')}
+        # 2026-11-25 用户：扫了没反应。新版网易云 App 扫网页登录码要带 chainId，不然手机上确认了这边也收不到
+        chain = f'v1_{uuid.uuid4().hex[:16]}_web_login_{int(time.time() * 1000)}'
+        return key, {'svg': qr_svg(f'https://music.163.com/login?codekey={key}&chainId={chain}')}
 
     async def qr_poll(self, key):
         j, r = await self.get('/api/login/qrcode/client/login', {'key': key, 'type': '1'}, cookie='')
         code = (j or {}).get('code')
+        if code not in (800, 801, 802):
+            self.svc.log.info('网易云扫码登录：%s %s', code, str((j or {}).get('message') or '')[:60])
         if code == 803:
-            ck = '; '.join(f'{k}={m.value}' for k, m in r.cookies.items() if k in ('MUSIC_U', '__csrf', 'NMTID', 'MUSIC_R_T'))
+            got = {k: m.value for k, m in r.cookies.items()}
+            for part in str((j or {}).get('cookie') or '').split(';'):  # 有的版本把登录信息放在返回的内容里
+                k, _, v = part.strip().partition('=')
+                if k in ('MUSIC_U', '__csrf', 'MUSIC_R_T') and v and k not in got:
+                    got[k] = v
+            ck = '; '.join(f'{k}={v}' for k, v in got.items() if k in ('MUSIC_U', '__csrf', 'NMTID', 'MUSIC_R_T'))
             if 'MUSIC_U=' not in ck:
                 return 'fail', '登录成功了，但没拿到登录信息，再扫一次'
             name = ''
@@ -140,8 +149,12 @@ class NetEase:
                 pass
             self.svc.save_login('163', {'cookie': ck, 'name': name or '网易云账号', 't': int(time.time())})
             return 'ok', f'网易云已登录：{name}' if name else '网易云已登录'
-        return {800: ('expired', '二维码过期了，换一张'), 801: ('wait', '用网易云音乐 App 扫码'),
-                802: ('scanned', '扫好了，在手机上点确认')}.get(code, ('wait', '用网易云音乐 App 扫码'))
+        known = {800: ('expired', '二维码过期了，换一张'), 801: ('wait', '用网易云音乐 App 扫码'),
+                 802: ('scanned', '扫好了，在手机上点确认')}
+        if code in known:
+            return known[code]
+        # 以前别的情况一律当「等扫码」，扫完一直没反应；现在把网易云说的原因显示出来
+        return 'fail', f'网易云没让登录（{code} {str((j or {}).get("message") or "").strip()}），换一张再扫，或者等一会儿'
 
     def app_play(self, sid):
         """叫电脑上的网易云客户端放这首（网页版「在客户端打开」用的就是这个链接）"""
@@ -234,8 +247,12 @@ class QQMusic:
         if code == '67':
             return 'scanned', '扫好了，在手机上点确认'
         if code != '0':
+            msg = re.search(r"ptuiCB\('\d+','\d+','[^']*','[^']*','([^']*)'", text)
+            self.svc.log.info('QQ 扫码登录：%s %s', code, msg.group(1) if msg else text[:80])
             self.svc.drop_flow(key)
-            return 'expired', '二维码过期了，换一张'
+            if code == '65':
+                return 'expired', '二维码过期了，换一张'
+            return 'fail', f'QQ 没让登录（{code} {msg.group(1) if msg else ""}），换一张再扫'
         try:
             async with sess.get(m.group(2), allow_redirects=False, timeout=aiohttp.ClientTimeout(total=12)):
                 pass

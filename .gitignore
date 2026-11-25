@@ -18,6 +18,8 @@ tests/retention-*/
 # Your own artwork (put it in static/art/, see static/art/README.md)
 static/art/*
 !static/art/README.md
+!static/art/icon.ico
+!static/art/logo.svg
 !static/art/icon-*.png
 
 # Portable Windows build (scripts/build-windows.ps1)

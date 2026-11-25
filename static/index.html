@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>弹幕姬</title>
+<title>雾幕</title>
 <link rel="icon" href="/static/art/icon-64.png">
 <link rel="manifest" id="manifest" href="/static/manifest.json">
 <link rel="apple-touch-icon" href="/static/art/icon-192.png">
@@ -25,13 +25,13 @@
 <div id="snow"></div>
 <div id="netbar" title="正在重新连接"></div>
 <div id="warnbar" hidden></div>
-<button id="verbar" hidden title="弹幕姬上线了新版本，点一下刷新页面（下播后会自己刷新）">有新版本 · 点这里更新</button><div id="reconn" aria-live="polite"><img src="/static/art/xw-connect.webp" alt="" onerror="this.remove()"><span>正在重新连接…</span></div>
+<button id="verbar" hidden title="雾幕上线了新版本，点一下刷新页面（下播后会自己刷新）">有新版本 · 点这里更新</button><div id="reconn" aria-live="polite"><img src="/static/art/xw-connect.webp" alt="" onerror="this.remove()"><span>正在重新连接…</span></div>
 <div class="app">
   <div class="top">
     <div class="brand">
       <div class="logo"><img src="/static/art/icon-256.png" alt=""></div>
       <div>
-        <h1>弹幕姬<small id="roomid"></small></h1>
+        <h1>雾幕<small id="roomid"></small></h1>
         <div class="titlerow"><div class="title" id="title">连接中…</div><form id="tedit" hidden><input id="tinput" maxlength="40" title="直播间标题：直接改，回车或点 ✓ 确认" placeholder="直播间标题"><select id="tarea" title="分区"></select><button class="btn sm" id="tsave" title="确认修改" disabled>✓</button><button type="button" class="btn sm" id="tprebtn" title="常用标题：点一下换成存好的标题和分区"><i class="ic" data-ic="pin"></i></button><button type="button" class="btn sm" id="tnewsbtn" title="直播间公告"><i class="ic" data-ic="notice"></i></button><button type="button" class="btn sm" id="golive" title="一键开播 / 下播"><i class="ic" data-ic="live"></i> <span>开播</span></button></form><div id="tpremenu" hidden></div>
 <div id="livepanel" hidden>
   <div class="lphead"><b id="lptitle">一键开播</b><button type="button" class="lpx" id="lpclose" title="关上"><i class="ic" data-ic="close"></i></button></div>
@@ -409,7 +409,7 @@
         <div class="opt"><span>现在在看</span><b id="lk-online">-</b></div>
       </fieldset>
       <fieldset id="lk-lanbox"><legend>手机打开</legend>
-        <div class="chips"><label class="chip" title="同一个 Wi-Fi 的手机、平板也能打开弹幕姬。只有拿到管理链接的人才能管理"><input type="checkbox" id="lk-lan"><span><i class="ic" data-ic="phone"></i> 同一个 Wi-Fi 能打开</span></label></div>
+        <div class="chips"><label class="chip" title="同一个 Wi-Fi 的手机、平板也能打开雾幕。只有拿到管理链接的人才能管理"><input type="checkbox" id="lk-lan"><span><i class="ic" data-ic="phone"></i> 同一个 Wi-Fi 能打开</span></label></div>
         <div class="opt" id="lk-lanrow" hidden><input type="text" id="lk-lanurl" readonly style="flex:1;min-width:0"><button class="btn sm" id="lk-lancopy">复制</button></div>
         <small class="lk-tip" id="lk-lantip" hidden>手机上要管理：下面新建一个管理链接，用手机扫码</small>
       </fieldset>
@@ -423,8 +423,12 @@
 
     <div class="spage" data-sp="more">
       <h2 class="ptitle">更多</h2>
+      <fieldset id="dkbox" hidden><legend>桌面版</legend>
+        <div class="opt r" title="下次打开雾幕时用哪种（双击 start.bat 或桌面上的「雾幕」）"><span>打开方式</span><div class="ctl"><span class="seg" id="dkmode"><button type="button" data-val="app">软件窗口</button><button type="button" data-val="web">浏览器</button></span></div><span></span></div>
+        <div class="chips"><button class="btn sm" id="dkshortcut"><i class="ic" data-ic="download"></i> 桌面快捷方式</button><button class="btn sm" id="dkcheck" title="去 GitHub 看有没有新版本">检查更新</button><span class="mtip" id="dkver"></span></div>
+      </fieldset>
       <fieldset><legend>其它</legend>
-        <div class="chips"><button class="btn" id="touropen" title="再看一遍新手引导"><i class="ic" data-ic="book"></i> 引导</button><button class="btn" id="layoutopen"><i class="ic" data-ic="grid"></i> 布局</button><a class="btn" href="obs-setup" target="_blank"><i class="ic" data-ic="video"></i> OBS 弹幕</a><button class="btn" id="pwabtn" title="把弹幕姬装成电脑上的应用：独立窗口、桌面和任务栏有图标（数据还是连这台电脑）"><i class="ic" data-ic="download"></i> 装到桌面</button></div>
+        <div class="chips"><button class="btn" id="touropen" title="再看一遍新手引导"><i class="ic" data-ic="book"></i> 引导</button><button class="btn" id="layoutopen"><i class="ic" data-ic="grid"></i> 布局</button><a class="btn" href="obs-setup" target="_blank"><i class="ic" data-ic="video"></i> OBS 弹幕</a><button class="btn" id="pwabtn" title="把雾幕装成电脑上的应用：独立窗口、桌面和任务栏有图标（数据还是连这台电脑）"><i class="ic" data-ic="download"></i> 装到桌面</button></div>
       </fieldset>
     </div>
   </div>
@@ -434,7 +438,7 @@
 <div id="card"></div>
 <div id="spot"><span id="spottip"></span></div>
 <div class="fwin" id="lkbox" hidden><header><i class="ic" data-ic="link"></i><b>新的管理链接</b><small>只显示这一次</small><span class="sp"></span><button class="btn sm" id="lkboxclose"><i class="ic" data-ic="close"></i></button></header><div style="padding:12px;display:flex;gap:8px"><input type="text" id="lkboxurl" readonly style="flex:1;min-width:0"><button class="btn sm accent" id="lkboxcopy">复制</button></div><div id="lkboxqr" hidden></div></div>
-<div id="pwatip" hidden><img src="/static/art/icon-64.png" alt=""><div class="pt"><b>把弹幕姬装到桌面？</b><small>独立窗口，任务栏有主播图标</small></div><div class="pb"><button class="btn sm" id="pwalater">以后再说</button><button class="btn sm accent" id="pwayes">安装</button></div></div>
+<div id="pwatip" hidden><img src="/static/art/icon-64.png" alt=""><div class="pt"><b>把雾幕装到桌面？</b><small>独立窗口，任务栏有主播图标</small></div><div class="pb"><button class="btn sm" id="pwalater">以后再说</button><button class="btn sm accent" id="pwayes">安装</button></div></div>
 <div id="tour" hidden><div class="tt" id="tourtxt"></div><div class="tb"><span id="tourn"></span><button class="btn sm" id="tourskip">跳过</button><button class="btn sm accent" id="tournext">下一步</button></div></div>
 <div class="fwin" id="lyr" hidden><header><i class="ic" data-ic="lyrics"></i><b id="lyrname">歌词</b><span class="sp"></span><button class="btn sm" id="lyrsm" title="字小一点">A−</button><button class="btn sm" id="lyrbig" title="字大一点">A+</button><button class="btn sm" id="lyrclose" title="关掉"><i class="ic" data-ic="close"></i></button></header><div id="lyrbody"></div></div>
 <div class="fwin" id="mon" hidden><header><i class="ic" data-ic="monitor"></i><b>直播画面</b><small>静音 · 有几秒延迟</small><span class="sp"></span><button class="btn sm" id="monreload" title="重新加载"><i class="ic" data-ic="history"></i></button><button class="btn sm" id="monclose" title="关掉（关掉就不再占网速）"><i class="ic" data-ic="close"></i></button></header><iframe id="monframe" allow="autoplay; fullscreen" title="直播画面"></iframe></div>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>弹幕姬 · OBS 弹幕</title>
+<title>雾幕 · OBS 弹幕</title>
 <link rel="stylesheet" href="static/fonts/fonts.css">
 <style>
 /* OBS 页面没有画布底色。预览背景只属于 obs-setup 的外层容器。 */
@@ -372,14 +372,14 @@ const opt = {
   gifts: str('gifts', '1') !== '0', giftMin: num('gift_min', 0), price: str('price', '0') === '1',
   sc: str('sc', '1') !== '0', guardbuy: str('guardbuy', '1') !== '0',
   enter: str('enter', 'guard'), bot: str('bot', '0') === '1', demo: ['1', 'static'].includes(str('demo', '0')),
-  // block=词1 词2  屏蔽词（空格或逗号隔开）：弹幕、SC 里带这些词的不上屏，弹幕姬主页面照样看得到
+  // block=词1 词2  屏蔽词（空格或逗号隔开）：弹幕、SC 里带这些词的不上屏，雾幕主页面照样看得到
   block: str('block', '').toLowerCase().split(/[\s,，、;；]+/).filter(Boolean).slice(0, 100),
 };
 const B = document.body.classList, light = str('light', '0') === '1';
 document.documentElement.style.setProperty('--size', opt.size + 'px');
 document.documentElement.style.setProperty('--card', `rgba(${light ? '255,255,255' : '16,22,32'},${opt.bg / 100})`);
 if (light) B.add('light');
-// pal=sakura / mint / night / lilac  配色，跟弹幕姬的配色方案一样：普通弹幕的边框、名字换色
+// pal=sakura / mint / night / lilac  配色，跟雾幕的配色方案一样：普通弹幕的边框、名字换色
 { const PAL = { sakura: ['236 160 192', '#f6b3cc', '#c4507c'], mint: ['130 205 178', '#9fe0c7', '#23865f'], night: ['165 170 238', '#bfc2fa', '#5055b8'], lilac: ['180 168 238', '#cbc2ff', '#6a5ac4'] }[str('pal', '')];
   if (PAL) { document.documentElement.style.setProperty('--pal-rgb', PAL[0]); document.documentElement.style.setProperty('--pal-ink', light ? PAL[2] : PAL[1]); } }
 // 2026-11-21 用户不要「流光、卡片、轻透、悬浮」了：style=glass / card / plain（还有不写 style 的旧网址）一律换成月见
@@ -634,7 +634,7 @@ function emoText(d) {
   return s.includes('[') ? s.replace(/\[[^\[\]\s]{1,12}\]/g, k => map[k] ? `<img class="emo" src="img?u=${encodeURIComponent(map[k])}" alt="${k}" title="${k}">` : k) : s;
 }
 function showDm(d, quiet) {
-  if (d.kind) return;  // 禁言提示只在弹幕姬里显示，不上直播画面
+  if (d.kind) return;  // 禁言提示只在雾幕里显示，不上直播画面
   if (!opt.bot && botUids.includes(d.uid)) return;
   if (blocked(d.text)) return;
   if (opt.merge && !d.emoticon && !d.guard) {
@@ -722,7 +722,7 @@ function showEnter(e) {
   if (XW) { add(`${XSTAR}<span>${e.guard ? `欢迎${GN[e.guard]} ` : ''}<span class="name">${esc(e.name)}</span> 进入直播间</span>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid); return; }
   add(`${identity(e.face, e.name, e.guard)}<div class="body">${e.guard ? `欢迎${GN[e.guard]} ` : ''}<span class="name">${esc(e.name)}</span> 进入直播间</div>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid);
 }
-// 弹幕姬上线了新版：OBS 里这一页自己刷新，不用手动点「刷新」
+// 雾幕上线了新版：OBS 里这一页自己刷新，不用手动点「刷新」
 let myVer = 0;
 function checkVer(v) {
   const n = v?.['obs.html'];

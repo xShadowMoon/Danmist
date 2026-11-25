@@ -1,4 +1,4 @@
-// 弹幕姬主页面 · 连接状态、歌单和点歌、答谢条、发弹幕、账号登录、主题色和方案、浮动小窗（歌词 / 直播画面）、改标题
+// 雾幕主页面 · 连接状态、歌单和点歌、答谢条、发弹幕、账号登录、主题色和方案、浮动小窗（歌词 / 直播画面）、改标题
 // 这几个文件按顺序加载，共用同一套全局变量。加载时只能直接用前面文件里的东西，用后面文件的函数要放进回调里
 /* ---------- 连接 ---------- */
 const timers = {};
@@ -97,7 +97,8 @@ function musicLoginResult(d) {
     box.hidden = false;
   } else if (d.cmd === 'music_poll' && box.querySelector('.mqr > div')) box.querySelector('.mqr > div').textContent = d.msg;
   if (!d.ok || ['ok', 'expired', 'fail', 'out'].includes(d.state)) {
-    if (d.state === 'ok' || d.state === 'out' || !d.ok) box.hidden = true;
+    if (d.state === 'ok' || d.state === 'out') box.hidden = true;
+    else { box.innerHTML = `<div class="mqr"><div>${esc(d.msg)}</div><button class="btn sm" data-mlogin="${esc(d.src || mqr.src)}">换一张</button></div>`; box.hidden = false; }
     note(d.msg, d.ok && d.state !== 'fail' && d.state !== 'expired');
     return;
   }
@@ -537,7 +538,7 @@ drawPsets();
 $('cfgexport').onclick = () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'xiaowu-danmuji', cfg, presets: loadPsets() }, null, 1)], { type: 'application/json' }));
-  a.download = '弹幕姬设置.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  a.download = '雾幕设置.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 };
 $('cfgimport').onclick = () => $('cfgfile').click();
 $('cfgfile').onchange = async e => {
@@ -548,7 +549,7 @@ $('cfgfile').onchange = async e => {
     if (!j || typeof j.cfg !== 'object') throw 0;
     if (j.presets && typeof j.presets === 'object') savePsets({ ...loadPsets(), ...j.presets });
     useCfg(j.cfg); drawPsets(); note('已导入');
-  } catch { note('这不是弹幕姬的设置文件', false); }
+  } catch { note('这不是雾幕的设置文件', false); }
 };
 
 /* ---------- 浮动小窗：拖标题挪位置，右下角拖大小，位置记在这台电脑上 ---------- */

@@ -140,7 +140,7 @@ class DailyHealth:
             await self.save()
         bad = [r['detail'] for r in self.state['checks'] if not r['ok']]
         if bad and enabled:
-            text = ('弹幕姬每日体检：' + day + '\n' + '\n'.join('• ' + r for r in bad)).encode('utf-16-le')[:3800].decode('utf-16-le', errors='ignore')
+            text = ('雾幕每日体检：' + day + '\n' + '\n'.join('• ' + r for r in bad)).encode('utf-16-le')[:3800].decode('utf-16-le', errors='ignore')
             try:
                 if not await sender(text):
                     return False

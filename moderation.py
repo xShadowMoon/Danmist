@@ -170,7 +170,7 @@ class MuteService:
             if data not in ({}, []):
                 return False, 'B 站返回格式不对，请刷新名单确认结果'
             query.rows = [r for r in query.rows if r['id'] != record_id]
-            log.info('从弹幕姬用%s（账号 %s）解除禁言：%s（%s），记录 %s', who, actor, row['name'], row['uid'], record_id)
+            log.info('从雾幕用%s（账号 %s）解除禁言：%s（%s），记录 %s', who, actor, row['name'], row['uid'], record_id)
             self.changed('unmute', row)
             return True, f"已用{who}解除 {row['name']} 的禁言"
         except ValueError as e:
@@ -191,7 +191,7 @@ class MuteService:
             result = await self.request(MUTE_URL, data, cookie)
             if not isinstance(result, dict) and result != []:
                 return False, 'B 站返回格式不对，请刷新名单确认结果'
-            log.info('从弹幕姬用%s禁言了 %s（%s）', who, name, uid)
+            log.info('从雾幕用%s禁言了 %s（%s）', who, name, uid)
             self.changed('mute', {'uid': uid, 'name': name})
             return True, f'已用{who}禁言 {name}（到这场直播结束）'
         except ValueError as e:

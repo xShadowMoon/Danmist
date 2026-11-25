@@ -122,7 +122,7 @@ class ErrorJournal(logging.Handler):
                 group['last'] = max(group['last'], row['last'])
         if not merged:
             return ''
-        lines = [f"弹幕姬错误汇总（截至 {dt.datetime.fromtimestamp(cutoff):%m-%d %H:%M}，过去 24 小时）",
+        lines = [f"雾幕错误汇总（截至 {dt.datetime.fromtimestamp(cutoff):%m-%d %H:%M}，过去 24 小时）",
                  f"共 {len(merged)} 种、{sum(r['count'] for r in merged.values())} 次"]
         for row in sorted(merged.values(), key=lambda r: -r['count'])[:10]:
             lines.append(f"{row['level']} ×{row['count']}，最近 {dt.datetime.fromtimestamp(row['last']):%m-%d %H:%M}：{row['message'][:95]}（{row['source'][:35]}）")

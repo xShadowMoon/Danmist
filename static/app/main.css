@@ -1,4 +1,4 @@
-/* 弹幕姬主页面的样式（原来写在 index.html 里） */
+/* 雾幕主页面的样式（原来写在 index.html 里） */
 :root {
   --bg: #eef4fa; --bg2: #f7fafd; --glow1: #ffffff; --glow2: #e3eef9;
   --card: #fcfdff; --sheet: #fbfdff; --input: #ffffff;
@@ -395,7 +395,7 @@ details summary { cursor: pointer; font-size: 13px; color: var(--mist-d); paddin
 .opt input[type=color] { width: 38px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
 
 /* 标题更醒目 + 直播间入口 */
-/* 大字是直播间标题，「弹幕姬」只是上面一行小字 */
+/* 大字是直播间标题，「雾幕」只是上面一行小字 */
 .brand h1 { font-size: 12px; font-weight: 600; letter-spacing: 1px; color: var(--ink3); }
 .brand .title { font-size: 21px; font-weight: 800; color: var(--ink); max-width: 34vw; line-height: 1.25; }
 .compact .brand h1 { font-size: 11px; }
@@ -1021,10 +1021,10 @@ body.fdrag iframe { pointer-events: none; }
 #settings .scrub small { color: var(--ink3); font-weight: 400; margin-left: 2px; font-size: 11px; }
 #settings .scrub:focus-visible { outline: 2px solid var(--mist); border-radius: 3px; }
 #settings .opt.r .nv { width: 5em; }
-#settings .seg[data-segk] { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex-wrap: nowrap; }
-#settings .seg[data-segk] button { border: 0; background: var(--input); color: var(--ink2); padding: 4px 11px; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
-#settings .seg[data-segk] button + button { border-left: 1px solid var(--line); }
-#settings .seg[data-segk] button.on { background: var(--chip); color: var(--mist-d); font-weight: 700; }
+#settings .seg[data-segk], #settings .seg[data-mseg], #settings #dkmode { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex-wrap: nowrap; }
+#settings .seg[data-segk] button, #settings .seg[data-mseg] button, #settings #dkmode button { border: 0; background: var(--input); color: var(--ink2); padding: 4px 11px; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+#settings .seg[data-segk] button + button, #settings .seg[data-mseg] button + button, #settings #dkmode button + button { border-left: 1px solid var(--line); }
+#settings .seg[data-segk] button.on, #settings .seg[data-mseg] button.on, #settings #dkmode button.on { background: var(--chip); color: var(--mist-d); font-weight: 700; }
 /* 一组开关用勾选框排三列（不再是一排胶囊） */
 #settings fieldset.ckg > .chips, #settings .chips.ckrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; padding: 8px 0 6px; }
 #settings fieldset.ckg .chip span, #settings .chips.ckrow .chip span { display: flex; align-items: center; gap: 7px; border: 0; background: none; padding: 2px 0; border-radius: 0; color: var(--ink2); font-weight: 400 !important; }
@@ -1224,6 +1224,10 @@ body.side .saybar, body.side #tprebtn, body.side #tedit, body.side #golive { dis
 .mtip { color: var(--ink3); }
 .mqr { display: grid; justify-items: center; gap: 6px; padding: 8px 0; font-size: 12.5px; color: var(--ink2); }
 .mqr svg, .mqr img { width: 170px; height: 170px; background: #fff; border-radius: 8px; padding: 4px; }
+.pill.upd button.updact { width: auto; height: 20px; margin-left: 6px; padding: 0 9px; border-radius: 999px; background: #fff; color: var(--mist-d); font-size: 11.5px; font-weight: 700; opacity: 1; white-space: nowrap; }
+.pill.upd button.updact:hover { background: #eaf3fb; }
+.pill.upd button.updact:disabled { opacity: .75; cursor: default; }
+.pill.upd:has(.updact:not([hidden])) a::after { content: none; }
 .disc { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--ink3); }
 .lk-tip { display: block; color: var(--ink3); padding: 2px 2px 4px; }
 .lkrow { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px dashed var(--line-soft); }
@@ -1355,6 +1359,9 @@ body.touring #spot { transition: opacity .3s, left .2s, top .2s, width .2s, heig
 #msetpop > .body { overflow-y: auto; padding: 10px 14px 14px; }
 .brand .logo img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 .brand .logo { padding: 0; overflow: hidden; }  /* 所有链接都用主播的头像（2026-11-18） */
+/* 2026-11-25 雾幕的图标是圆角方块：不套圆框（主播头像还是圆的） */
+.brand .logo:has(img[src*="/static/art/icon"]) { border-radius: 24%; border: 0; background: none; box-shadow: none; }
+.brand .logo img[src*="/static/art/icon"] { border-radius: 24%; }
 /* 送礼榜：本场 / 本周 / 本月（2026-11-18） */
 .rankrange { display: flex; gap: 4px; padding: 2px 0 8px; position: sticky; top: 0; background: var(--card); z-index: 1; }
 /* 礼物「已感谢」（2026-11-18） */

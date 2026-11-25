@@ -1,4 +1,4 @@
-// 弹幕姬主页面 · 画各个面板：弹幕、SC、礼物、进房、观众、时间便签；自定义布局
+// 雾幕主页面 · 画各个面板：弹幕、SC、礼物、进房、观众、时间便签；自定义布局
 // 这几个文件按顺序加载，共用同一套全局变量。加载时只能直接用前面文件里的东西，用后面文件的函数要放进回调里
 /* ---------- 渲染 ---------- */
 // 弹幕里夹的小表情（[妙]、[哇] 这种）换成图：B 站在每条弹幕里给了图片地址，见过的都记在 EMO 里，旧弹幕也能显示
@@ -508,7 +508,7 @@ function enterWanted(e) {
   return T[e.kind === 'follow' ? 'follow' : e.kind === 'share' ? 'share' : e.kind === 'like' ? 'like' : 'enter'] !== false && (!T.guardOnly || e.guard);
 }
 // 进房提示（2026-11-18 重做）：放在弹幕列表外面的一条细栏里，不盖住弹幕，也不插进弹幕列表
-// （以前「混在弹幕里」会插进列表、消失时挪动滚动位置，弹幕姬当成「人往上翻了」就不再跟到最新，看起来像卡住）
+// （以前「混在弹幕里」会插进列表、消失时挪动滚动位置，雾幕当成「人往上翻了」就不再跟到最新，看起来像卡住）
 // flow（默认）= 弹幕区最下面常驻一条小栏，字停几秒淡出；top / bottom = 平时收起，有人进来时在顶上 / 底下弹出，停几秒收起
 const tipMs = () => (Number(cfg.enterTip.sec) || 3.5) * 1000;
 const tipBox = () => (dmList.closest('#p-dm') || dmList.parentElement).querySelector('#entertip');
@@ -585,7 +585,7 @@ function flushEnters() {
   setText($('entern'), `${S.enters.length} 条`);
 }
 
-// 舰长名单：快到期的在最前面；到期时间带「约」的是弹幕姬自己记下的上舰时间估的
+// 舰长名单：快到期的在最前面；到期时间带「约」的是雾幕自己记下的上舰时间估的
 function guardDays(g) { return g.until ? Math.ceil((g.until - Date.now() / 1000) / 86400) : null; }
 function renderGuardList() {
   const el = $('userlist'), L = (S.guardlist || []).slice();
@@ -594,7 +594,7 @@ function renderGuardList() {
     const left = guardDays(g), soon = left != null && left <= 7;
     const r = left == null ? `陪伴 ${g.days} 天` : `${g.est ? '约 ' : ''}${left <= 0 ? '今天到期' : left + ' 天后到期'}<br><small>陪伴 ${g.days} 天</small>`;
     const nt = noteOf(g.uid);
-    return `<div class="row" data-uid="${g.uid}" data-k="gl${g.uid}">${avatar(g.face, g.name, g.level, 26)}<span class="n">${esc(g.name)}</span><span class="tag g${g.level}" title="${GN[g.level]}">${GS[g.level]}</span>${nt ? `<span class="nt" title="${esc(nt)}">${icon('p-note')}</span>` : ''}<span class="r${soon ? ' soon' : ''}" title="${g.until ? new Date(g.until * 1000).toLocaleDateString('zh-CN') + ' 到期' + (g.est ? '（按弹幕姬记下的上舰时间估的）' : '') : 'B 站只告诉主播本人准确的到期时间：主播在发送框左边扫码登录自己的号后就能看到'}">${r}</span></div>`;
+    return `<div class="row" data-uid="${g.uid}" data-k="gl${g.uid}">${avatar(g.face, g.name, g.level, 26)}<span class="n">${esc(g.name)}</span><span class="tag g${g.level}" title="${GN[g.level]}">${GS[g.level]}</span>${nt ? `<span class="nt" title="${esc(nt)}">${icon('p-note')}</span>` : ''}<span class="r${soon ? ' soon' : ''}" title="${g.until ? new Date(g.until * 1000).toLocaleDateString('zh-CN') + ' 到期' + (g.est ? '（按雾幕记下的上舰时间估的）' : '') : 'B 站只告诉主播本人准确的到期时间：主播在发送框左边扫码登录自己的号后就能看到'}">${r}</span></div>`;
   }).join('') : '<div class="empty">暂无</div>');
 }
 function renderUsers() {
@@ -648,7 +648,7 @@ ${$('flowdetail').textContent}`;  // 明细不占地方，鼠标停上去看
   if (S.room.live && S.room.pop_rank) ranks.push(`人气榜 ${S.room.pop_rank}`);
   if (S.room.live && S.room.area_rank) ranks.push(`${String(S.room.area_rank_name || '小时榜').replace(/小时榜$/, '')}小时榜 ${S.room.area_rank}`);
   rp.hidden = !ranks.length; setText(rp, ranks.join(' · '));
-  const t = (S.room.live ? '🔴 直播中 · ' : '') + '弹幕姬';
+  const t = (S.room.live ? '🔴 直播中 · ' : '') + '雾幕';
   if (document.title !== t) document.title = t;
 }
 function tick() {

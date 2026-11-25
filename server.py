@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""弹幕姬：连 B 站直播间，把弹幕/进房/礼物/SC/上舰推给网页；每场结束存一份总结，能翻历史场次。
+"""雾幕：连 B 站直播间，把弹幕/进房/礼物/SC/上舰推给网页；每场结束存一份总结，能翻历史场次。
 
 用法：python server.py --room 房间号   （或者把 room 写进 config.json，端口默认 8373）
       python server.py --room 房间号 --port 8374
@@ -380,7 +380,7 @@ class Notes:
 
 
 class GuardBook:
-    """记下在弹幕姬里看到的上舰 / 续费，估算每个人的舰长到什么时候（B 站只把准确的到期时间告诉主播本人）。
+    """记下在雾幕里看到的上舰 / 续费，估算每个人的舰长到什么时候（B 站只把准确的到期时间告诉主播本人）。
     data/guards.json，uid -> {level, until}。一个月按 30 天算，没到期又续的往后接。"""
 
     def __init__(self, room_id, persist=True):
@@ -1317,10 +1317,10 @@ class Hub:
         """开播前测试：只发给打开着的 OBS 弹幕页，一条弹幕、一条 SC、一条上舰，隔一秒多一条；不进本场数据。"""
         targets = [ws for ws, kind in self.obs_clients.items() if kind == 'obs']
         t = int(time.time())
-        msgs = [('dm', {'t': t, 'uid': 1, 'name': '测试·弹幕姬', 'face': '', 'text': '这是一条测试弹幕，看得到就好～', 'medal': '', 'medal_level': 0,
+        msgs = [('dm', {'t': t, 'uid': 1, 'name': '测试·雾幕', 'face': '', 'text': '这是一条测试弹幕，看得到就好～', 'medal': '', 'medal_level': 0,
                         'medal_room': 0, 'guard': 0, 'admin': False, 'emoticon': '', 'i': -1}),
-                ('sc', {'item': {'id': f'test{t}', 't': t, 'uid': 1, 'name': '测试·弹幕姬', 'face': '', 'price': 30, 'text': '测试 SC：位置和颜色都对吗', 'guard': 0}}),
-                ('guard', {'item': {'t': t, 'uid': 1, 'name': '测试·弹幕姬', 'level': 3, 'level_name': '舰长', 'num': 1, 'unit': '月', 'yuan': 0}})]
+                ('sc', {'item': {'id': f'test{t}', 't': t, 'uid': 1, 'name': '测试·雾幕', 'face': '', 'price': 30, 'text': '测试 SC：位置和颜色都对吗', 'guard': 0}}),
+                ('guard', {'item': {'t': t, 'uid': 1, 'name': '测试·雾幕', 'level': 3, 'level_name': '舰长', 'num': 1, 'unit': '月', 'yuan': 0}})]
 
         async def run():
             for i, (kind, data) in enumerate(msgs):
@@ -1871,7 +1871,7 @@ class Handler(blivedm.BaseHandler):
             self.hub.close_broadcast('下播')
     _CMD_CALLBACK_DICT['PREPARING'] = __preparing  # noqa
 
-    # 有人被禁言：B 站在直播间里发一条「xx 已被房管禁言」，弹幕姬也在弹幕里显示一条（2026-11-18）
+    # 有人被禁言：B 站在直播间里发一条「xx 已被房管禁言」，雾幕也在弹幕里显示一条（2026-11-18）
     def __room_block(self, client, command):
         d = command.get('data') or {}
         uid = d.get('uid') or command.get('uid') or 0
@@ -2170,7 +2170,7 @@ class Alerts:
         if not url:
             return False
         try:
-            async with self.session.post(url, json={'username': '弹幕姬', 'content': text},
+            async with self.session.post(url, json={'username': '雾幕', 'content': text},
                                          timeout=aiohttp.ClientTimeout(total=15)) as r:
                 ok = r.status < 300
         except (aiohttp.ClientError, asyncio.TimeoutError):
@@ -2202,8 +2202,8 @@ class Alerts:
     async def check_archive(self, state, dmlog):
         bad = bool(state.archive_pending or getattr(dmlog, 'repair_write', False))
         await self.check('archive', bad, 300,
-                         lambda m: f'⚠️ 弹幕姬存档写入已失败约 {m} 分钟，正在重试。请检查磁盘空间和权限。',
-                         lambda m: f'✅ 弹幕姬存档写入恢复（中断约 {m} 分钟）。')
+                         lambda m: f'⚠️ 雾幕存档写入已失败约 {m} 分钟，正在重试。请检查磁盘空间和权限。',
+                         lambda m: f'✅ 雾幕存档写入恢复（中断约 {m} 分钟）。')
 
 
 SONGBOOK_MAX = 10000  # 歌本 / 曲库最多记多少首（跟曲库导入的上限一致）
@@ -2623,7 +2623,7 @@ async def send_own_danmaku(bare, state, room_id, own_at, acct, text, reply_uid=0
         if j.get('code') == -101:
             return False, '这个号的登录过期了，退出后重新扫码登录'
         return False, f"B 站没让发（{j.get('code')} {j.get('message') or j.get('msg') or ''}）"
-    log.info('%s 用自己的号从弹幕姬发了弹幕：%s%s', acct.get('uname'), text, '（回复）' if reply_uid and not fallback else '')
+    log.info('%s 用自己的号从雾幕发了弹幕：%s%s', acct.get('uname'), text, '（回复）' if reply_uid and not fallback else '')
     msg = j.get('message') or j.get('msg')
     return True, (f'已发出，但 B 站提示「{msg}」（可能被屏蔽词拦了）' if msg else f"已用 {acct.get('uname')} 的号{'回复' if reply_uid and not fallback else '发出'}") + fallback
 
@@ -2666,7 +2666,7 @@ async def set_room_news(bare, state, room_id, acct, text):
         except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
             return False, '连不上 B 站，稍后再试'
         if j.get('code') == 0:
-            log.info('%s 从弹幕姬改了直播间公告：%s', acct.get('uname'), text)
+            log.info('%s 从雾幕改了直播间公告：%s', acct.get('uname'), text)
             # 2026-11-21 实测：B 站回「OK」，但 2 分钟内读到的还是旧公告（可能要审核）。读一次，照实说
             ok, _, got = await get_room_news(bare, state, room_id)
             if ok and got.get('text') == text:
@@ -3008,6 +3008,84 @@ async def main():
         log.info('手机打开（局域网）：%s', lan_url() or '关')
         return True, ('手机连同一个 Wi-Fi，打开 ' + lan_url()) if on else '已关掉，手机打不开了'
 
+    # ---------- 桌面版：软件内更新、打开方式、桌面快捷方式（2026-11-25） ----------
+    launcher = os.environ.get('BDB_LAUNCHER') == '1'
+    upd_busy = [False]
+
+    def desktop_info():
+        v, _ = updates.staged(DIR)
+        return {'launcher': launcher, 'open': load_config(args.config).get('open', 'web') if not args.demo else 'web',
+                'staged': v or '', 'win': sys.platform == 'win32'}
+
+    async def desktop_cmd(c):
+        cmd = c['cmd']
+        if cmd == 'update_download':
+            info = new_release[0] or await updates.fetch_latest(bare)
+            if not info or not updates.is_newer(info['v']):
+                return False, '现在已经是最新版'
+            if upd_busy[0]:
+                return False, '正在下载了'
+            upd_busy[0] = True
+            last = [-1]
+
+            def prog(p):
+                if p - last[0] >= 5 or p == 100:
+                    last[0] = p
+                    hub.emit_admin('update_progress', {'v': info['v'], 'pct': p})
+            try:
+                v = await updates.download(bare, info, DIR, prog)
+            except (aiohttp.ClientError, asyncio.TimeoutError, OSError, ValueError) as e:
+                hub.emit_admin('update_progress', {'v': info['v'], 'pct': -1})
+                return False, f'更新没下载成功：{e}'
+            finally:
+                upd_busy[0] = False
+            hub.emit_admin('desktop', desktop_info())
+            return True, f'v{v} 下载好了，点「重启生效」换上'
+        if cmd == 'update_restart':
+            v, _ = updates.staged(DIR)
+            if not v:
+                return False, '还没下载新版本'
+            if not launcher:
+                return False, '这次不是用桌面版或 start.bat 打开的，没法自己重启：关掉雾幕再打开就会换上'
+            hub.state.dirty = True
+            hub.state.save()
+            hub.dmlog.flush()
+            log.info('点了「重启生效」，换成 v%s', v)
+            asyncio.get_event_loop().call_later(1.0, lambda: os._exit(updates.RESTART_CODE))
+            return True, f'正在重启换成 v{v}，几秒后页面自己连回来'
+        if cmd == 'open_mode':
+            mode = 'web' if c.get('mode') == 'web' else 'app'
+            if args.demo:
+                return False, '演示模式不改设置'
+            try:
+                conf = load_config(args.config)
+                conf['open'] = mode
+                write_json(args.config, conf)
+            except (OSError, SystemExit, ValueError) as e:
+                return False, f'没存上：{e}'
+            hub.emit_admin('desktop', desktop_info())
+            return True, '下次打开用软件窗口' if mode == 'app' else '下次打开用浏览器'
+        if cmd == 'make_shortcut':
+            if sys.platform != 'win32':
+                return False, '只有 Windows 能建快捷方式'
+            exe = sys.executable
+            proc = await asyncio.create_subprocess_exec(exe, os.path.join(DIR, 'desktop.py'), '--shortcut', cwd=DIR)
+            await proc.wait()
+            return proc.returncode == 0, '桌面上建好了「雾幕」' if proc.returncode == 0 else '快捷方式没建成'
+        return False, '不支持'
+
+    async def launcher_quit(request):
+        """桌面版窗口关掉时，启动器叫服务先存好再退（只认本机 + 启动器给的口令）"""
+        t = os.environ.get('BDB_TOKEN', '')
+        if not t or request.remote not in ('127.0.0.1', '::1') or not hmac.compare_digest(request.query.get('t', ''), t):
+            raise web.HTTPForbidden()
+        hub.state.dirty = True
+        hub.state.save()
+        hub.dmlog.flush()
+        log.info('桌面版窗口关了，雾幕退出')
+        asyncio.get_event_loop().call_later(0.3, lambda: os._exit(0))
+        return web.json_response({'ok': True})
+
     def qr_svg(text):
         import io
         import qrcode
@@ -3096,6 +3174,8 @@ async def main():
                 snap['notes'] = hub.notes.data
                 snap['public_url'] = args.public_url  # 「复制普通链接」用
                 snap['lan'] = {'on': lan['on'], 'url': lan_url()}
+                if local:
+                    snap['desktop'] = desktop_info()
                 snap['connections'] = limits.snapshot()
                 snap['profiles'] = [] if hub.profiles.load_error else hub.profiles.listing()
                 snap['title_presets'] = hub.title_presets
@@ -3178,6 +3258,14 @@ async def main():
                                 ok, note = await moderation.unmute(mute_query, c['id'], selected)
                                 extra = {}
                             await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': note, **extra}})
+                            continue
+                        if cmd in ('update_download', 'update_restart', 'open_mode', 'make_shortcut'):
+                            # 桌面版（2026-11-25）：只有在这台电脑上打开的才能用（会下载文件、动这台电脑）
+                            if not local:
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': '只能在运行雾幕的这台电脑上操作'}})
+                                continue
+                            ok, note = await desktop_cmd(c)
+                            await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': note}})
                             continue
                         if cmd == 'lan_set':
                             ok, note = await lan_set(c.get('on') is True)
@@ -3322,7 +3410,7 @@ async def main():
                     return False, '机器人那边还没开放这个入口（要等机器人更新）'
                 if r.status != 200 or not j.get('ok'):
                     return False, str(j.get('error') or f'没发出去（{r.status}）')
-                log.info('从弹幕姬发了弹幕：%s', text)
+                log.info('从雾幕发了弹幕：%s', text)
                 return True, j.get('note') or '已发出'
         except (aiohttp.ClientError, asyncio.TimeoutError):
             return False, '连不上机器人的控制面板，机器人可能没在运行'
@@ -3375,7 +3463,7 @@ async def main():
         except Exception:
             pass
         token = accounts.save(cookie, int(jar.get('DedeUserID', 0) or 0), uname, face)
-        log.info('有人在弹幕姬扫码登录了自己的 B 站号：%s（%s）', uname, jar.get('DedeUserID'))
+        log.info('有人在雾幕扫码登录了自己的 B 站号：%s（%s）', uname, jar.get('DedeUserID'))
         extra_note = ''
         # 2026-11-25：开源版用户反馈「左下角登录了还是打码」—— 以前扫码登录只用来发弹幕，连直播间用的是 data/bili-login.json，
         # 没放那个文件就一直打码。现在：还没有连直播间的登录（或者它失效了），就顺便用这个号连，马上重连
@@ -3469,7 +3557,7 @@ async def main():
             return False, '连不上 B 站，稍后再试'
         if j.get('code') != 0:
             return False, str(j.get('message') or j.get('msg') or f"B 站没同意（{j.get('code')}）")
-        log.info('%s 从弹幕姬改了直播间信息：%s', acct.get('uname'), {k: data[k] for k in ('title', 'area_id') if k in data})
+        log.info('%s 从雾幕改了直播间信息：%s', acct.get('uname'), {k: data[k] for k in ('title', 'area_id') if k in data})
         hub.wake.set()  # 马上重新查一次直播间信息，网页上跟着变
         return True, '改好了'
 
@@ -3559,7 +3647,7 @@ async def main():
         addr, code = str(rtmp.get('addr') or ''), str(rtmp.get('code') or '')
         if not addr or not code:
             return False, 'B 站说开播了，但没给推流码；去 B 站直播中心看一下', {}
-        log.info('%s 从弹幕姬开播了（分区 %s）', acct.get('uname'), area_id)
+        log.info('%s 从雾幕开播了（分区 %s）', acct.get('uname'), area_id)
         hub.wake.set()
         return True, '开播了', {'addr': addr, 'code': code}
 
@@ -3572,7 +3660,7 @@ async def main():
             return False, err
         if j.get('code') != 0:
             return False, f"B 站没让下播（{j.get('code')} {j.get('message') or j.get('msg') or ''}）"
-        log.info('%s 从弹幕姬下播了', acct.get('uname'))
+        log.info('%s 从雾幕下播了', acct.get('uname'))
         hub.wake.set()
         d = j.get('data') if isinstance(j.get('data'), dict) else {}
         return True, '下播了' if d.get('change') else '现在本来就没在播'
@@ -3593,8 +3681,8 @@ async def main():
         return await moderation.mute(uid, name, acct)
 
     # ---- 舰长名单：现在有哪些舰长 / 提督 / 总督，陪伴了多少天，什么时候到期 ----
-    # 准确的到期时间 B 站只告诉主播本人：主播在弹幕姬扫码登录过自己的号就用它查；
-    # 没有的话，用弹幕姬自己记下的上舰 / 续费时间估（标「约」），再没有就只显示陪伴天数。
+    # 准确的到期时间 B 站只告诉主播本人：主播在雾幕扫码登录过自己的号就用它查；
+    # 没有的话，用雾幕自己记下的上舰 / 续费时间估（标「约」），再没有就只显示陪伴天数。
     def fill_guard_days(items):
         return complete_guard_days(hub, items)
 
@@ -3916,19 +4004,19 @@ async def main():
                 r = state.room
                 await alerts.check_archive(state, hub.dmlog)
                 await alerts.check('bili', r.get('bili_ok') is False, 180,
-                                   lambda m: f'⚠️ 弹幕姬连不上 B 站直播间已经 {m} 分钟了，弹幕、礼物暂时收不到（会自己一直重连）。',
-                                   lambda m: f'✅ 弹幕姬跟 B 站的连接恢复了（断了约 {m} 分钟）。')
+                                   lambda m: f'⚠️ 雾幕连不上 B 站直播间已经 {m} 分钟了，弹幕、礼物暂时收不到（会自己一直重连）。',
+                                   lambda m: f'✅ 雾幕跟 B 站的连接恢复了（断了约 {m} 分钟）。')
                 await alerts.check('login', r.get('login_ok') is False, 60,
-                                   lambda m: '⚠️ 弹幕姬用的 B 站登录失效了，弹幕里的名字会打码。机器人重新扫码登录后会自动恢复。',
-                                   lambda m: f'✅ 弹幕姬的 B 站登录恢复了（失效了约 {m} 分钟）。')
+                                   lambda m: '⚠️ 雾幕用的 B 站登录失效了，弹幕里的名字会打码。机器人重新扫码登录后会自动恢复。',
+                                   lambda m: f'✅ 雾幕的 B 站登录恢复了（失效了约 {m} 分钟）。')
                 try:
                     async with bare.get(url, timeout=aiohttp.ClientTimeout(total=20)) as resp:
                         tunnel_ok = resp.status == 200 and (await resp.text()) == 'ok'
                 except (aiohttp.ClientError, asyncio.TimeoutError):
                     tunnel_ok = False
                 await alerts.check('tunnel', not tunnel_ok, 120,
-                                   lambda m: f'⚠️ 外网打不开弹幕姬了（{args.public_url}）已经 {m} 分钟，电脑上本身还在运行，可能是隧道或网络断了。',
-                                   lambda m: f'✅ 外网又能打开弹幕姬了（断了约 {m} 分钟）。')
+                                   lambda m: f'⚠️ 外网打不开雾幕了（{args.public_url}）已经 {m} 分钟，电脑上本身还在运行，可能是隧道或网络断了。',
+                                   lambda m: f'✅ 外网又能打开雾幕了（断了约 {m} 分钟）。')
             except Exception as e:
                 log.warning('掉线检查出错：%s', e)
             await asyncio.sleep(30)
@@ -4002,7 +4090,7 @@ async def main():
     # 设了 key 的话，第一次用 ?key= 打开，之后记在 cookie 里
     @web.middleware
     async def auth(request, handler):
-        if not args.key:
+        if not args.key or request.path == '/api/launcher/quit':
             return await handler(request)
         q = request.query.get('key', '')
         k = q or request.cookies.get('xwkey', '')
@@ -4016,7 +4104,7 @@ async def main():
     # 管理密钥也是第一次带上之后记在 cookie 里
     @web.middleware
     async def remember_admin(request, handler):
-        if request.method not in ('GET', 'HEAD', 'OPTIONS') and not origin_ok(request):
+        if request.method not in ('GET', 'HEAD', 'OPTIONS') and request.path != '/api/launcher/quit' and not origin_ok(request):
             raise web.HTTPForbidden(text='请从直播姬页面操作')
         resp = await handler(request)
         a = request.query.get('admin', '')
@@ -4154,12 +4242,13 @@ async def main():
     app.router.add_get('/obs', lambda request: web.FileResponse(os.path.join(DIR, 'static', 'obs.html'), headers={'Cache-Control': 'no-cache'}))  # 不让浏览器用旧版（2026-11-19：雾蓝预览一直是旧页面，没有唱片封面）
     # 调 OBS 弹幕样式的设置页：调好一键复制网址
     app.router.add_get('/obs-setup', obs_setup)
-    # OBS 浏览器源用的歌单页（正在唱 + 接下来几首，跟弹幕姬的歌单同步）
+    # OBS 浏览器源用的歌单页（正在唱 + 接下来几首，跟雾幕的歌单同步）
     app.router.add_get('/obs-songs', lambda request: web.FileResponse(os.path.join(DIR, 'static', 'obs-songs.html'), headers={'Cache-Control': 'no-cache'}))  # 不让浏览器用旧版（2026-11-19：雾蓝预览一直是旧页面，没有唱片封面）
     app.router.add_get('/ws', ws_handler)
     app.router.add_get('/img', img_proxy)
     app.router.add_get('/art/{name}', art_file)
     app.router.add_get('/api/art', art_list)
+    app.router.add_post('/api/launcher/quit', launcher_quit)
     app.router.add_get('/api/history', hist_list)
     app.router.add_get('/api/offline', offline_list)
     app.router.add_get('/api/history/{sid}', hist_get)

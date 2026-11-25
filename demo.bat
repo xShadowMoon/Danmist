@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-title 弹幕姬（演示数据）
+title 雾幕（演示数据）
 
 set "PY="
 if exist "python\python.exe" set "PY=python\python.exe"
