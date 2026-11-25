@@ -5,6 +5,20 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.10 · 2026-11-25
+
+### 修复 · Fixes
+
+- 弹幕满 300 条以后不再自动跟随、一直显示「↓ n 条新弹幕」：原因是弹幕多了会删掉最上面的旧弹幕，浏览器这时把滚动位置往回调，被误当成人在往上翻。现在只有真的用滚轮、键盘、鼠标或手指往上翻才暂停跟随（感谢 nana 的反馈和分析）。v0.9.9 只修了鼠标停在弹幕栏上那一种情况。
+  Danmaku stopped following after the list reached 300 rows and showed "↓ n new" instead: trimming old rows made the browser adjust the scroll position, which was mistaken for the user scrolling up. Following now only pauses on real input (wheel, keyboard, mouse, touch). Thanks to nana for the report and analysis. v0.9.9 only fixed the mouse-hover case.
+
+### 怎么更新 · How to update
+
+v0.9.5 起：顶栏点「下载更新」→「重启生效」。更早的版本见 README「更新到新版本」。
+From v0.9.5: click **download update** → **restart**. Older versions: see "Updating to a new version" in the README.
+
+---
+
 ## v0.9.9 · 2026-11-25
 
 ### 修复 · Fixes

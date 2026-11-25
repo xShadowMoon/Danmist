@@ -68,13 +68,19 @@ function unstick() {
 // 手机上手指滑是一点点滚的：以前刚往上滚几像素，还离底不到 30 像素，就又被算成「跟到最新」，
 // 下一条弹幕一来又被拽回最底下，看起来就是滑不动（2026-11-12 修）。
 // 现在：手指按着的时候不跟随；只有往下滚到底才重新跟随，往上滚永远不会被算成跟随
-let touching = false, lastTop = 0;
+// 2026-11-25 再修（B 站评论 nana 反馈）：弹幕满 300 条后每来一条都会删掉最上面的旧弹幕，浏览器为了让看着的内容不动，
+// 会把滚动位置往回调，这个「往上」的滚动以前被当成人在往上翻，于是不再跟随、一直显示「↓ n 条新弹幕」。
+// 现在：只有最近真的有人动过（滚轮、键盘、鼠标按下、手指滑）才算往上翻；删旧弹幕、图片撑高这些页面自己引起的滚动不算
+let touching = false, lastTop = 0, userAt = 0;
+const userInput = () => { userAt = performance.now(); };
+for (const t of ['wheel', 'pointerdown', 'touchmove']) dmList.addEventListener(t, userInput, { passive: true });
+addEventListener('keydown', userInput, true);
 dmList.addEventListener('scroll', () => {
   const top = dmList.scrollTop, down = top >= lastTop;
   lastTop = top;
   if (autoScroll || touching || performance.now() < holdUntil) return;  // 自己滚到底产生的，不算人在滚
-  stick = down && dmList.scrollHeight - top - dmList.clientHeight < 30;
-  if (stick) hideNewbar();
+  if (down && dmList.scrollHeight - top - dmList.clientHeight < 30) { stick = true; hideNewbar(); }
+  else if (!down && performance.now() - userAt < 800) stick = false;
 });
 dmList.addEventListener('wheel', e => { if (e.deltaY < 0) { unstick(); hoverHeld = false; } }, { passive: true });
 // 鼠标停在弹幕上：先不往下滚（方便看清某一条、点名字），移开再接着跟到最新。设置 → 弹幕里能关
@@ -133,6 +139,7 @@ function flushDm() {
     // 只数一次再删，不在循环里反复查整列（刷屏时省 CPU）
     const rows = dmList.querySelectorAll(':scope > .dm'), extra = rows.length - 300;
     if (extra > 0) {
+      autoScroll = true;  // 删旧弹幕引起的滚动不算人在翻（glideBottom 滑完会放开）
       for (let k = 0; k < extra; k++) rows[k].remove();
       olderFrom(rows[extra].dataset.i, true);  // 删掉的旧弹幕往上翻还能再加载回来
     }
