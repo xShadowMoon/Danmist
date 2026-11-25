@@ -41,6 +41,7 @@ from daily_health import DailyHealth
 from public_limits import PublicLimits, client_ip
 import history_maintenance
 from ai_voice import AIVoice, Busy as VoiceBusy, VoiceError
+from music import MusicService
 import updates
 from backend_limits import OperationError, OperationRate, WS_IMPORT_LIMIT, WS_NORMAL_LIMIT, operation_info, parse_operation
 
@@ -95,6 +96,7 @@ def live_ts(s):
 
 
 # 点歌：「点歌 晴天」「想听稻香」「来一首xx」「可以唱xx吗」；提问：带问号，或者「吗 / 怎么 / 什么…」
+PLAY_RE = re.compile(r'^\s*点歌\s*[:：]?\s*[《「“"]?(.{1,40}?)[》」”"]?\s*$')  # 直接放（2026-11-25）：只认「点歌 歌名」
 SONG_RE = re.compile(r'(?:点歌|点一首|点首|想听|来一首|来首|求唱|唱一首|唱首|唱一下|可以唱|能唱|能不能唱)\s*[:：]?\s*[《「“"]?(.{1,30}?)[》」”"]?'
                      r'(?:吗|嘛|吧|好吗|可以吗|好不好|谢谢|[!！~～。?？\s])*$')
 ASK_RE = re.compile(r'[?？]|(?:吗|呢|嘛)[~～!！。.]*$|怎么|什么|为啥|为什么|多少|哪里|哪个|几岁|几点|有没有|是不是|能不能|可以.{0,8}吗')
@@ -179,6 +181,8 @@ def viewer_view(kind, data):
         return [pick(x, VIEWER_GUARD) for x in data]
     if kind == 'face':
         return pick(data, ('uid', 'face'))
+    if kind == 'music':
+        return data
     if kind == 'guardlist':
         return [pick(x, VIEWER_GUARDLIST) for x in data]
     if kind == 'req':
@@ -755,6 +759,15 @@ class Hub:
             for x in state.gifts + state.guards:
                 if not x.get('source') and x.get('t', 0) > state.settled_at:
                     x['source'] = '下播'
+        # 2026-11-25：以前每开一场都把所有下播礼物带过来，感谢过的也一直挂着。上一段下播带过来、已经感谢过的清掉
+        # （它们在 data/offline 的下播记录里都有，「下播期间」页照样看得到）
+        start = state.session_start or 0
+        for key in ('gifts', 'guards'):
+            items = getattr(state, key)
+            keep = [x for x in items if not (x.get('source') == '下播' and x.get('thanked') and x.get('t', 0) < start)]
+            if len(keep) != len(items):
+                setattr(state, key, keep)
+                state.dirty = True
         self.rules_file = os.path.join(DIR, 'data', 'req-rules.json') if persist else None
         # 常用标题 + 分区（2026-11-18）：开播前点一下换好，存在电脑上，各设备一样
         self.tpre_file = os.path.join(DIR, 'data', 'title-presets.json') if persist else None
@@ -1130,8 +1143,9 @@ class Hub:
         s.reset()
         if reason == '自动结算':
             # 下播期间送的礼物、开的舰长留到这一场，标着「下播」（2026-11-18 用户要求；钱不算进这一场的流水）
-            s.gifts = [x for x in old['gifts'] if x.get('source') == '下播'][-300:]
-            s.guards = [x for x in old['guards'] if x.get('source') == '下播'][-100:]
+            # 2026-11-25 用户：已经点了「感谢」的就不带过来了（下播期间页里照样查得到），以前会一场一场一直带着
+            s.gifts = [x for x in old['gifts'] if x.get('source') == '下播' and not x.get('thanked')][-300:]
+            s.guards = [x for x in old['guards'] if x.get('source') == '下播' and not x.get('thanked')][-100:]
         if reason in ('手动清零', '容量分段') and continuing_live:
             s.was_live = True
             s.live_start = old['live_start']
@@ -1208,7 +1222,8 @@ class Hub:
         del s.dm[:-300]
         s.touch_user(uid, name, face, dm=1, guard=guard, medal=(f'{medal} {medal_level}' + ('' if medal_lit else ' dim')) if medal else '')
         if not emoticon and uid not in s.bot_uids and uid != s.room.get('uid'):
-            self.collect(item)
+            if not self.music_dm(item):
+                self.collect(item)
         if not item.get('face'):
             self.need_face(item.get('uid'))
         self.emit('dm', item, uc=len(s.users))
@@ -1231,6 +1246,24 @@ class Hub:
         s.dm.append(item)
         del s.dm[:-300]
         self.emit('dm', item, uc=len(s.users))
+
+    def music_dm(self, d):
+        """弹幕点歌直接放（2026-11-25）：开着的话「点歌 歌名」进放歌队列、「切歌」按规则切；别的弹幕照旧"""
+        m = getattr(self, 'music', None)
+        if not m or not m.rules['on']:
+            return False
+        text = d['text'].strip()
+        if text == '切歌':
+            m.skip_by(d)
+            return True
+        hit = PLAY_RE.match(text)
+        if not hit or hit.group(1).strip() in ('什么', '啥', '歌', '一首', '首歌', '一首歌'):
+            return False
+        s = self.state
+        followed = any(e.get('uid') == d['uid'] and e.get('kind') == 'follow' for e in s.enters[-200:])
+        own = s.room.get('room_real') or s.room_id
+        asyncio.get_event_loop().create_task(m.request(d, hit.group(1).strip(), own, followed))
+        return True
 
     def collect(self, d):
         """点歌 / 提问收集：认出来的弹幕记进单子，网页上「点歌 & 提问」面板显示。"""
@@ -2269,7 +2302,7 @@ DEMO_ROOM = 1000001  # 演示模式假装的房间号
 async def demo_feed(hub):
     """演示模式：随机造弹幕/礼物/SC/上舰，用来看网页样式。"""
     names = DEMO_NAMES
-    texts = ['主播晚上好～', '这首好好听！', '哈哈哈哈哈', '唱晴天吗', '来了来了', '今天好可爱', '打卡', '想听稻香']
+    texts = ['主播晚上好～', '这首好好听！', '哈哈哈哈哈', '唱晴天吗', '来了来了', '今天好可爱', '打卡', '想听稻香', '点歌 晴天']
     hub.room_update(title='【歌回】今天唱点冬天的歌', live=1, area='唱见电台', watched=3821, online=126, likes=5120,
                     bili_ok=True, login_ok=True, room_real=DEMO_ROOM,
                     top=[{'uid': i, 'name': n, 'face': '', 'score': 1000 - i * 90, 'guard': 3 if i < 2 else 0}
@@ -2802,6 +2835,7 @@ async def main():
         demo_history(history)
     IMG_CACHE_READY = clean_img_cache()
     hub = Hub(state, history, persist=not args.demo)
+    hub.music = MusicService(os.path.join(DIR, 'data'), not args.demo, write_json, log, hub.emit, hub.emit_admin)
     hub.admin_links, hub.public_limits = links, limits
     if args.demo:
         now = int(time.time())
@@ -2991,10 +3025,10 @@ async def main():
         local = is_admin(request, '', args.port)
         token = request.query.get('admin', '') or request.cookies.get('xwadmin', '')
         link_id = None if local else links.authenticate(token)
-        admin = identity and client_kind not in ('obs', 'obs-songs') and request.query.get('view') != 'public'
-        viewer = not admin and client_kind not in ('obs', 'obs-songs')
+        admin = identity and client_kind not in ('obs', 'obs-songs', 'obs-music') and request.query.get('view') != 'public'
+        viewer = not admin and client_kind not in ('obs', 'obs-songs', 'obs-music')
         reason = limits.reserve(ws, client_ip(request, args.public_url),
-                                'obs' if client_kind in ('obs', 'obs-songs') else 'public', exempt=identity)
+                                'obs' if client_kind in ('obs', 'obs-songs', 'obs-music') else 'public', exempt=identity)
         if reason:
             # 浏览器 WebSocket API 读不到握手失败正文；用拒绝结果和关闭原因让页面能显示。
             await ws.prepare(request)
@@ -3016,7 +3050,7 @@ async def main():
                         await ws.send_json({'type': 'result', 'data': {'cmd': 'connect', 'ok': False, 'msg': f'切换直播间失败：{e}'}})
                 elif viewer:
                     await ws.send_json({'type': 'result', 'data': {'cmd': 'connect', 'ok': False, 'msg': '这个直播间现在不能切过去，先看主播这边'}})
-            if client_kind in ('obs', 'obs-songs'):
+            if client_kind in ('obs', 'obs-songs', 'obs-music'):
                 h.obs_clients[ws] = client_kind
                 try:
                     gm = max(0.0, min(100000.0, float(request.query.get('gm', '0') or 0)))
@@ -3054,6 +3088,9 @@ async def main():
             snap['emots'] = {**hub.emots, **h.emots}
             if not viewer:
                 snap['req_rules'] = hub.req_rules
+            snap['music'] = hub.music.view()
+            if admin:
+                snap['music_rules'] = hub.music.admin_view()
             snap['dm_more'] = h is hub and not viewer and len(hub.dmlog.items) > len(snap['dm'])  # 前面还有更早的弹幕，往上翻能加载（普通链接不能翻）
             if admin:
                 snap['notes'] = hub.notes.data
@@ -3100,7 +3137,7 @@ async def main():
                 if link_id and links.is_host(link_id) and (cmd.startswith('admin_link_') or cmd == 'reset'):
                     await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': '这个链接不能做这个操作'}})
                     continue
-                if args.demo and cmd in ('say', 'mute', 'room_edit', 'live_start', 'live_stop', 'areas', 'acct_qr', 'acct_poll', 'acct_info', 'acct_logout', 'news_set'):
+                if args.demo and cmd in ('say', 'mute', 'room_edit', 'live_start', 'live_stop', 'areas', 'acct_qr', 'acct_poll', 'acct_info', 'acct_logout', 'news_set', 'music_qr', 'music_poll'):
                     await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': '演示模式不连接真实直播间或账号'}})
                     continue
                 if cmd == 'reset':
@@ -3165,6 +3202,30 @@ async def main():
                             if changed:
                                 hub.emit_admin('profiles', hub.profiles.listing())
                             await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': '设置方案已同步', **result}})
+                            continue
+                        if cmd in ('music_rules', 'music_next', 'music_ok', 'music_del', 'music_top'):
+                            try:
+                                msg = hub.music.command(c)
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': msg}})
+                            except ValueError as e:
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': str(e)}})
+                            continue
+                        if cmd in ('music_qr', 'music_poll', 'music_logout'):
+                            p = hub.music.providers[c['src']]
+                            try:
+                                if cmd == 'music_logout':
+                                    hub.music.logout(c['src'])
+                                    hub.emit_admin('music_rules', hub.music.admin_view())
+                                    extra = {'state': 'out', 'msg': '已退出'}
+                                elif cmd == 'music_qr':
+                                    key, qr = await p.qr_start()
+                                    extra = {'state': 'wait', 'key': key, **qr, 'msg': '用手机扫码'}
+                                else:
+                                    st, msg = await p.qr_poll(c['key'])
+                                    extra = {'state': st, 'msg': msg}
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'src': c['src'], **extra}})
+                            except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, ImportError) as e:
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'src': c['src'], 'state': 'fail', 'msg': f'登录没成功：{e}'}})
                             continue
                         if cmd in ('song_add', 'song_done', 'song_del', 'song_clear', 'song_now', 'song_next', 'song_move'):
                             changed = hub.song_cmd(cmd, str(c.get('id', '')), str(c.get('text', '')), c)
@@ -3315,7 +3376,43 @@ async def main():
             pass
         token = accounts.save(cookie, int(jar.get('DedeUserID', 0) or 0), uname, face)
         log.info('有人在弹幕姬扫码登录了自己的 B 站号：%s（%s）', uname, jar.get('DedeUserID'))
-        return True, f'登录好了：{uname}', {'state': 'done', 'token': token, 'uname': uname, 'face': face, 'uid': int(jar.get('DedeUserID', 0) or 0)}
+        extra_note = ''
+        # 2026-11-25：开源版用户反馈「左下角登录了还是打码」—— 以前扫码登录只用来发弹幕，连直播间用的是 data/bili-login.json，
+        # 没放那个文件就一直打码。现在：还没有连直播间的登录（或者它失效了），就顺便用这个号连，马上重连
+        if not args.demo and (not load_cookie() or hub.state.room.get('login_ok') is False):
+            try:
+                write_json(LOGIN_FILE, {'cookie': cookie})
+                session.cookie_jar.update_cookies(make_cookies(cookie))
+                asyncio.get_event_loop().create_task(reconnect_with_login())
+                extra_note = '，也用这个号连直播间了，观众名字不再打码'
+            except OSError as e:
+                log.warning('登录信息没存上：%s', e)
+        return True, f'登录好了：{uname}{extra_note}', {'state': 'done', 'token': token, 'uname': uname, 'face': face, 'uid': int(jar.get('DedeUserID', 0) or 0)}
+
+    async def reconnect_with_login():
+        """换了连直播间的登录：断开重连一次，B 站这才按登录的号发完整的名字"""
+        c = getattr(hub, 'client', None)
+        if c is None:
+            return
+        log.info('换了连直播间的登录，重新连接')
+        try:
+            if c.is_running:
+                c.stop()
+                await asyncio.wait_for(c.join(), 15)
+        except (asyncio.CancelledError, Exception) as e:  # 刚停掉的连接 join 会报「已取消」，正常
+            if not isinstance(e, asyncio.CancelledError):
+                log.warning('断开旧连接时出错：%s', e)
+        c._uid, c._need_init_room = None, True  # 让 blivedm 按新的登录重新查 uid（不清的话还是用旧的 0，照样打码）
+        try:
+            c.start()
+        except Exception as e:
+            log.warning('重新连接失败（会自动再试）：%s', e)
+        try:
+            async with session.get('https://api.bilibili.com/x/web-interface/nav', timeout=aiohttp.ClientTimeout(total=15)) as r:
+                d = (await r.json(content_type=None)).get('data') or {}
+            hub.room_update(login_ok=bool(d.get('isLogin')), bot_name=d.get('uname', ''), bot_face=d.get('face', ''))
+        except Exception:
+            pass
 
     async def acct_info(token, acct):
         """打开网页时查一下这个号：还登着没有，顺便拿最新的昵称和头像。"""
@@ -3783,6 +3880,17 @@ async def main():
         url = official_art[m.group(1)][int(m.group(2))]
         raise web.HTTPFound('/img?u=' + urllib.parse.quote(url, safe='') + '&s=big', headers={'Cache-Control': 'max-age=3600'})
 
+    async def music_url(request):
+        """放歌页来要「现在这首」的播放地址（2026-11-25）。只给正在放的那首，不能拿它去下别的歌"""
+        it = hub.music.current()
+        if not it or request.query.get('id') != it['id']:
+            return web.json_response({'url': ''}, headers={'Cache-Control': 'no-store'})
+        try:
+            url = await hub.music.url_for(it)
+        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
+            url = ''
+        return web.json_response({'url': url, 'start': it.get('start', 0), 'now': time.time()}, headers={'Cache-Control': 'no-store'})
+
     async def art_list(request):
         """static/art 里自己放了哪些图（只回文件名），页面据此决定用不用 B 站官方的框"""
         try:
@@ -4069,6 +4177,8 @@ async def main():
     app.router.add_get('/api/xrooms', xrooms_list)
     app.router.add_get('/api/tts/voices', tts_voices)
     app.router.add_get('/api/tts', tts_speak)
+    app.router.add_get('/api/music/url', music_url)
+    app.router.add_get('/obs-music', lambda r: web.FileResponse(os.path.join(DIR, 'static', 'obs-music.html'), headers={'Cache-Control': 'no-cache'}))
     app.router.add_static('/static', os.path.join(DIR, 'static'))
 
     cookies = make_cookies(load_cookie()) if not args.demo else {}
@@ -4104,6 +4214,7 @@ async def main():
     tasks = [asyncio.create_task(watch_static()), asyncio.create_task(watch_access()), asyncio.create_task(watch_gift_anim(bare, args.room))]
     if not args.demo:
         tasks.append(asyncio.create_task(face_worker()))
+    tasks.append(asyncio.create_task(hub.music.run(bare)))
     # 有新版本就在管理页面上提示（只读 GitHub 最新 Release 的版本号，不下载任何东西）；演示模式只在测试时查
     if not args.no_update_check and (not args.demo or args.update_url):
         def on_new_release(info):

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="/static/art/icon-64.png">
+<title>弹幕姬 · OBS 放歌</title>
+<style>
+/* OBS 放歌（2026-11-25）：弹幕点歌直接放。这个浏览器源会出声（OBS 里勾「通过 OBS 控制音频」就能调音量），
+   画面上是一张「正在放」的小卡片。网址参数：card=0 不要卡片只出声；vol=80 音量；pos=bottom/top 卡片贴底还是贴顶 */
+html, body { margin: 0; background: transparent; overflow: hidden; font-family: "HarmonyOS Sans SC", "MiSans", "Microsoft YaHei UI", "PingFang SC", sans-serif; }
+#card { position: fixed; left: 10px; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 12px; padding: 10px 14px 10px 10px;
+  border-radius: 14px; background: rgba(18, 26, 40, .72); color: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, .3); transition: opacity .4s, transform .4s; }
+body.top #card { bottom: auto; top: 10px; }
+#card.off { opacity: 0; transform: translateY(12px); }
+#cover { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: #2b3a52; flex: none; }
+#cover.spin { border-radius: 50%; animation: spin 12s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.b { min-width: 0; flex: 1; }
+#t { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px #0008; }
+#a { font-size: 12.5px; opacity: .78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+#bar { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .18); margin-top: 7px; overflow: hidden; }
+#bar i { display: block; height: 100%; width: 100%; background: #8cc0ef; transform-origin: left; transform: scaleX(0); }
+#nx { font-size: 11.5px; opacity: .6; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.nocard #card { display: none; }
+</style>
+</head>
+<body>
+<div id="card" class="off"><img id="cover" alt=""><div class="b"><div id="t"></div><div id="a"></div><div id="bar"><i></i></div><div id="nx"></div></div></div>
+<script src="/static/app/player.js?v=0"></script>
+<script>
+const P = new URLSearchParams(location.search);
+if (P.get('card') === '0') document.body.classList.add('nocard');
+if (P.get('pos') === 'top') document.body.classList.add('top');
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const player = new MusicPlayer(location.pathname.replace(/[^/]*$/, ''));
+player.on = true;
+player.setVolume((Number(P.get('vol')) || 80) / 100);
+let M = null, skew = 0;
+function draw() {
+  const now = M?.list?.find(x => x.state === 'play'), next = M?.list?.filter(x => x.state === 'ok') || [];
+  $('card').classList.toggle('off', !now);
+  if (!now) return;
+  $('t').textContent = now.title;
+  $('a').textContent = `${now.artist}${now.name ? ' · ' + now.name + ' 点的' : ''}`;
+  if ($('cover').dataset.u !== now.cover) { $('cover').dataset.u = now.cover || ''; if (now.cover) $('cover').src = now.cover; else $('cover').removeAttribute('src'); }
+  $('cover').classList.toggle('spin', !!now.cover);
+  $('nx').textContent = next.length ? `下一首：${next[0].title}${next.length > 1 ? `（还有 ${next.length - 1} 首）` : ''}` : '';
+}
+// 进度条：一秒更新一次就够，跟主页面的 SC 倒计时一样用 transform，不排版
+setInterval(() => {
+  const now = M?.list?.find(x => x.state === 'play');
+  if (!now || !now.dur) return;
+  const p = Math.max(0, Math.min(1, (Date.now() / 1000 + skew - now.start) / now.dur));
+  $('bar').firstElementChild.style.transform = `scaleX(${p})`;
+}, 1000);
+function handle(type, data) {
+  if (type === 'snapshot') data = data.music;
+  else if (type !== 'music') return;
+  if (!data) return;
+  M = data; skew = (data.now || Date.now() / 1000) - Date.now() / 1000;
+  draw();
+  player.update(M);
+}
+let retry = 0;
+function connect() {
+  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + location.pathname.replace(/[^/]*$/, '') + 'ws?client=obs-music');
+  ws.onopen = () => { retry = 0; };
+  ws.onclose = () => setTimeout(connect, Math.min(30000, 2000 * 2 ** retry++));
+  // 只关心放歌：别的消息看一眼类型就丢掉，不解析整条
+  ws.onmessage = ev => { if (!/^\{"type": ?"(snapshot|music)"/.test(ev.data)) return; const m = JSON.parse(ev.data); handle(m.type, m.data); };
+}
+connect();
+</script>
+</body>
+</html>

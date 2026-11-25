@@ -369,6 +369,23 @@
     </div>
     <div class="spage" data-sp="req">
       <h2 class="ptitle">点歌<small>点歌栏标题上的齿轮也是打开这一页</small></h2>
+      <fieldset class="admin-only" id="msetbox"><legend>弹幕点歌直接放</legend>
+        <div class="chips"><label class="chip" title="开着时，弹幕「点歌 歌名」直接从音乐平台找歌放；「切歌」按下面的规则切。关掉就跟以前一样只记进点歌单"><input type="checkbox" data-mr="on"><span><i class="ic" data-ic="music"></i> 开</span></label></div>
+        <div class="opt r"><span>曲库</span><div class="ctl"><span class="seg" data-mseg="src"><button type="button" data-val="163">网易云</button><button type="button" data-val="qq">QQ 音乐</button></span></div><span></span></div>
+        <div class="opt r" title="网页放：OBS 加「放歌」浏览器源（或者在歌单里开「这页出声」）；电脑上的网易云：叫这台电脑上装的网易云客户端放"><span>怎么放</span><div class="ctl"><span class="seg" data-mseg="mode"><button type="button" data-val="web">网页放</button><button type="button" data-val="app">电脑上的网易云</button></span></div><span></span></div>
+        <div class="opt r"><span>登录</span><div class="ctl" id="mlogin"></div><span></span></div>
+        <div id="mqrbox" hidden></div>
+        <div class="opt r"><span>谁能点</span><div class="ctl"><select data-mr="guard"><option value="0">所有人</option><option value="3">舰长以上</option><option value="2">提督以上</option><option value="1">只有总督</option></select></div><span></span></div>
+        <div class="opt r" title="0 = 不看；舰长以上不看粉丝牌"><span>粉丝牌 ≥</span><div class="ctl"><input type="number" min="0" max="100" data-mr="medal" style="width:64px"></div><span></span></div>
+        <div class="opt r" title="0 = 不看"><span>荣耀等级 ≥</span><div class="ctl"><input type="number" min="0" max="100" data-mr="wealth" style="width:64px"></div><span></span></div>
+        <div class="opt r" title="0 = 不限"><span>每人同时排</span><div class="ctl"><input type="number" min="0" max="20" data-mr="max" style="width:64px"><small>首</small></div><span></span></div>
+        <div class="chips">
+          <label class="chip" title="戴本直播间粉丝牌的、这场里点了关注的才能点（舰长以上不看）"><input type="checkbox" data-mr="follow"><span>要关注</span></label>
+          <label class="chip" title="点的歌先等你在歌单里点 ✓ 才放"><input type="checkbox" data-mr="need_ok"><span>要我同意</span></label>
+        </div>
+        <div class="opt r" title="主播在页面上随时能切"><span>弹幕「切歌」</span><div class="ctl"><select data-mr="skip"><option value="host">只有我</option><option value="req">点这首的人</option><option value="guard">舰长以上</option></select></div><span></span></div>
+        <div class="opt r"><span>OBS 放歌源</span><div class="ctl"><input type="text" id="mobsurl" readonly style="flex:1;min-width:0"><button class="btn sm" id="mobscopy">复制</button></div><span></span></div>
+      </fieldset>
       <fieldset><legend>显示</legend>
         <div class="opt r"><span>字号</span><div class="ctl"><input type="range" min="80" max="160" step="5" data-u="%" data-k="fs.req"></div><button class="rs" title="恢复默认">↺</button></div>
       </fieldset>
@@ -446,6 +463,7 @@
 <script src="/static/app/render.js?v=0"></script>
 <script src="/static/app/people.js?v=0"></script>
 <script src="/static/app/voice.js?v=0"></script>
+<script src="/static/app/player.js?v=0"></script>
 <script src="/static/app/songs.js?v=0"></script>
 <script src="/static/app/news.js?v=0"></script>
 <script src="/static/app/ws.js?v=0"></script>

@@ -20,6 +20,89 @@ function putUser(u) {
 /* ---------- 点歌 & 提问 ---------- */
 let reqTab = 'list';
 // 歌单：提前写好的歌，唱完打勾；不跟着每场清零
+/* ---------- 弹幕点歌直接放（2026-11-25）：歌单最上面一块「放歌」，正在放 + 排着的，每首标是谁点的 ---------- */
+const MSTATE = { wait: '等你同意', deny: '' };
+let mplayer = null;
+function musicHtml() {
+  const m = S.music;
+  if (!m || (!m.on && !(m.list || []).some(x => ['play', 'ok', 'wait'].includes(x.state)))) return '';
+  const L = m.list || [], now = L.find(x => x.state === 'play'), queue = L.filter(x => x.state === 'ok' || x.state === 'wait');
+  const deny = S.admin ? L.filter(x => x.state === 'deny').slice(-3).reverse() : [];
+  const who = x => `<span class="mwho">${esc(x.name)}</span>`;
+  const row = (x, i) => `<div class="req mrow${x.state === 'deny' ? ' over' : ''}" data-k="m${x.id}${x.state}">${x.cover ? `<img class="mcov" src="${esc(x.cover)}" alt="" loading="lazy">` : `<span class="sn">${i}</span>`}<div class="b"><div class="s">${esc(x.title)}${x.artist ? `<small class="mart"> · ${esc(x.artist)}</small>` : ''}</div><div class="w">${who(x)}${x.state === 'wait' ? ' · <b class="mwait">等你同意</b>' : ''}${x.why ? ' · ' + esc(x.why) : ''}</div></div>`
+    + (S.admin ? `${x.state === 'wait' || (x.state === 'deny' && x.sid) ? `<button class="btn sm" data-mq="music_ok" data-id="${x.id}" title="同意，排进去">✓</button>` : ''}${x.state === 'ok' && i > 1 ? `<button class="btn sm" data-mq="music_top" data-id="${x.id}" title="下一首就放">↑</button>` : ''}<button class="btn sm" data-mq="music_del" data-id="${x.id}" title="不放了">✕</button>` : '') + `</div>`;
+  const pct = now && now.dur ? Math.max(0, Math.min(100, (Date.now() / 1000 + (m.skew || 0) - now.start) / now.dur * 100)) : 0;
+  return `<div class="mq"><div class="mqh">${icon('music')}<b>放歌</b><small>${m.on ? (m.mode === 'app' ? '电脑上的网易云' : '网页放') : '已暂停'}</small><span class="sp"></span>${S.admin ? `<label class="chip mhere" title="这个页面也出声（不用 OBS 放歌源时开）"><input type="checkbox" id="mhere"${cfg.musicHere ? ' checked' : ''}><span>${icon('volume')}</span></label>${now ? `<button class="btn sm" data-mq="music_next" title="切歌">${icon('skip')}</button>` : ''}` : ''}</div>`
+    + (now ? `<div class="req mrow mnow" data-k="m${now.id}play">${now.cover ? `<img class="mcov" src="${esc(now.cover)}" alt="">` : `<span class="sn">♪</span>`}<div class="b"><div class="s">${esc(now.title)}${now.artist ? `<small class="mart"> · ${esc(now.artist)}</small>` : ''}</div><div class="w">${who(now)} 点的</div><div class="mbar"><i style="transform:scaleX(${pct / 100})"></i></div></div></div>` : `<div class="mempty">${m.on ? '弹幕发「点歌 歌名」就会排进来' : '没在放'}</div>`)
+    + queue.map((x, i) => row(x, i + 1)).join('') + deny.map(x => row(x, '')).join('') + '</div>';
+}
+function musicTick() {
+  const m = S.music, now = m?.list?.find(x => x.state === 'play'), bar = document.querySelector('.mnow .mbar i');
+  if (now && bar && now.dur) bar.style.transform = `scaleX(${Math.max(0, Math.min(1, (Date.now() / 1000 + (m.skew || 0) - now.start) / now.dur))})`;
+}
+setInterval(musicTick, 1000);
+function musicSync() {
+  if (!S.music) return;
+  if (!mplayer && typeof MusicPlayer === 'function') { mplayer = new MusicPlayer(); mplayer.blocked = () => note('浏览器不让自动出声：点一下页面再开「这页出声」', false); }
+  if (mplayer) { mplayer.on = !!cfg.musicHere && !!S.admin; mplayer.update(S.music); }
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-mq]'); if (!b) return;
+  e.stopPropagation();
+  window._ws?.send(JSON.stringify(b.dataset.id ? { cmd: b.dataset.mq, id: b.dataset.id } : { cmd: b.dataset.mq }));
+}, true);
+document.addEventListener('change', e => {
+  if (e.target.id !== 'mhere') return;
+  cfg.musicHere = e.target.checked; saveCfg(); musicSync();
+});
+// 设置 → 点歌 → 弹幕点歌直接放
+const MSRC = { '163': '网易云', qq: 'QQ 音乐' };
+let mqr = { src: '', key: '', t: 0 };
+function drawMusicSet() {
+  const R = S.music_rules, box = $('msetbox');
+  if (!box) return;
+  box.hidden = !R;
+  if (!R) return;
+  box.querySelectorAll('[data-mr]').forEach(el => {
+    if (document.activeElement === el) return;
+    const v = R[el.dataset.mr];
+    if (el.type === 'checkbox') el.checked = !!v; else el.value = String(v ?? '');
+  });
+  box.querySelectorAll('[data-mseg]').forEach(sg => sg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === String(R[sg.dataset.mseg]))));
+  const lg = R.login || {}, src = R.src;
+  $('mlogin').innerHTML = lg[src] ? `<span class="mlg">${esc(lg[src])}</span><button class="btn sm" data-mlogout="${src}">退出</button>` : `<button class="btn sm" data-mlogin="${src}">${icon('phone')} 扫码登录${MSRC[src]}</button><small class="mtip">不登录只能放免费的歌</small>`;
+  $('mobsurl').value = location.origin + location.pathname.replace(/[^/]*$/, '') + 'obs-music';
+}
+function sendRules(patch) { window._ws?.send(JSON.stringify({ cmd: 'music_rules', ...patch })); }
+document.addEventListener('change', e => {
+  const el = e.target.closest('#msetbox [data-mr]'); if (!el) return;
+  const k = el.dataset.mr;
+  sendRules({ [k]: el.type === 'checkbox' ? el.checked : k === 'skip' ? el.value : Math.max(0, Math.min(k === 'max' ? 20 : 100, parseInt(el.value, 10) || 0)) });
+});
+document.addEventListener('click', e => {
+  const sb = e.target.closest('#msetbox [data-mseg] button');
+  if (sb) { sendRules({ [sb.parentElement.dataset.mseg]: sb.dataset.val }); return; }
+  const li = e.target.closest('[data-mlogin]');
+  if (li) { mqr = { src: li.dataset.mlogin, key: '', t: 0 }; window._ws?.send(JSON.stringify({ cmd: 'music_qr', src: mqr.src })); return; }
+  const lo = e.target.closest('[data-mlogout]');
+  if (lo) { window._ws?.send(JSON.stringify({ cmd: 'music_logout', src: lo.dataset.mlogout })); return; }
+  if (e.target.id === 'mobscopy') navigator.clipboard?.writeText($('mobsurl').value).then(() => note('已复制，OBS → 来源 ＋ → 浏览器 → 粘贴', true)).catch(() => $('mobsurl').select());
+});
+function musicLoginResult(d) {
+  const box = $('mqrbox');
+  clearTimeout(mqr.t);
+  if (d.cmd === 'music_qr' && d.ok) {
+    mqr.key = d.key;
+    box.innerHTML = `<div class="mqr">${d.svg || `<img src="${d.png}" alt="">`}<div>${esc(d.msg)}</div></div>`;
+    box.hidden = false;
+  } else if (d.cmd === 'music_poll' && box.querySelector('.mqr > div')) box.querySelector('.mqr > div').textContent = d.msg;
+  if (!d.ok || ['ok', 'expired', 'fail', 'out'].includes(d.state)) {
+    if (d.state === 'ok' || d.state === 'out' || !d.ok) box.hidden = true;
+    note(d.msg, d.ok && d.state !== 'fail' && d.state !== 'expired');
+    return;
+  }
+  mqr.t = setTimeout(() => window._ws?.send(JSON.stringify({ cmd: 'music_poll', src: mqr.src, key: mqr.key })), 2000);
+}
 function renderSongs() {
   const all = S.songs || [], left = all.filter(x => !x.done).length;
   const lyr = new Set(S.admin ? (S.library || []).filter(r => r.lyrics).map(r => r.name.toLowerCase()) : []);
@@ -42,9 +125,10 @@ function renderSongs() {
     const sorted = [...all.filter(x => x.now), ...pend, ...all.filter(x => x.done)];  // 正在唱的排最上面
     body = sorted.map(row).join('');
   }
-  setList($('reqlist'), all.length ? body
+  const mq = musicHtml();
+  setList($('reqlist'), mq + (all.length ? body
     + (S.admin ? `<div style="text-align:center;padding:8px;display:flex;gap:6px;justify-content:center">${all.some(x => x.done) ? '<button class="btn sm" data-sq="song_clear" data-id="done">清掉唱完的</button>' : ''}<button class="btn sm" data-sq="song_clear" data-id="all">清空</button></div>` : '')
-    : `<div class="empty xw">暂无${S.admin ? '<br><small>可以一次粘贴多行</small>' : ''}</div>`);
+    : mq ? '' : `<div class="empty xw">暂无${S.admin ? '<br><small>可以一次粘贴多行</small>' : ''}</div>`));
 }
 // 歌单拖动排序：按住序号拖到想要的位置（只在没唱的歌之间挪；唱完的自动变灰沉到最下面）
 $('reqlist').addEventListener('pointerdown', e => {
@@ -326,6 +410,7 @@ function acctDialog(state = {}) {
       : state.svg ? `<div style="text-align:center"><div style="width:220px;margin:0 auto;background:#fff;border-radius:12px;padding:6px">${state.svg}</div>
         <div id="qrstate" style="margin-top:8px;color:var(--ink2)">${esc(state.msg || '用 B 站 App 扫码')}</div></div>`
       : `<p style="margin:0 0 10px">现在用 ${esc(S.room?.bot_name || '默认账号')} 发。</p>`}
+      ${!acct && S.room?.login_ok === false ? '<p class="disc" style="color:var(--ink2)">现在连直播间没登录，观众名字会打码。扫码登录后，也会用这个号连直播间。</p>' : ''}
       ${acct ? '' : '<p class="disc">登录后用你的账号发弹幕。B 站可能限制或封禁用第三方工具的账号，风险自负，作者不承担责任。</p>'}
       
     </div>

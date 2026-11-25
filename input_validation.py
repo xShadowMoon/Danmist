@@ -178,6 +178,9 @@ COMMAND_FIELDS = {
     'room_edit': {'acct', 'title', 'area_id'}, 'acct_poll': {'key'}, 'acct_info': {'acct'}, 'acct_logout': {'acct'},
     'tpre_set': {'list'}, 'xrooms_set': {'open', 'rooms'}, 'live_start': {'acct', 'area_id', 'title'}, 'live_stop': {'acct'},
     'lan_set': {'on'},
+    'music_rules': {'on', 'mode', 'src', 'need_ok', 'skip', 'max', 'medal', 'guard', 'wealth', 'follow', 'maxdur'},
+    'music_next': set(), 'music_ok': {'id'}, 'music_del': {'id'}, 'music_top': {'id'},
+    'music_qr': {'src'}, 'music_poll': {'src', 'key'}, 'music_logout': {'src'},
 }
 
 TITLE_PRESETS_MAX = 12
@@ -257,6 +260,13 @@ def validate_command(c, clean_rules):
         title_presets(c.get('list'))
     elif cmd == 'lan_set':
         boolean(c.get('on'), '手机打开')
+    elif cmd in ('music_ok', 'music_del', 'music_top'):
+        text(c.get('id'), '点歌编号', 32, True)
+    elif cmd in ('music_qr', 'music_poll', 'music_logout'):
+        if c.get('src') not in ('163', 'qq'):
+            raise InputError('不支持这个音乐平台')
+        if cmd == 'music_poll':
+            text(c.get('key'), '二维码编号', 64, True)
     elif cmd == 'xrooms_set':
         xrooms({'open': c.get('open', False), 'rooms': c.get('rooms', [])})
     elif cmd in ('live_start', 'live_stop'):

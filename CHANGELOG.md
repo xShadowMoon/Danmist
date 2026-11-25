@@ -5,6 +5,27 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.4 · 2026-11-25
+
+### 修复 · Fixes
+
+- 扫码登录后观众名字还是打码：以前左下角的扫码登录只用来发弹幕，连直播间要另外放 `data/bili-login.json`。现在还没有连直播间的登录（或者它失效了）时，扫码登录的号会顺便用来连直播间并马上重连，新弹幕就是完整名字。
+  Viewer names stayed masked after QR login: the QR login used to be for sending danmaku only. Now, if the room connection has no working login, the QR-logged-in account is also used for it and the connection is re-established, so new danmaku show full names.
+- 下播期间的礼物、上舰：以前每开一场都把之前所有下播收到的带过来，感谢过的也一直挂着。现在只带没感谢的，带过来的点了感谢就不再列（「下播期间」页里照样查得到）。
+  Gifts and guards received while offline were carried into every new session, even after being thanked. Now only unthanked ones carry over, and they disappear from the gift panel once thanked (still listed on the offline page).
+
+### 新功能（试用）· New (preview)
+
+- 弹幕点歌直接放：设置 → 点歌 → 「弹幕点歌直接放」。观众发「点歌 歌名」，从网易云或 QQ 音乐找到直接放；可以设谁能点（所有人 / 舰长以上、粉丝牌、荣耀等级、要关注）、每人同时排几首、要不要你同意、谁能发「切歌」。放法二选一：OBS 加 `/obs-music` 浏览器源（或者在页面上点喇叭出声），或者叫这台电脑上的网易云客户端放。歌单最上面显示正在放和排着的，标出是谁点的。网易云 / QQ 音乐扫码登录后会员歌也能放，登录信息只存在本机。
+  Song requests that play: Settings → Song requests. Viewers send 「点歌 song name」 and it plays from NetEase Cloud Music or QQ Music, with rules for who may request, how many each, approval, and who may skip. Play it through an `/obs-music` OBS browser source (or on the page), or through the NetEase desktop client. The queue sits at the top of the song list with each requester's name. Log in by QR code for VIP songs; login data stays on your computer.
+
+### 怎么更新 · How to update
+
+关掉弹幕姬 → 下载下面的 zip → 解压覆盖到原来的文件夹、全部替换 → 双击 `start.bat`。`config.json` 和 `data\` 不在压缩包里，设置和存档都会保留。
+Close the board, download the zip below, extract it over your existing folder (replace all) and run `start.bat`. `config.json` and `data\` are not in the zip, so your settings and archives are kept.
+
+---
+
 ## v0.9.3 · 2026-11-25
 
 ### 新功能 · New

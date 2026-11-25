@@ -475,9 +475,11 @@ function renderGifts() {
     setList(el, bar + (arr.length ? arr.map(rankRow).join('') : '<div class="empty">暂无</div>'));
     return;
   }
+  // 2026-11-25：上一段下播带过来的，点了感谢就不再列（「下播期间」页里还有）
+  const carried = g => g.source === '下播' && g.thanked && g.t < (S.session_start || 0);
   const items = [
-    ...S.gifts.filter(g => g.yuan == null || g.yuan >= cfg.giftMin).map(g => ({ t: g.t, html: `<div class="gift${g.yuan >= 50 || g.big ? ' big' : ''}" data-uid="${g.uid}" data-k="${g.id}" data-t="${g.t}">${avatar(g.face, g.name, g.guard)}<div class="body"><div class="n"><span class="nm">${esc(g.name)}</span>${g.source === '下播' ? '<span class="tag off" title="下播期间送的">下播</span>' : ''}</div><div class="g">${g.blind ? `${esc(g.blind)} 爆出 ${esc(g.gift)}` : `投喂 ${esc(g.gift)}`} × ${g.num} · ${g.source === '下播' ? fmtMd(g.t) : hhmm(g.t)}</div></div>${giftIcon(g)}${thxBtn(g)}${g.yuan == null ? '' : `<span class="y">${yuan(g.yuan)}</span>`}</div>` })),
-    ...S.guards.map(g => ({ t: g.t, html: guardRow(g).slice(0, -6) + thxBtn(g) + '</div>' })),
+    ...S.gifts.filter(g => (g.yuan == null || g.yuan >= cfg.giftMin) && !carried(g)).map(g => ({ t: g.t, html: `<div class="gift${g.yuan >= 50 || g.big ? ' big' : ''}" data-uid="${g.uid}" data-k="${g.id}" data-t="${g.t}">${avatar(g.face, g.name, g.guard)}<div class="body"><div class="n"><span class="nm">${esc(g.name)}</span>${g.source === '下播' ? '<span class="tag off" title="下播期间送的">下播</span>' : ''}</div><div class="g">${g.blind ? `${esc(g.blind)} 爆出 ${esc(g.gift)}` : `投喂 ${esc(g.gift)}`} × ${g.num} · ${g.source === '下播' ? fmtMd(g.t) : hhmm(g.t)}</div></div>${giftIcon(g)}${thxBtn(g)}${g.yuan == null ? '' : `<span class="y">${yuan(g.yuan)}</span>`}</div>` })),
+    ...S.guards.filter(g => !carried(g)).map(g => ({ t: g.t, html: guardRow(g).slice(0, -6) + thxBtn(g) + '</div>' })),
   ].sort((a, b) => b.t - a.t).slice(0, 200);
   setList(el, items.length ? items.map(x => x.html).join('') : '<div class="empty xw">暂无礼物</div>');
 }

@@ -25,7 +25,7 @@
 
 - 没开播也能先看看效果：双击 `demo.bat`，会在 <http://127.0.0.1:8375> 随机生成假弹幕、礼物和 SC，每种样式都能看一遍。
 - 想换直播间、改端口，编辑文件夹里的 `config.json`（见下面「配置」）。
-- 想让观众名字不被 B 站打码，需要一个 B 站账号的登录文件，见「常见问题」。
+- 想让观众名字不被 B 站打码：点发弹幕框左边的头像，扫码登录一个 B 站号（建议小号），弹幕姬会用它连直播间。见「常见问题」。
 
 ### 接到 OBS
 
@@ -63,6 +63,7 @@
 | 历史 | 每场完整保存弹幕、礼物、SC 和上舰，概览里有收益、送礼榜、礼物和上舰统计 |
 | OBS 弹幕 | `/obs` 6 种样式（月见、雾凇、星扣、雾月、气泡、票根），10 款开源字体，描边阴影、按身份配色、屏蔽词，全部在 `/obs-setup` 里点选 |
 | OBS 歌单 | `/obs-songs` 3 种样式（卡片、细条、唱片） |
+| 弹幕点歌直接放（试用） | 观众发「点歌 歌名」，从网易云 / QQ 音乐找到直接放；谁能点、每人几首、要不要你同意、谁能切歌都能设；OBS 加 `/obs-music` 浏览器源出声 |
 | 直播间 | 改标题和分区、常用标题一键切换、直播画面小窗、人气榜和小时榜、超管警告和切断提醒 |
 | 开播前自检 | 一键检查和 B 站的连接、登录、OBS 能不能收到；工作模式（唱歌 / 聊天 / 房管）一键换布局 |
 | 更新提醒 | GitHub 上出了新版本时，在顶栏提示（只有管理身份能看到），点开看更新内容和下载 |
@@ -176,6 +177,14 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 - **管理链接**：在「设置 → 链接」里新建，给房管用，可以随时作废或换新。
 - **主播专属链接**（`/host`）：给主播本人，界面更简单。
 
+### 弹幕点歌直接放（试用）
+
+设置 → 点歌 → 「弹幕点歌直接放」打开后，观众发「点歌 歌名」（或「点歌 歌名 - 歌手」）就会排进歌单最上面的「放歌」，按顺序放；发「切歌」按你设的规则切。
+- 曲库选网易云或 QQ 音乐，扫码登录后会员歌也能放（不登录只能放免费的）。登录信息只存在本机 `data/music-login.json`。
+- 网页放：OBS 里加一个浏览器源，网址填设置里给的 `/obs-music`（勾上「通过 OBS 控制音频」调音量）；不用 OBS 就在歌单的放歌栏点喇叭，让这个页面出声。
+- 电脑上的网易云：让这台电脑上装的网易云客户端放（只支持 Windows + 网易云）。
+- 谁能点：所有人 / 舰长以上，粉丝牌、荣耀等级门槛，每人同时排几首，要不要你先同意。
+
 ### 手机打开（同一个 Wi-Fi）
 
 设置 → 链接 → 打开「同一个 Wi-Fi 能打开」，下面会给出 `http://电脑的局域网地址:8373`，同一个 Wi-Fi 的手机、平板输入就能看。要在手机上管理，就在同一页新建一个管理链接，用手机扫弹出来的二维码。第一次打开时 Windows 可能问要不要允许网络访问，选「专用网络」允许。也可以直接在 `config.json` 写 `"lan": true`。
@@ -190,7 +199,7 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 
 | 现象 | 原因和处理 |
 |---|---|
-| 观众名字被打码（中间变成 `*`） | B 站不给未登录的连接看完整名字。把一个 B 站账号的 Cookie 存成 `data/bili-login.json`，内容是 `{"cookie": "SESSDATA=...; bili_jct=...; DedeUserID=..."}`，重启后生效。**这个文件等于账号密码**，只放在自己电脑上，不要发给别人；建议用小号。 |
+| 观众名字被打码（中间变成 `*`） | B 站不给未登录的连接看完整名字。点发弹幕框左边的头像扫码登录一个 B 站号（建议小号）：v0.9.4 起，还没有连直播间的登录时会自动用这个号连，几秒后新弹幕就是完整名字（之前的弹幕不会变）。v0.9.3 及以前扫码登录只用来发弹幕，要更新到新版。也可以手动把 Cookie 存成 `data/bili-login.json`：`{"cookie": "SESSDATA=...; bili_jct=...; DedeUserID=..."}`。**登录信息等于账号密码**，只在自己电脑上。 |
 | 双击 `start.bat` 一闪就没了 | 多半是解压不完整，或者在压缩包里直接运行。完整解压到一个普通文件夹再试；还不行就在那个文件夹里打开命令行运行 `start.bat` 看报错。 |
 | 提示端口 8373 被占用 | 可能已经开着一个弹幕姬，直接打开 <http://127.0.0.1:8373> 就行；要换端口，改 `config.json` 里的 `port`。 |
 | 想换直播间 | 改 `config.json` 里的 `room`，关掉窗口重新打开。 |
@@ -259,7 +268,7 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 
 - Try it without going live: `demo.bat` generates fake danmaku, gifts and Super Chats at <http://127.0.0.1:8375>.
 - To change room or port, edit `config.json` (see Configuration).
-- To stop Bilibili from masking viewer names, add a login file (see FAQ).
+- To stop Bilibili from masking viewer names, click the avatar left of the send box and log in to a Bilibili account by QR code (a secondary account is recommended); the board uses it for the room connection. See FAQ.
 
 ### Adding it to OBS
 
@@ -297,6 +306,7 @@ Running from source: `git pull`, `pip install -r requirements.txt`, then restart
 | History | Every stream archived with full danmaku, gifts, SC and guards; per-stream summary with revenue and rankings |
 | OBS danmaku overlay | `/obs` with 6 styles (moon, rime, clip, luna, bubble, ticket), 10 open-source fonts, outline and shadow, colours by guard level, blocked words, all configured visually at `/obs-setup` |
 | OBS song overlay | `/obs-songs` with 3 styles (card, strip, vinyl) |
+| Song requests that play (preview) | Viewers send 「点歌 song name」 and it plays from NetEase Cloud Music or QQ Music; set who may request, how many each, whether you approve, and who may skip; add `/obs-music` as an OBS browser source for the audio |
 | Live room | Change title and area, saved title presets, live video pop-out, popularity and hourly ranks, warnings from Bilibili moderators |
 | Pre-stream check | One click to check the Bilibili connection, login and OBS; work modes (singing / chatting / moderating) switch layouts |
 | Update reminder | Shows a tag at the top when a new version is on GitHub (admins only), linking to the release notes and download |
@@ -410,6 +420,14 @@ By default it only listens on `127.0.0.1` (see below for phones on the same Wi-F
 - **Admin links**: created under Settings → Links for moderators; revoke or rotate any time.
 - **Host link** (`/host`): for the streamer, with a simpler interface.
 
+### Song requests that play (preview)
+
+Turn on Settings → Song requests → "Play song requests". Viewers send 「点歌 song name」 (or 「点歌 song - artist」) and the song joins the "Playing" queue at the top of the song list; 「切歌」 skips according to your rule.
+- Choose NetEase Cloud Music or QQ Music; log in by QR code to play VIP songs (without login only free songs play). Login data stays in `data/music-login.json` on your computer.
+- Web playback: add an OBS browser source with the `/obs-music` URL shown in settings (tick "Control audio via OBS"), or click the speaker in the queue to play on that page.
+- Desktop NetEase app: plays through the NetEase Cloud Music client on this computer (Windows only).
+- Rules: everyone or guards only, fan-medal and honor-level thresholds, songs per person, and whether you approve first.
+
 ### Opening it on a phone (same Wi-Fi)
 
 Settings → Links → turn on "Open on the same Wi-Fi". It shows `http://<your computer's LAN address>:8373`, which phones and tablets on the same Wi-Fi can open. To manage from the phone, create an admin link on the same page and scan the QR code it shows. Windows may ask whether to allow network access the first time; allow it for private networks. You can also set `"lan": true` in `config.json`.
@@ -424,7 +442,7 @@ No artwork is included apart from the app icon. See [`static/art/README.md`](sta
 
 | Problem | Cause and fix |
 |---|---|
-| Viewer names are masked with `*` | Bilibili hides full names from logged-out connections. Save a Bilibili account's cookie as `data/bili-login.json`: `{"cookie": "SESSDATA=...; bili_jct=...; DedeUserID=..."}` and restart. **This file is as good as the account password**: keep it on your computer only. A secondary account is recommended. |
+| Viewer names are masked with `*` | Bilibili hides full names from logged-out connections. Click the avatar left of the send box and log in by QR code (a secondary account is recommended). From v0.9.4, if the room connection has no login yet, the board uses this account and reconnects, so new danmaku show full names (older ones stay masked). Up to v0.9.3 the QR login was only used for sending danmaku, so update first. You can also save a cookie as `data/bili-login.json`: `{"cookie": "SESSDATA=...; bili_jct=...; DedeUserID=..."}`. **Login data is as good as the password**: keep it on your computer only. |
 | `start.bat` flashes and closes | Usually the zip wasn't fully extracted, or it was run from inside the zip. Extract to a normal folder; if it still fails, run `start.bat` from a command prompt in that folder to see the error. |
 | Port 8373 is already in use | Another copy is probably running; just open <http://127.0.0.1:8373>. To use another port, change `port` in `config.json`. |
 | Switch to another room | Change `room` in `config.json` and restart. |

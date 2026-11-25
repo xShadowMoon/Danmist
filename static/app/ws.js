@@ -3,7 +3,7 @@
 function drawBanner() {
   const b = $('banner'), show = !!S.admin && S.room.login_ok === false;
   b.classList.toggle('show', show);
-  if (show) setText(b, '⚠ B 站登录失效，名字会打码');
+  if (show) setText(b, '⚠ 连直播间没登录，名字会打码：点发弹幕框左边的头像扫码登录');
 }
 // 断线自动重连：等待时间 2、4、8… 秒，最多 30 秒；超过 150 秒一条消息都没有，也当断线处理
 let wsRetry = 0, wsTimer = 0, lastMsgAt = Date.now();
@@ -58,11 +58,12 @@ function connect() {
       checkVer(data.ver);
       Object.assign(EMO, data.emots || {});
       Object.assign(S, data);
+      if (S.music) S.music.skew = (S.music.now || Date.now() / 1000) - Date.now() / 1000;
       window.syncWorkbench?.();
       S.userCount = data.user_count;
       S.dmTotal = data.dm_total ?? (data.users || []).reduce((a, u) => a + (u.dm || 0), 0);
       $('roomid').textContent = data.room_id ? '' : '演示';
-      if (!S.admin) { S.notes = null; for (const k of ['sc_read', 'admin_links', 'connections', 'library', 'songbook', 'profiles', 'title_presets', 'lan']) delete S[k]; }  // 切到普通视角时，把管理身份才有的东西从页面里清掉
+      if (!S.admin) { S.notes = null; for (const k of ['sc_read', 'admin_links', 'connections', 'library', 'songbook', 'profiles', 'title_presets', 'lan', 'music_rules']) delete S[k]; }  // 切到普通视角时，把管理身份才有的东西从页面里清掉
       document.body.classList.toggle('nomoney', !S.admin);
       setViewer(!S.admin);
       document.body.classList.toggle('host', !!S.host);  // 主播专属链接：藏掉普通视角、链接管理、清零这些后台的东西
@@ -76,7 +77,7 @@ function connect() {
       }
       renderLayout(); drawBanner(); drawConn(); drawSayAs(); drawPsets(); drawLinks(); drawUpd();
       if (S.admin && acct) window._ws.send(JSON.stringify({ cmd: 'acct_info', acct: acct.token }));  // 看看之前登录的号还在不在
-      renderAll();
+      renderAll(); musicSync(); drawMusicSet();
     } else if (type === 'dm') {
       S.dm.push(data); if (S.dm.length > 300) S.dm.shift();
       if (data.kind) { addDm(data); return; }  // 禁言提示：只显示，不算发言、不朗读
@@ -127,11 +128,18 @@ function connect() {
       S.reqs = data; renderReqs();
     } else if (type === 'req_rules') {
       S.req_rules = data; drawReqHead();
+    } else if (type === 'music') {  // 放歌队列变了（2026-11-25）
+      S.music = data; S.music.skew = (data.now || Date.now() / 1000) - Date.now() / 1000;
+      if (reqTab === 'list') soon(renderReqs, 'mq');
+      musicSync();
+    } else if (type === 'music_rules') {
+      S.music_rules = data; drawMusicSet();
     } else if (type === 'result') {
       if (String(data.cmd).startsWith('acct_')) { acctResult(data); drawRoomBtns(); return; }
       if (String(data.cmd).startsWith('profile_')) { profileResult(data); return; }
       if (String(data.cmd).startsWith('admin_link_')) { linkResult(data); return; }
       if (data.cmd === 'lan_set') { note(data.msg, data.ok); if (!data.ok) drawLinks(); return; }
+      if (['music_qr', 'music_poll', 'music_logout'].includes(data.cmd)) { musicLoginResult(data); return; }
       if (data.cmd === 'mute_list' || data.cmd === 'unmute') { muteResult(data); return; }
       if (data.cmd === 'news_get' || data.cmd === 'news_set') { newsResult(data); return; }
       if (data.cmd === 'sc_read' || data.cmd === 'sc_read_all') { if (!data.ok) note(data.msg, false); return; }

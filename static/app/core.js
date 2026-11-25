@@ -328,7 +328,7 @@ function avatar(face, name, guard, size) {
   const av = face ? `<img class="av${g}" style="${st}" src="img?u=${encodeURIComponent(face)}" loading="lazy" data-ch="${ch}" onerror="avFail(this)">`
     : `<span class="av${g}" style="${st}background:${c}">${ch}</span>`;
   // 舰长头像框（2026-11-19 改醒目）：头像和框之间一圈白边隔开，框外有等级色光晕，右下角一个锚徽章，一眼看出是舰长 / 提督 / 总督
-  return guard >= 1 && guard <= 3 ? `<span class="avw g${guard}">${av}<img class="avf" src="art/frame${guard}-s.png" alt="" onerror="this.remove()"><img class="avb" src="art/guard${guard}.png" alt="" onerror="this.remove()"></span>` : av;
+  return guard >= 1 && guard <= 3 ? `<span class="avw g${guard}">${av}<img class="avf" src="art/frame${guard}-s.png?v=3" alt="" onerror="this.remove()"><img class="avb" src="art/guard${guard}.png?v=3" alt="" onerror="this.remove()"></span>` : av;
 }
 fillIcons();
 
@@ -428,6 +428,6 @@ try { scRead = new Set(JSON.parse(localStorage.getItem('xw-scread') || '[]')); }
 const scSynced = () => !!S.admin && Array.isArray(S.sc_read);
 const saveScRead = () => { try { localStorage.setItem('xw-scread', JSON.stringify([...scRead].slice(-500))); } catch {} };
 // 上舰一条（2026-11-18 重做）：跟礼物一样两行（名字 / 开通了什么），右边放舰长 / 提督 / 总督的锚徽章，底色按等级淡淡地染
-const guardRow = (g, i, all, withDay) => `<div class="guardrow l${g.level}" data-uid="${g.uid}" data-k="g${g.uid}-${g.t}" data-t="${g.t}">${avatar(g.face || userOf(g.uid)?.face || '', g.name, g.level)}<div class="body"><div class="n"><span class="nm">${esc(g.name)}</span>${g.source === '下播' ? '<span class="tag off" title="下播期间开通的">下播</span>' : ''}</div><div class="g" title="${hhmm(g.t)} ${esc(g.op || '开通')}${esc(g.level_name)}">${g.op ? `${esc(g.op)}了 ` : ''}<b class="lv">${esc(g.level_name)}</b> ${g.num}${esc(g.unit)} ${g.yuan == null ? '' : ` · <span class="y">${yuan(g.yuan)}</span>`}${withDay || g.source === '下播' ? ` · ${fmtMd(g.t)}` : ''}</div>${g.days > 0 ? `<div class="gd"${g.days_est ? ' title="这条是按 B 站现在的陪伴天数往回推的"' : ''}>这是 TA 陪伴你的第 <b>${g.days}</b> 天</div>` : ''}</div><img class="gbadge" src="/art/guard${g.level}.png" alt="" onerror="this.remove()"></div>`;
+const guardRow = (g, i, all, withDay) => `<div class="guardrow l${g.level}" data-uid="${g.uid}" data-k="g${g.uid}-${g.t}" data-t="${g.t}">${avatar(g.face || userOf(g.uid)?.face || '', g.name, g.level)}<div class="body"><div class="n"><span class="nm">${esc(g.name)}</span>${g.source === '下播' ? '<span class="tag off" title="下播期间开通的">下播</span>' : ''}</div><div class="g" title="${hhmm(g.t)} ${esc(g.op || '开通')}${esc(g.level_name)}">${g.op ? `${esc(g.op)}了 ` : ''}<b class="lv">${esc(g.level_name)}</b> ${g.num}${esc(g.unit)} ${g.yuan == null ? '' : ` · <span class="y">${yuan(g.yuan)}</span>`}${withDay || g.source === '下播' ? ` · ${fmtMd(g.t)}` : ''}</div>${g.days > 0 ? `<div class="gd"${g.days_est ? ' title="这条是按 B 站现在的陪伴天数往回推的"' : ''}>这是 TA 陪伴你的第 <b>${g.days}</b> 天</div>` : ''}</div><img class="gbadge" src="/art/guard${g.level}.png?v=3" alt="" onerror="this.remove()"></div>`;
 const rankRow = (u, i) => `<div class="row" data-uid="${u.uid}" data-k="r${u.uid}"><span class="rank r${i + 1}">${i + 1}</span>${avatar(u.face, u.name, u.guard, 26)}<span class="n">${esc(u.name)}</span>${u.guard ? `<span class="tag g${u.guard}" title="${GN[u.guard]}">${GS[u.guard]}</span>` : ''}<span class="r money">${yuan(u.spend)}</span></div>`;
 

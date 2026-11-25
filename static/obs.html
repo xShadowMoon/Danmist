@@ -567,7 +567,7 @@ const gtag = g => !g ? '' : art['guard' + g] ? `<img class="gicon" src="${art['g
 // noBadge：礼物卡、SC 卡里只留头像框，不在头像前面再放身份徽章（2026-11-12 用户要求）
 function identity(face, name, guard, noBadge) {
   const g = GN[guard] ? Number(guard) : 0;
-  const frame = g ? `<img class="avatar-frame" src="art/frame${g}-v2.png" alt="" onerror="this.parentElement.classList.remove('has-art');this.remove()">` : '';
+  const frame = g ? `<img class="avatar-frame" src="art/frame${g}-v2.png?v=3" alt="" onerror="this.parentElement.classList.remove('has-art');this.remove()">` : '';
   return `<span class="identity${g ? ' tier' + g : ''}">${noBadge ? '' : gtag(g)}<span class="portrait${g ? ' has-art' : ''}">${avatar(face, name)}${frame}</span></span>`;
 }
 const rankLabel = g => GN[g] ? `<span class="rank rank${g}">${GN[g]}</span>` : '';

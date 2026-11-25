@@ -1203,6 +1203,27 @@ body.side .saybar, body.side #tprebtn, body.side #tedit, body.side #golive { dis
 #lkboxqr svg { width: 160px; height: 160px; background: #fff; border-radius: 8px; }
 #lkbox:has(#lkboxqr:not([hidden])) { height: auto; }
 .top .uhide { display: none !important; }
+/* 放歌（2026-11-25） */
+.mq { margin: 0 0 8px; padding: 6px 6px 4px; border-radius: 10px; background: color-mix(in srgb, var(--mist) 10%, transparent); border: 1px solid var(--line-soft); }
+.mqh { display: flex; align-items: center; gap: 6px; padding: 0 2px 4px; font-size: 13px; }
+.mqh svg.ic { width: 15px; height: 15px; color: var(--mist-d); }
+.mqh small { color: var(--ink3); }
+.mqh .sp { flex: 1; }
+.mqh .mhere { padding: 2px 6px; }
+.mqh .mhere svg.ic { width: 14px; height: 14px; }
+.mrow .mcov { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; flex: none; }
+.mrow .mart { color: var(--ink3); font-weight: 400; }
+.mwho { color: var(--mist-d); font-weight: 600; }
+.mwait { color: var(--money-ink, #c98a00); }
+.mnow { background: color-mix(in srgb, var(--mist) 16%, transparent); box-shadow: inset 3px 0 0 var(--mist-d); }
+.mbar { height: 3px; border-radius: 2px; background: var(--line-soft); margin-top: 5px; overflow: hidden; }
+.mbar i { display: block; height: 100%; background: var(--mist-d); transform-origin: left; transition: transform 1s linear; }
+.mempty { padding: 8px 6px; font-size: 12.5px; color: var(--ink3); }
+#mlogin { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mlg { font-weight: 600; }
+.mtip { color: var(--ink3); }
+.mqr { display: grid; justify-items: center; gap: 6px; padding: 8px 0; font-size: 12.5px; color: var(--ink2); }
+.mqr svg, .mqr img { width: 170px; height: 170px; background: #fff; border-radius: 8px; padding: 4px; }
 .disc { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--ink3); }
 .lk-tip { display: block; color: var(--ink3); padding: 2px 2px 4px; }
 .lkrow { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px dashed var(--line-soft); }
