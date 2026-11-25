@@ -5,6 +5,32 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.8 · 2026-11-25
+
+### 斗鱼、虎牙 · Douyu and Huya
+
+- 同时在斗鱼、虎牙开播时，可以把那边的弹幕、礼物、进房也收进雾幕：设置 → 弹幕 → 「其他平台」里加房间号。每条前面标「斗鱼」「虎牙」，OBS 弹幕上也标；点歌、朗读跟 B 站的一样处理。只读，不会用你的账号发任何东西。
+  If you also stream on Douyu or Huya, add those rooms under Settings → Danmaku → Other platforms. Their danmaku, gifts and entries appear alongside Bilibili's, tagged with the platform (on the OBS overlay too). Read-only.
+- 抖音暂时没做：抖音的弹幕要过它自己的反爬签名，绕过它不合适。
+  Douyin is not supported: its live chat sits behind anti-bot signing that we won't bypass.
+
+### 点歌放歌 · Song requests
+
+- 扫码登不上时，可以「粘贴登录信息」：在电脑浏览器登录网易云 / QQ 音乐网页版，复制 Cookie 粘进来。「电脑上的网易云」模式用客户端自己的登录，雾幕这边不用登录。
+  If QR login fails, paste the cookie from the NetEase / QQ Music website instead. In "desktop NetEase" mode the client's own login is used.
+
+### 文档 · Docs
+
+- README 写清了老版本（v0.9.0–v0.9.4）怎么更新，以及从免安装版搬到安装版时怎么把存档带过去。
+  The README now explains how to update from v0.9.0–v0.9.4 and how to move your archives to the installed version.
+
+### 怎么更新 · How to update
+
+v0.9.5 起：顶栏点「下载更新」→「重启生效」。更早的版本：下载安装包直接装（再按 README 把 config.json 和 data 拷过去），或者下载 zip 解压覆盖。
+From v0.9.5: click **download update** → **restart**. Older versions: run the installer (then copy `config.json` and `data` over as described in the README), or extract the zip over your folder.
+
+---
+
 ## v0.9.7 · 2026-11-25
 
 ### 新图标和看板娘 · New icon and mascot

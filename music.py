@@ -346,6 +346,33 @@ class MusicService:
             except OSError:
                 pass
 
+    async def set_cookie(self, src, text):
+        """「粘贴登录信息」（2026-11-25 用户扫码登不上）：在电脑浏览器登录网易云 / QQ 音乐网页版后，把 Cookie 粘进来。
+        网易云只要 MUSIC_U；QQ 音乐要 uin 和 qqmusic_key（或 qm_keyst）。粘整段 Cookie 或者只粘 MUSIC_U 的值都行"""
+        text = str(text or '').strip().strip('"\'')
+        jar = {}
+        for part in re.split(r';\s*', text):
+            k, _, v = part.strip().partition('=')
+            if k and v:
+                jar[k.strip()] = v.strip()
+        if src == '163':
+            mu = jar.get('MUSIC_U') or (text if re.fullmatch(r'[0-9A-Fa-f]{60,}', text) else '')
+            if not mu:
+                return False, '没找到 MUSIC_U：粘整段 Cookie，或者只粘 MUSIC_U 后面那串'
+            ck = f'MUSIC_U={mu}' + (f"; __csrf={jar['__csrf']}" if jar.get('__csrf') else '')
+            a, _ = await self.providers['163'].get('/api/nuser/account/get', cookie=ck)
+            name = str(((a or {}).get('profile') or {}).get('nickname') or '')
+            if not name:
+                return False, '这段登录信息网易云不认（可能过期了），在网页上重新登录再复制'
+            self.save_login('163', {'cookie': ck, 'name': name, 't': int(time.time())})
+            return True, f'网易云已登录：{name}'
+        uin = re.sub(r'\D', '', jar.get('uin', '') or jar.get('qqmusic_uin', '') or jar.get('wxuin', ''))
+        key = jar.get('qqmusic_key') or jar.get('qm_keyst') or ''
+        if not uin or not key:
+            return False, '没找到 uin 和 qqmusic_key：在 y.qq.com 登录后粘整段 Cookie'
+        self.save_login('qq', {'uin': uin, 'key': key, 'name': f'QQ {uin[:3]}***{uin[-2:]}', 't': int(time.time())})
+        return True, 'QQ 音乐已登录'
+
     def drop_flow(self, key):
         f = self.qq_flows.pop(key, None)
         if f:

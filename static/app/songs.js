@@ -70,7 +70,9 @@ function drawMusicSet() {
   });
   box.querySelectorAll('[data-mseg]').forEach(sg => sg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === String(R[sg.dataset.mseg]))));
   const lg = R.login || {}, src = R.src;
-  $('mlogin').innerHTML = lg[src] ? `<span class="mlg">${esc(lg[src])}</span><button class="btn sm" data-mlogout="${src}">退出</button>` : `<button class="btn sm" data-mlogin="${src}">${icon('phone')} 扫码登录${MSRC[src]}</button><small class="mtip">不登录只能放免费的歌</small>`;
+  $('mlogin').innerHTML = lg[src] ? `<span class="mlg">${esc(lg[src])}</span><button class="btn sm" data-mlogout="${src}">退出</button>`
+    : `<button class="btn sm" data-mlogin="${src}">${icon('phone')} 扫码登录${MSRC[src]}</button><button class="btn sm" data-mcookie="${src}" title="扫码登不上时用：在电脑浏览器登录${MSRC[src]}网页版，按 F12 → 应用/存储 → Cookie，复制${src === '163' ? ' MUSIC_U' : ' uin 和 qqmusic_key'}粘进来">粘贴登录信息</button>`
+      + `<small class="mtip">${R.mode === 'app' && src === '163' ? '「电脑上的网易云」用客户端自己的登录，这里可以不登' : '不登录只能放免费的歌'}</small>`;
   $('mobsurl').value = location.origin + location.pathname.replace(/[^/]*$/, '') + 'obs-music';
 }
 function sendRules(patch) { window._ws?.send(JSON.stringify({ cmd: 'music_rules', ...patch })); }
@@ -84,6 +86,12 @@ document.addEventListener('click', e => {
   if (sb) { sendRules({ [sb.parentElement.dataset.mseg]: sb.dataset.val }); return; }
   const li = e.target.closest('[data-mlogin]');
   if (li) { mqr = { src: li.dataset.mlogin, key: '', t: 0 }; window._ws?.send(JSON.stringify({ cmd: 'music_qr', src: mqr.src })); return; }
+  const mc = e.target.closest('[data-mcookie]');
+  if (mc) {
+    const v = prompt(mc.dataset.mcookie === '163' ? '粘贴网易云的 Cookie（整段，或者只粘 MUSIC_U 的值）' : '粘贴 QQ 音乐的 Cookie（要有 uin 和 qqmusic_key）');
+    if (v && v.trim()) { mqr = { src: mc.dataset.mcookie, key: '', t: 0 }; window._ws?.send(JSON.stringify({ cmd: 'music_cookie', src: mc.dataset.mcookie, cookie: v.trim() })); }
+    return;
+  }
   const lo = e.target.closest('[data-mlogout]');
   if (lo) { window._ws?.send(JSON.stringify({ cmd: 'music_logout', src: lo.dataset.mlogout })); return; }
   if (e.target.id === 'mobscopy') navigator.clipboard?.writeText($('mobsurl').value).then(() => note('已复制，OBS → 来源 ＋ → 浏览器 → 粘贴', true)).catch(() => $('mobsurl').select());
@@ -104,6 +112,24 @@ function musicLoginResult(d) {
   }
   mqr.t = setTimeout(() => window._ws?.send(JSON.stringify({ cmd: 'music_poll', src: mqr.src, key: mqr.key })), 2000);
 }
+/* ---------- 其他平台（2026-11-25）：斗鱼、虎牙的直播间，弹幕收进来标上平台 ---------- */
+const PLAT_LABEL = { douyu: '斗鱼', huya: '虎牙' };
+function platTag(p) { return PLAT_LABEL[p] ? `<span class="tag plat p-${p}" title="${PLAT_LABEL[p]}直播间">${PLAT_LABEL[p]}</span>` : ''; }
+function drawPlats() {
+  const box = $('platbox'), P = S.platforms;
+  if (!box) return;
+  box.hidden = !P;
+  if (!P) return;
+  $('platlist').innerHTML = (P.rooms || []).map((r, i) => `<div class="lkrow"><div>${platTag(r.plat)} <b>${esc(r.room)}</b><small>${esc(r.state || '')}</small></div><label class="chip"><input type="checkbox" data-plon="${i}"${r.on ? ' checked' : ''}><span>收</span></label><button class="btn sm" data-pldel="${i}">删掉</button></div>`).join('')
+    || '<div class="empty" style="padding:8px">还没加。同时在别的平台开播时，把那边的房间号加进来</div>';
+}
+function sendPlats(rooms) { window._ws?.send(JSON.stringify({ cmd: 'plat_set', rooms: rooms.map(r => ({ plat: r.plat, room: r.room, on: r.on })) })); }
+$('platadd')?.addEventListener('click', () => {
+  const room = $('platroom').value.trim(); if (!room) return;
+  sendPlats([...(S.platforms?.rooms || []), { plat: $('platsel').value, room, on: true }]); $('platroom').value = '';
+});
+$('platlist')?.addEventListener('change', e => { const i = e.target.dataset.plon; if (i == null) return; const R = [...(S.platforms?.rooms || [])]; R[i] = { ...R[i], on: e.target.checked }; sendPlats(R); });
+$('platlist')?.addEventListener('click', e => { const b = e.target.closest('[data-pldel]'); if (!b) return; sendPlats((S.platforms?.rooms || []).filter((_, i) => i !== Number(b.dataset.pldel))); });
 function renderSongs() {
   const all = S.songs || [], left = all.filter(x => !x.done).length;
   const lyr = new Set(S.admin ? (S.library || []).filter(r => r.lyrics).map(r => r.name.toLowerCase()) : []);

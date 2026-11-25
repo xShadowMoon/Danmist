@@ -12,6 +12,7 @@ function dmHtml(d) {
   // 禁言提示（2026-11-18）：和 B 站直播间一样，一行粉色小字
   if (d.kind === 'mute') return `<div class="dm dmsys" data-uid="${d.uid}" data-i="${d.i ?? ''}"><span>${icon('ban')}</span><span class="txt"><b>${esc(d.name)}</b> ${esc(d.text)}</span><span class="time">${hhmm(d.t)}</span></div>`;
   const tags = [];
+  if (d.plat) tags.push(platTag(d.plat));  // 其他平台的弹幕（2026-11-25）
   if (S.room.uid && d.uid === S.room.uid) tags.push('<span class="tag anchor" title="主播本人">主播</span>');  // 2026-11-19 跟 B 站一样
   if (d.wealth) tags.push(wealthHtml(d.wealth));
   if (d.guard) tags.push(`<span class="tag g${d.guard}" title="${GN[d.guard]}">${GS[d.guard]}</span>`);
@@ -478,7 +479,7 @@ function renderGifts() {
   // 2026-11-25：上一段下播带过来的，点了感谢就不再列（「下播期间」页里还有）
   const carried = g => g.source === '下播' && g.thanked && g.t < (S.session_start || 0);
   const items = [
-    ...S.gifts.filter(g => (g.yuan == null || g.yuan >= cfg.giftMin) && !carried(g)).map(g => ({ t: g.t, html: `<div class="gift${g.yuan >= 50 || g.big ? ' big' : ''}" data-uid="${g.uid}" data-k="${g.id}" data-t="${g.t}">${avatar(g.face, g.name, g.guard)}<div class="body"><div class="n"><span class="nm">${esc(g.name)}</span>${g.source === '下播' ? '<span class="tag off" title="下播期间送的">下播</span>' : ''}</div><div class="g">${g.blind ? `${esc(g.blind)} 爆出 ${esc(g.gift)}` : `投喂 ${esc(g.gift)}`} × ${g.num} · ${g.source === '下播' ? fmtMd(g.t) : hhmm(g.t)}</div></div>${giftIcon(g)}${thxBtn(g)}${g.yuan == null ? '' : `<span class="y">${yuan(g.yuan)}</span>`}</div>` })),
+    ...S.gifts.filter(g => (g.yuan == null || g.yuan >= cfg.giftMin) && !carried(g)).map(g => ({ t: g.t, html: `<div class="gift${g.yuan >= 50 || g.big ? ' big' : ''}" data-uid="${g.uid}" data-k="${g.id}" data-t="${g.t}">${avatar(g.face, g.name, g.guard)}<div class="body"><div class="n"><span class="nm">${esc(g.name)}</span>${g.plat ? platTag(g.plat) : ''}${g.source === '下播' ? '<span class="tag off" title="下播期间送的">下播</span>' : ''}</div><div class="g">${g.blind ? `${esc(g.blind)} 爆出 ${esc(g.gift)}` : `投喂 ${esc(g.gift)}`} × ${g.num} · ${g.source === '下播' ? fmtMd(g.t) : hhmm(g.t)}</div></div>${giftIcon(g)}${thxBtn(g)}${g.yuan == null ? '' : `<span class="y">${yuan(g.yuan)}</span>`}</div>` })),
     ...S.guards.filter(g => !carried(g)).map(g => ({ t: g.t, html: guardRow(g).slice(0, -6) + thxBtn(g) + '</div>' })),
   ].sort((a, b) => b.t - a.t).slice(0, 200);
   setList(el, items.length ? items.map(x => x.html).join('') : '<div class="empty xw">暂无礼物</div>');
@@ -487,7 +488,7 @@ function renderGifts() {
 const ACT = { enter: '进入直播间', follow: '关注了主播', share: '分享了直播间', like: '点赞了直播间' };
 function enterRow(e) {
   const g = e.guard || userOf(e.uid)?.guard || 0;
-  return `<div class="row" data-uid="${e.uid}" data-k="e${e.uid}-${e.t}-${e.kind}">${avatar(e.face, e.name, g, 24)}<span class="n">${esc(e.name)}</span>${g ? `<span class="tag g${g}" title="${GN[g]}">${GS[g]}</span>` : ''}<span class="act ${e.kind}">${ACT[e.kind] || ''}</span><span class="r">${hhmm(e.t)}</span></div>`;
+  return `<div class="row" data-uid="${e.uid}" data-k="e${e.uid}-${e.t}-${e.kind}">${avatar(e.face, e.name, g, 24)}<span class="n">${esc(e.name)}</span>${e.plat ? platTag(e.plat) : ''}${g ? `<span class="tag g${g}" title="${GN[g]}">${GS[g]}</span>` : ''}<span class="act ${e.kind}">${ACT[e.kind] || ''}</span><span class="r">${hhmm(e.t)}</span></div>`;
 }
 function renderEnters() {
   setText($('entern'), S.enters.length ? `${S.enters.length} 条` : '');
@@ -500,7 +501,7 @@ let enterTipT = 0, epT = 0;
 // 进房提示的内容：名字 + 做了什么；cfg.enterTip.avatar 关掉就不带头像
 function enterTipHtml(e) {
   const g = e.guard, what = ACT[e.kind] || '进入直播间';
-  return `${cfg.enterTip.avatar ? avatar(e.face, e.name, g, 20) : ''}<b>${esc(e.name)}</b>${g ? `<span class="tag g${g}">${GS[g]}</span>` : ''}<span>${what}</span>`;
+  return `${cfg.enterTip.avatar ? avatar(e.face, e.name, g, 20) : ''}<b>${esc(e.name)}</b>${e.plat ? platTag(e.plat) : ''}${g ? `<span class="tag g${g}">${GS[g]}</span>` : ''}<span>${what}</span>`;
 }
 const enterTipCls = e => (e.guard ? ' g' + e.guard : '') + (e.kind === 'follow' ? ' follow' : '');
 function enterWanted(e) {

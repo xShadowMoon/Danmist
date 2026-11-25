@@ -181,7 +181,8 @@ COMMAND_FIELDS = {
     'update_download': set(), 'update_restart': set(), 'open_mode': {'mode'}, 'make_shortcut': set(),
     'music_rules': {'on', 'mode', 'src', 'need_ok', 'skip', 'max', 'medal', 'guard', 'wealth', 'follow', 'maxdur'},
     'music_next': set(), 'music_ok': {'id'}, 'music_del': {'id'}, 'music_top': {'id'},
-    'music_qr': {'src'}, 'music_poll': {'src', 'key'}, 'music_logout': {'src'},
+    'music_qr': {'src'}, 'music_poll': {'src', 'key'}, 'music_logout': {'src'}, 'music_cookie': {'src', 'cookie'},
+    'plat_set': {'rooms'},
 }
 
 TITLE_PRESETS_MAX = 12
@@ -266,9 +267,11 @@ def validate_command(c, clean_rules):
         boolean(c.get('on'), '手机打开')
     elif cmd in ('music_ok', 'music_del', 'music_top'):
         text(c.get('id'), '点歌编号', 32, True)
-    elif cmd in ('music_qr', 'music_poll', 'music_logout'):
+    elif cmd in ('music_qr', 'music_poll', 'music_logout', 'music_cookie'):
         if c.get('src') not in ('163', 'qq'):
             raise InputError('不支持这个音乐平台')
+        if cmd == 'music_cookie':
+            text(c.get('cookie'), '登录信息', 8000, True)
         if cmd == 'music_poll':
             text(c.get('key'), '二维码编号', 64, True)
     elif cmd == 'xrooms_set':
@@ -400,7 +403,8 @@ def validate_http(kind, query, match):
         value = query.get('u', '')
         url(value)
         parsed = urlsplit(value)
-        if parsed.hostname not in ('i0.hdslb.com', 'i1.hdslb.com', 'i2.hdslb.com', 's1.hdslb.com') or parsed.netloc != parsed.hostname:
+        other = parsed.scheme == 'https' and (parsed.hostname or '').endswith(('.douyucdn.cn', '.msstatic.com', '.huya.com'))  # 斗鱼、虎牙的头像和礼物图（2026-11-25）
+        if (parsed.hostname not in ('i0.hdslb.com', 'i1.hdslb.com', 'i2.hdslb.com', 's1.hdslb.com') and not other) or parsed.netloc != parsed.hostname:
             raise InputError('不支持这个图片地址')
         return {'u': value}
     return {}
@@ -479,7 +483,7 @@ def event_row(kind, row):
         defaults.update(unit='月')
     aliases = {'gift_name': 'gift', 'sc_id': 'id', 'price': 'price', 'text': 'text'}
     fields = {'t', 'uid', 'name', 'face', 'guard', 'id', 'i', 'thanked', 'medal', 'medal_level', 'medal_room', 'admin', 'emoticon', 'emots',
-              'gift', 'num', 'yuan', 'img', 'blind', 'price', 'text', 'end', 'level', 'level_name', 'unit', 'kind', 'recovered', 'source', 'op', 'days', 'days_est', 'dmid'}
+              'gift', 'num', 'yuan', 'img', 'blind', 'price', 'text', 'end', 'level', 'level_name', 'unit', 'kind', 'recovered', 'source', 'op', 'days', 'days_est', 'dmid', 'plat'}
     result = {**defaults, **{k: v for k, v in row.items() if k in fields}}
     values = {**result, **{key: result.get(value) for key, value in aliases.items() if value in result}}
     event(kind, values)
@@ -492,6 +496,8 @@ def event_row(kind, row):
         integer(result['days'], '陪伴天数', 1, 99999)
     if 'id' in result and kind != 'sc':
         text(result['id'], '记录编号', 80, True)
+    if 'plat' in result and result['plat'] not in ('douyu', 'huya'):
+        result.pop('plat')
     if 'recovered' in result:
         boolean(result['recovered'], '补录状态')
     # 2026-11-21 补漏洞：存档里的弹幕编号、「陪伴天数是推出来的」标记坏了就只丢这个字段，这一条记录照样留着

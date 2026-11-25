@@ -63,7 +63,7 @@ function connect() {
       S.userCount = data.user_count;
       S.dmTotal = data.dm_total ?? (data.users || []).reduce((a, u) => a + (u.dm || 0), 0);
       $('roomid').textContent = data.room_id ? '' : '演示';
-      if (!S.admin) { S.notes = null; for (const k of ['sc_read', 'admin_links', 'connections', 'library', 'songbook', 'profiles', 'title_presets', 'lan', 'music_rules', 'desktop']) delete S[k]; }  // 切到普通视角时，把管理身份才有的东西从页面里清掉
+      if (!S.admin) { S.notes = null; for (const k of ['sc_read', 'admin_links', 'connections', 'library', 'songbook', 'profiles', 'title_presets', 'lan', 'music_rules', 'desktop', 'platforms']) delete S[k]; }  // 切到普通视角时，把管理身份才有的东西从页面里清掉
       document.body.classList.toggle('nomoney', !S.admin);
       setViewer(!S.admin);
       document.body.classList.toggle('host', !!S.host);  // 主播专属链接：藏掉普通视角、链接管理、清零这些后台的东西
@@ -77,7 +77,7 @@ function connect() {
       }
       renderLayout(); drawBanner(); drawConn(); drawSayAs(); drawPsets(); drawLinks(); drawUpd();
       if (S.admin && acct) window._ws.send(JSON.stringify({ cmd: 'acct_info', acct: acct.token }));  // 看看之前登录的号还在不在
-      renderAll(); musicSync(); drawMusicSet();
+      renderAll(); musicSync(); drawMusicSet(); drawPlats();
     } else if (type === 'dm') {
       S.dm.push(data); if (S.dm.length > 300) S.dm.shift();
       if (data.kind) { addDm(data); return; }  // 禁言提示：只显示，不算发言、不朗读
@@ -132,6 +132,8 @@ function connect() {
       S.music = data; S.music.skew = (data.now || Date.now() / 1000) - Date.now() / 1000;
       if (reqTab === 'list') soon(renderReqs, 'mq');
       musicSync();
+    } else if (type === 'platforms') {  // 其他平台的直播间和连接状态
+      S.platforms = data; drawPlats();
     } else if (type === 'music_rules') {
       S.music_rules = data; drawMusicSet();
     } else if (type === 'result') {
@@ -140,7 +142,7 @@ function connect() {
       if (String(data.cmd).startsWith('admin_link_')) { linkResult(data); return; }
       if (data.cmd === 'lan_set') { note(data.msg, data.ok); if (!data.ok) drawLinks(); return; }
       if (['update_download', 'update_restart', 'open_mode', 'make_shortcut'].includes(data.cmd)) { note(data.msg, data.ok); if (!data.ok && data.cmd === 'update_download') { updPct = -1; drawUpd(); } return; }
-      if (['music_qr', 'music_poll', 'music_logout'].includes(data.cmd)) { musicLoginResult(data); return; }
+      if (['music_qr', 'music_poll', 'music_logout', 'music_cookie'].includes(data.cmd)) { musicLoginResult(data); return; }
       if (data.cmd === 'mute_list' || data.cmd === 'unmute') { muteResult(data); return; }
       if (data.cmd === 'news_get' || data.cmd === 'news_set') { newsResult(data); return; }
       if (data.cmd === 'sc_read' || data.cmd === 'sc_read_all') { if (!data.ok) note(data.msg, false); return; }

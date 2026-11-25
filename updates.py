@@ -18,7 +18,7 @@ import zipfile
 
 import aiohttp
 
-VERSION = '0.9.7'
+VERSION = '0.9.8'
 REPO = 'xShadowMoon/Danmist'  # 2026-11-25 仓库从 bili-danmaku-board 改名成 Danmist（旧地址 GitHub 会自动转过来）
 REPOS = ('xshadowmoon/bili-danmaku-board', 'xshadowmoon/danmist')  # 下载地址认这两个名字（比的时候不分大小写）
 LATEST_API = f'https://api.github.com/repos/{REPO}/releases/latest'

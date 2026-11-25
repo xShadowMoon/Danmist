@@ -48,6 +48,10 @@
 
 **v0.9.5 起可以在软件里更新**：出了新版本时，顶栏「已连接」旁边会出现「新版本 vX.Y.Z」和「下载更新」。点一下，雾幕会从 GitHub 下载、核对校验码；下载好按钮变成「重启生效」，点了几秒后就换成新版本，窗口不用关（只能在运行雾幕的这台电脑上点）。`config.json`、`data\`、`python\` 不会被动。
 
+**从老版本（v0.9.0–v0.9.4）更新**：这些版本还不能在软件里更新，手动覆盖一次（按下面 1–4 步），以后就能在软件里点「下载更新」了。
+
+**从免安装版搬到安装版**：装好安装版后先关掉它，把老文件夹里的 `config.json` 和整个 `data` 文件夹拷进 `%LOCALAPPDATA%\Programs\Danmist`（在资源管理器地址栏粘这串就能打开），覆盖，再从开始菜单打开「雾幕」，直播间号和存档就都接上了。
+
 v0.9.4 及以前，或者想手动更新，按下面做：
 
 1. 关掉雾幕的黑色窗口。
@@ -75,6 +79,7 @@ v0.9.4 及以前，或者想手动更新，按下面做：
 | 历史 | 每场完整保存弹幕、礼物、SC 和上舰，概览里有收益、送礼榜、礼物和上舰统计 |
 | OBS 弹幕 | `/obs` 6 种样式（月见、雾凇、星扣、雾月、气泡、票根），10 款开源字体，描边阴影、按身份配色、屏蔽词，全部在 `/obs-setup` 里点选 |
 | OBS 歌单 | `/obs-songs` 3 种样式（卡片、细条、唱片） |
+| 斗鱼、虎牙 | 同时在斗鱼、虎牙开播时，把那边的弹幕、礼物、进房也收进来，每条标上平台（设置 → 弹幕 → 其他平台；抖音暂不支持） |
 | 弹幕点歌直接放（试用） | 观众发「点歌 歌名」，从网易云 / QQ 音乐找到直接放；谁能点、每人几首、要不要你同意、谁能切歌都能设；OBS 加 `/obs-music` 浏览器源出声 |
 | 直播间 | 改标题和分区、常用标题一键切换、直播画面小窗、人气榜和小时榜、超管警告和切断提醒 |
 | 开播前自检 | 一键检查和 B 站的连接、登录、OBS 能不能收到；工作模式（唱歌 / 聊天 / 房管）一键换布局 |
@@ -301,6 +306,10 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 
 **From v0.9.5 you can update inside the app**: when a new version is out, a "new version vX.Y.Z" tag with a **download update** button appears next to the connection status. The board downloads it from GitHub and checks the checksum; then the button turns into **restart**, and a few seconds later you're on the new version without closing the window (only on the computer running the board). `config.json`, `data\` and `python\` are left alone.
 
+**From older versions (v0.9.0–v0.9.4)**: these can't update themselves yet. Update by hand once (steps 1–4 below); after that, use **download update** inside the app.
+
+**Moving from the portable zip to the installer**: install, close the app, copy `config.json` and the whole `data` folder from your old folder into `%LOCALAPPDATA%\Programs\Danmist` (paste that into the Explorer address bar), then start 雾幕 from the Start menu. Your room and archives carry over.
+
 Up to v0.9.4, or to update by hand:
 
 1. Close the console window.
@@ -328,6 +337,7 @@ Running from source: `git pull`, `pip install -r requirements.txt`, then restart
 | History | Every stream archived with full danmaku, gifts, SC and guards; per-stream summary with revenue and rankings |
 | OBS danmaku overlay | `/obs` with 6 styles (moon, rime, clip, luna, bubble, ticket), 10 open-source fonts, outline and shadow, colours by guard level, blocked words, all configured visually at `/obs-setup` |
 | OBS song overlay | `/obs-songs` with 3 styles (card, strip, vinyl) |
+| Douyu and Huya | Also streaming on Douyu or Huya? Their danmaku, gifts and entries come in too, tagged by platform (Settings → Danmaku → Other platforms; Douyin isn't supported) |
 | Song requests that play (preview) | Viewers send 「点歌 song name」 and it plays from NetEase Cloud Music or QQ Music; set who may request, how many each, whether you approve, and who may skip; add `/obs-music` as an OBS browser source for the audio |
 | Live room | Change title and area, saved title presets, live video pop-out, popularity and hourly ranks, warnings from Bilibili moderators |
 | Pre-stream check | One click to check the Bilibili connection, login and OBS; work modes (singing / chatting / moderating) switch layouts |

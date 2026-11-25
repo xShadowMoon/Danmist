@@ -42,6 +42,7 @@ from public_limits import PublicLimits, client_ip
 import history_maintenance
 from ai_voice import AIVoice, Busy as VoiceBusy, VoiceError
 from music import MusicService
+from platforms import Platforms, PLATS as PLAT_NAMES
 import updates
 from backend_limits import OperationError, OperationRate, WS_IMPORT_LIMIT, WS_NORMAL_LIMIT, operation_info, parse_operation
 
@@ -122,14 +123,14 @@ def public_view(data):
 # 这里是按「只挑要给的」来写的：以后本场数据里加了新东西，默认不会漏给普通链接。
 VIEWER_ROOM = ('title', 'live', 'room_real', 'bili_ok', 'online', 'watched', 'watched_text', 'live_time', 'likes', 'area', 'area_id',
                'area_rank', 'area_rank_name', 'pop_rank', 'top', 'uid', 'face', 'cover', 'guard', 'up_at', 'down_at')
-VIEWER_ENTER = ('t', 'uid', 'name', 'face', 'kind', 'guard')
+VIEWER_ENTER = ('t', 'uid', 'name', 'face', 'kind', 'guard', 'plat')
 VIEWER_GUARD = ('id', 't', 'uid', 'name', 'face', 'level', 'level_name', 'num', 'unit', 'op', 'days', 'fx', 'fxj')
 VIEWER_USER = ('uid', 'name', 'face', 'first', 'last', 'dm', 'enter', 'guard', 'medal')
 VIEWER_REQ = ('id', 't', 'uid', 'name', 'face', 'guard', 'kind', 'text', 'song', 'done', 'over', 'queued_id')
 VIEWER_GUARDLIST = ('uid', 'name', 'face', 'level', 'days', 't')
-VIEWER_DM = ('t', 'uid', 'name', 'face', 'text', 'medal', 'medal_level', 'medal_room', 'medal_dim', 'wealth', 'reply', 'guard', 'admin', 'emoticon', 'emots', 'i', 'kind')
+VIEWER_DM = ('t', 'uid', 'name', 'face', 'text', 'medal', 'medal_level', 'medal_room', 'medal_dim', 'wealth', 'reply', 'guard', 'admin', 'emoticon', 'emots', 'i', 'kind', 'plat')
 VIEWER_SC = ('id', 't', 'uid', 'name', 'face', 'price', 'text', 'guard', 'end', 'icon')
-VIEWER_GIFT = ('id', 't', 'uid', 'name', 'face', 'gift', 'num', 'img', 'guard', 'blind', 'source')
+VIEWER_GIFT = ('id', 't', 'uid', 'name', 'face', 'gift', 'num', 'img', 'guard', 'blind', 'source', 'plat')
 VIEWER_SONG = ('id', 'name', 'done', 'now', 'done_at', 'artist', 'tags')
 
 
@@ -1196,7 +1197,7 @@ class Hub:
 
     # ---- 下面几个是收到消息后统一的处理，真实直播间和演示模式都走这里 ----
     def danmaku(self, uid, name, face, text, medal='', medal_level=0, guard=0, admin=False, emoticon='', medal_room=0, emots=None, medal_lit=1,
-                wealth=0, reply='', dmid=''):
+                wealth=0, reply='', dmid='', plat=''):
         face, emoticon = validation.safe_url(face), validation.safe_url(emoticon)  # 图片地址不对只去掉图，弹幕照收
         if not self.valid_event('dm', {'uid': uid, 'name': name, 'face': face, 'text': text, 'medal': medal, 'medal_level': medal_level,
                                        'guard': guard, 'admin': admin, 'emoticon': emoticon, 'medal_room': medal_room, 'emots': emots}):
@@ -1212,7 +1213,9 @@ class Hub:
         if isinstance(reply, str) and reply.strip():
             item['reply'] = reply.strip()[:40]
         if isinstance(dmid, str) and re.fullmatch(r'[0-9a-zA-Z]{1,64}', dmid):
-            item['dmid'] = dmid  # B 站这条弹幕的编号（2026-11-21：回复某条弹幕用）
+            item['dmid'] = dmid
+        if plat in PLAT_NAMES:
+            item['plat'] = plat  # 其他平台的弹幕（2026-11-25）：网页上标「斗鱼」「虎牙」「抖音」  # B 站这条弹幕的编号（2026-11-21：回复某条弹幕用）
         if emots:
             item['emots'] = retention.trim_emots(emots)
             self.learn_emots(item['emots'])
@@ -1490,7 +1493,7 @@ class Hub:
 
 
 
-    def enter(self, uid, name, face='', kind='enter', guard=0):
+    def enter(self, uid, name, face='', kind='enter', guard=0, plat=''):
         face = validation.safe_url(face)
         if not self.valid_event('enter', {'uid': uid, 'name': name, 'face': face, 'kind': kind, 'guard': guard}):
             return
@@ -1513,6 +1516,8 @@ class Hub:
         if kind == 'follow':
             s.stats['follows'] = s.stats.get('follows', 0) + 1
         item = {'t': int(time.time()), 'uid': uid, 'name': name, 'face': face, 'kind': kind, 'guard': guard}
+        if plat in PLAT_NAMES:
+            item['plat'] = plat
         s.enters.append(item)
         del s.enters[:-200]
         s.touch_user(uid, name, face, enter=1 if kind == 'enter' else 0, guard=guard)
@@ -1527,7 +1532,7 @@ class Hub:
         log.warning('B 站%s：%s', '切断了直播' if item['kind'] == 'cut' else '超管警告', item['msg'])
         self.emit_admin('warn', item)
 
-    def gift(self, uid, name, face, gift_name, num, yuan, img='', guard=0, blind='', gift_id=0):
+    def gift(self, uid, name, face, gift_name, num, yuan, img='', guard=0, blind='', gift_id=0, plat=''):
         face, img = validation.safe_url(face), validation.safe_url(img)
         if not img and gift_name in GIFT_BY_NAME:  # 演示模式的假礼物没有图：按名字补上
             img = GIFT_BY_NAME[gift_name][0]
@@ -1550,6 +1555,8 @@ class Hub:
                     'blind': blind}
             if anim:
                 item['anim'] = anim
+            if plat in PLAT_NAMES:
+                item['plat'] = plat
             fx, fxj = gift_fx(gift_id, gift_name)
             if fx:
                 item['fx'], item['fxj'] = fx, fxj  # 官方满屏特效（大礼物特效用）
@@ -2836,6 +2843,7 @@ async def main():
     IMG_CACHE_READY = clean_img_cache()
     hub = Hub(state, history, persist=not args.demo)
     hub.music = MusicService(os.path.join(DIR, 'data'), not args.demo, write_json, log, hub.emit, hub.emit_admin)
+    hub.platforms = Platforms(hub, os.path.join(DIR, 'data'), not args.demo, write_json, log, lambda: bare)
     hub.admin_links, hub.public_limits = links, limits
     if args.demo:
         now = int(time.time())
@@ -3169,6 +3177,7 @@ async def main():
             snap['music'] = hub.music.view()
             if admin:
                 snap['music_rules'] = hub.music.admin_view()
+                snap['platforms'] = hub.platforms.view()
             snap['dm_more'] = h is hub and not viewer and len(hub.dmlog.items) > len(snap['dm'])  # 前面还有更早的弹幕，往上翻能加载（普通链接不能翻）
             if admin:
                 snap['notes'] = hub.notes.data
@@ -3291,6 +3300,14 @@ async def main():
                                 hub.emit_admin('profiles', hub.profiles.listing())
                             await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': '设置方案已同步', **result}})
                             continue
+                        if cmd == 'plat_set':
+                            try:
+                                hub.platforms.set_rooms(c.get('rooms') or [])
+                                hub.emit_admin('platforms', hub.platforms.view())
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': '其他平台的直播间已保存'}})
+                            except (ValueError, OSError) as e:
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': str(e)}})
+                            continue
                         if cmd in ('music_rules', 'music_next', 'music_ok', 'music_del', 'music_top'):
                             try:
                                 msg = hub.music.command(c)
@@ -3298,10 +3315,13 @@ async def main():
                             except ValueError as e:
                                 await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': str(e)}})
                             continue
-                        if cmd in ('music_qr', 'music_poll', 'music_logout'):
+                        if cmd in ('music_qr', 'music_poll', 'music_logout', 'music_cookie'):
                             p = hub.music.providers[c['src']]
                             try:
-                                if cmd == 'music_logout':
+                                if cmd == 'music_cookie':
+                                    ok_c, msg_c = await hub.music.set_cookie(c['src'], c.get('cookie', ''))
+                                    extra = {'state': 'ok' if ok_c else 'fail', 'msg': msg_c}
+                                elif cmd == 'music_logout':
                                     hub.music.logout(c['src'])
                                     hub.emit_admin('music_rules', hub.music.admin_view())
                                     extra = {'state': 'out', 'msg': '已退出'}
@@ -4053,14 +4073,16 @@ async def main():
     # 头像图床有防盗链，网页直接引用会挂，这里转一下
     async def img_proxy(request):
         url = validation.validate_http('img_proxy', request.query, request.match_info)['u']
-        if not url.startswith(('https://i0.hdslb.com/', 'https://i1.hdslb.com/', 'https://i2.hdslb.com/',
-                               'https://s1.hdslb.com/', 'http://i0.hdslb.com/', 'http://i1.hdslb.com/',
-                               'http://i2.hdslb.com/')):
+        host = urllib.parse.urlsplit(url).hostname or ''
+        other = url.startswith('https://') and host.endswith(('.douyucdn.cn', '.msstatic.com', '.huya.com'))
+        if not other and not url.startswith(('https://i0.hdslb.com/', 'https://i1.hdslb.com/', 'https://i2.hdslb.com/',
+                                             'https://s1.hdslb.com/', 'http://i0.hdslb.com/', 'http://i1.hdslb.com/',
+                                             'http://i2.hdslb.com/')):
             raise web.HTTPBadRequest()
         # 拿过的图存在电脑上（data/imgcache），下次直接给，不用再去 B 站拿；30 天没人看的启动时清掉
         import hashlib
         # s=big：大礼物特效要原图大小（礼物动图原图 140 像素），不缩成 96（2026-11-18）
-        size = '' if request.query.get('s') == 'big' else '@96w_96h.webp'
+        size = '' if request.query.get('s') == 'big' or other else '@96w_96h.webp'  # 别的平台的图没有 B 站的缩图后缀
         cache = os.path.join(IMG_CACHE, hashlib.sha1((url + ('' if size else '#big')).encode()).hexdigest() + '.webp')
         long_cache = {'Cache-Control': 'max-age=2592000, immutable'}
         if os.path.exists(cache):
@@ -4304,6 +4326,17 @@ async def main():
     if not args.demo:
         tasks.append(asyncio.create_task(face_worker()))
     tasks.append(asyncio.create_task(hub.music.run(bare)))
+    hub.platforms.apply()  # 其他平台（斗鱼、虎牙、抖音）的直播间
+
+    async def watch_platforms():
+        last = None
+        while True:
+            await asyncio.sleep(5)
+            v = hub.platforms.view()
+            if v != last:
+                last = v
+                hub.emit_admin('platforms', v)
+    tasks.append(asyncio.create_task(watch_platforms()))
     # 有新版本就在管理页面上提示（只读 GitHub 最新 Release 的版本号，不下载任何东西）；演示模式只在测试时查
     if not args.no_update_check and (not args.demo or args.update_url):
         def on_new_release(info):
