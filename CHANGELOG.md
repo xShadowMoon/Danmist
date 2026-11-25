@@ -5,6 +5,41 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.3 · 2026-11-25
+
+### 新功能 · New
+
+- 手机打开：「设置 → 链接 → 同一个 Wi-Fi 能打开」，同一个 Wi-Fi 的手机输入电脑的局域网地址就能看；新建管理链接时给二维码，手机扫一下就有管理身份。也可以在 `config.json` 写 `"lan": true`。
+  Open on a phone: Settings → Links → "Open on the same Wi-Fi" lets phones on the same Wi-Fi open the board at the computer's LAN address; new admin links come with a QR code. Or set `"lan": true` in `config.json`.
+- 舰长 / 提督 / 总督没放自己的图时，主页面和 OBS 用 B 站官方头像框和徽章（运行时从 B 站拿，不放进仓库）。
+  Guards get Bilibili's official avatar frames and badges when you haven't added your own artwork (fetched from Bilibili at runtime, not stored in the repo).
+- OBS 弹幕：刷屏时同一帧来的几条一起画、只排一次版；一秒超过 6 条不放进场动画，更省电脑。
+  OBS overlay: messages arriving in the same frame are drawn together with one layout pass, and entrance animations pause when more than 6 arrive per second.
+- OBS 场景名里写 `[雾凇]`（或 `[rime]`）之类，切到这个场景弹幕自动换成这个样式，切回没写的场景换回原样（浏览器源要给「读取用户信息」权限）。
+  Put a style tag such as `[rime]` in an OBS scene name and the overlay switches to that style in that scene (the browser source needs the "read user information" permission).
+- 上舰、弹幕、礼物没带头像的人，后台去 B 站名片接口查到后自动补上（不带登录，一秒多一个）。
+  Viewers without an avatar (for example in guard purchases) get one filled in from Bilibili's public user card, about one lookup per second.
+- 顶栏按钮可以自己选：主页面在「设置 → 外观 → 顶栏按钮」，OBS 设置页点右上角的眼睛。
+  Choose which top-bar buttons show: Settings → Appearance → Top bar on the dashboard, and the eye button on the OBS setup page.
+
+### 修复和调整 · Fixes and changes
+
+- 荣耀等级：服务刚启动那几秒打开的页面拿不到官方图标，以前会一直显示色块；现在会再问几次，拿到就换成官方图。图标也存一份在 `data/`，重启后马上就有。OBS 设置页的预览示例也带上了荣耀等级。
+  Honor level badges no longer stay as plain colour blocks when a page was opened right after startup; icons are retried, cached in `data/`, and shown in the OBS preview samples.
+- 去掉了从别的版本带过来的专属样式（OBS 弹幕的薄雾、留言本，歌单的薄雾、留言本，以及 Q 版主播、探头主播、标题字），旧网址自动换成月见 / 卡片；示例里的粉丝牌改叫「粉丝团」。
+  Removed the streamer-specific styles carried over from another build (mist and diary for danmaku and songs, mascot options); old URLs fall back to moon / card. The sample fan medal is now called "粉丝团".
+- 窄屏时弹幕栏的直播间按钮不再压住「全部」筛选。
+  The room switcher no longer overlaps the danmaku filter on narrow windows.
+- 扫码登录处和 README 加了免责声明：用账号登录、发弹幕等操作有被 B 站限制或封禁的风险，由使用者自己承担。
+  Added a disclaimer next to QR login and in the README: using your account through a third-party tool may get it restricted or banned by Bilibili, at your own risk.
+
+### 怎么更新 · How to update
+
+关掉弹幕姬 → 下载下面的 zip → 解压覆盖到原来的文件夹、全部替换 → 双击 `start.bat`。`config.json` 和 `data\` 不在压缩包里，设置和存档都会保留。
+Close the board, download the zip below, extract it over your existing folder (replace all) and run `start.bat`. `config.json` and `data\` are not in the zip, so your settings and archives are kept.
+
+---
+
 ## v0.9.2 · 2026-11-24
 
 ### 朗读可以用 AI 音色（GPT-SoVITS）· AI voices for text-to-speech

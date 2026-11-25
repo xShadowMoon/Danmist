@@ -11,7 +11,7 @@ import re
 
 import aiohttp
 
-VERSION = '0.9.2'
+VERSION = '0.9.3'
 REPO = 'xShadowMoon/bili-danmaku-board'
 LATEST_API = f'https://api.github.com/repos/{REPO}/releases/latest'
 RELEASES_PAGE = f'https://github.com/{REPO}/releases/latest'

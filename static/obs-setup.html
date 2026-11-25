@@ -50,6 +50,17 @@ h3::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 #stage { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 #bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--sheet); }
 #bar .sp { flex: 1; }
+small.hint { display: block; margin: 8px 2px 0; font-size: 11.5px; color: var(--ink3); }
+/* 2026-11-25 顶栏自己选显示哪些：每组整块换行，不会从中间断开；按钮高度统一 */
+#bar > * { flex: none; white-space: nowrap; min-height: 32px; box-sizing: border-box; }
+#bar > [data-bk].off { display: none !important; }
+#barset { position: relative; }
+#barset > .btn { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; }
+#barpop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; min-width: 150px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); box-shadow: 0 8px 24px rgba(0, 0, 0, .25); display: grid; gap: 2px; }
+#barpop[hidden] { display: none; }
+#barpop label { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+#barpop label:hover { background: var(--chip); }
+#barpop input { accent-color: var(--mist-d); margin: 0; }
 #view { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; padding: 14px; }
 #frame { position: relative; flex: none; border-radius: 10px; overflow: hidden; outline: 2px dashed var(--mist-d); outline-offset: 3px; transform-origin: center; }
 #frame iframe { color-scheme: light; position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }
@@ -192,13 +203,14 @@ h4.cap { margin: 10px 0 8px; font-size: 12px; font-weight: 700; color: var(--mis
 </aside>
 <main id="stage">
   <div id="bar">
-    <span id="backdrop" class="tgrp" style="padding-right:8px;gap:6px" title="只是换右边预览的背景，看看在不同画面上清不清楚。不改样式，也不会进 OBS"><b>预览背景</b><button class="sw checker on" data-bg="checker" title="透明（棋盘格代表透明）"></button><button class="sw dark" data-bg="dark" title="假装后面是深色画面"></button><button class="sw lightbg" data-bg="lightbg" title="假装后面是浅色画面"></button></span>
-    <label class="chip" title="用真实直播间的弹幕预览"><input type="checkbox" id="real"><span><i class="ic" data-ic="live"></i> 实时</span></label>
-    <label class="chip" id="fixedchip" title="固定一组样例，不滚动"><input type="checkbox" id="fixed" checked><span><i class="ic" data-ic="pin"></i> 固定</span></label><span class="sp"></span>
+    <span id="backdrop" data-bk="bg" class="tgrp" style="padding-right:8px;gap:6px" title="只是换右边预览的背景，看看在不同画面上清不清楚。不改样式，也不会进 OBS"><b>预览背景</b><button class="sw checker on" data-bg="checker" title="透明（棋盘格代表透明）"></button><button class="sw dark" data-bg="dark" title="假装后面是深色画面"></button><button class="sw lightbg" data-bg="lightbg" title="假装后面是浅色画面"></button></span>
+    <label class="chip" data-bk="real" title="用真实直播间的弹幕预览"><input type="checkbox" id="real"><span><i class="ic" data-ic="live"></i> 实时</span></label>
+    <label class="chip" id="fixedchip" data-bk="fixed" title="固定一组样例，不滚动"><input type="checkbox" id="fixed" checked><span><i class="ic" data-ic="pin"></i> 固定</span></label><span class="sp"></span>
     <!-- 发一条测试的到右边预览里看效果：按「弹幕 / 礼物 / 上舰」分组，组名写在前面 -->
-    <span class="tgrp" title="发一条测试弹幕到预览里"><b><i class="ic" data-ic="p-dm"></i> 弹幕</b><button class="btn sm" data-t="dm">普通</button><button class="btn sm g3" data-t="g3">舰长</button><button class="btn sm g2" data-t="g2">提督</button><button class="btn sm g1" data-t="g1">总督</button></span>
-    <span class="tgrp" title="发一条测试礼物 / 醒目留言到预览里"><b><i class="ic" data-ic="p-gift"></i> 礼物</b><button class="btn sm" data-t="gift" title="小花花 ×10（¥1）">小礼物</button><button class="btn sm" data-t="big" title="舰长送的 情书 ×2（¥104）">大礼物</button><button class="btn sm" data-t="sc" title="¥50 醒目留言">SC</button></span>
-    <span class="tgrp" title="发一条测试上舰到预览里"><b><i class="ic" data-ic="anchor"></i> 上舰</b><button class="btn sm g3" data-t="buy3">舰长</button><button class="btn sm g2" data-t="buy2">提督</button><button class="btn sm g1" data-t="buy1">总督</button></span>
+    <span class="tgrp" data-bk="dm" title="发一条测试弹幕到预览里"><b><i class="ic" data-ic="p-dm"></i> 弹幕</b><button class="btn sm" data-t="dm">普通</button><button class="btn sm g3" data-t="g3">舰长</button><button class="btn sm g2" data-t="g2">提督</button><button class="btn sm g1" data-t="g1">总督</button></span>
+    <span class="tgrp" data-bk="gift" title="发一条测试礼物 / 醒目留言到预览里"><b><i class="ic" data-ic="p-gift"></i> 礼物</b><button class="btn sm" data-t="gift" title="小花花 ×10（¥1）">小礼物</button><button class="btn sm" data-t="big" title="舰长送的 情书 ×2（¥104）">大礼物</button><button class="btn sm" data-t="sc" title="¥50 醒目留言">SC</button></span>
+    <span class="tgrp" data-bk="buy" title="发一条测试上舰到预览里"><b><i class="ic" data-ic="anchor"></i> 上舰</b><button class="btn sm g3" data-t="buy3">舰长</button><button class="btn sm g2" data-t="buy2">提督</button><button class="btn sm g1" data-t="buy1">总督</button></span>
+    <span id="barset"><button class="btn sm" id="barbtn" title="顶栏显示哪些"><i class="ic" data-ic="eye"></i></button><div id="barpop" hidden></div></span>
   </div>
   <div id="view"><div id="frame" class="checker"><iframe id="pv" title="预览"></iframe></div></div>
 </main>
@@ -226,9 +238,6 @@ let F = [
   { k: 'anim', tab: 'look', label: '✨ 动画', type: 'select', def: 'slide', opts: [['slide', '上滑'], ['fade', '淡入'], ['pop', '弹出'], ['left', '左滑'], ['right', '右滑'], ['none', '无']] },
   // SC / 上舰动画用户说没用，2026-11-19 删掉（OBS 页里还是默认的上浮）
   { k: 'anim_ms', tab: 'look', label: '⏩ 动画时长', type: 'range', min: 100, max: 1500, step: 50, def: 600, unit: 'ms', show: c => c.anim !== 'none', tip: '数字越大越慢' },
-  { k: 'xw', tab: 'look', label: '🙂 Q 版主播', type: 'check', def: true, show: c => c.style === 'diary', tip: '右上角坐着的主播' },
-  { k: 'htitle', tab: 'look', label: '✏ 标题字', type: 'check', def: true, show: c => c.style === 'diary', tip: '上面的标题。小人和标题字都关掉，弹幕会往上铺满' },
-  { k: 'peek', tab: 'look', label: '🙂 探头主播', type: 'check', def: false, show: c => c.style === 'mist', tip: '右下角放一张探头的主播' },
   { k: 'right', tab: 'look', label: '➡ 靠右', type: 'check', def: false, tip: '弹幕靠画面右边排（不开就是靠左）' },
   { k: 'bubble', tab: 'look', label: '🟦 底色', type: 'check', def: true, show: CARD },
   { k: 'border', tab: 'look', label: '▢ 边框', type: 'check', def: true, show: CARD },
@@ -287,14 +296,13 @@ let F = [
 // 颜色选项旁边的几个常用色，一点就用（也能点最右边的色块任意选）
 const SWATCH = ['ffffff', 'ffe58a', 'ffc2d6', 'b9dcff', 'b8f0c8', 'c4507c', '5a6b80', '222222'];  // 2026-11-19 加了两个深一点的，给描边用
 const SF = [
-  { k: 'style', tab: 'songs', label: '🎨 样式', type: 'select', def: 'card', opts: [['card', '卡片'], ['strip', '细条'], ['vinyl', '唱片'], ['mist', '薄雾'], ['diary', '留言本']], tip: '卡片：正在唱 + 列表；细条：只有一行；唱片：左边一张黑胶；薄雾、留言本：跟 OBS 弹幕的主播专属风格配套' },
+  { k: 'style', tab: 'songs', label: '🎨 样式', type: 'select', def: 'card', opts: [['card', '卡片'], ['strip', '细条'], ['vinyl', '唱片']], tip: '卡片：正在唱 + 列表；细条：只有一行；唱片：左边一张黑胶' },
   { k: 'size', tab: 'songs', label: '🔠 字号', type: 'range', min: 12, max: 60, step: 1, def: 20, unit: 'px' },
   { k: 'done', tab: 'songs', label: '✓ 已唱', type: 'range', min: 0, max: 20, step: 1, def: 3, unit: '首', zero: '不显示', tip: '最近唱完的几首留在最上面（灰色划线）' },
   { k: 'n', tab: 'songs', label: '📋 接下来', type: 'range', min: 0, max: 20, step: 1, def: 5, unit: '首', zero: '只显示正在唱' },
   { k: 'align', tab: 'songs', label: '↔ 对齐', type: 'select', def: 'left', opts: [['left', '靠左'], ['center', '居中'], ['right', '靠右']], tip: '歌单在 OBS 浏览器源那一块里靠哪边' },
   { k: 'pos', tab: 'songs', label: '↕ 贴哪边', type: 'select', def: 'top', opts: [['top', '贴顶部'], ['bottom', '贴底部']], tip: '歌单贴着 OBS 浏览器源那一块的顶部还是底部。歌变多时：贴顶部往下长，贴底部往上长' },
   { k: 'head', tab: 'songs', label: '🎵 标题', type: 'check', def: true },
-  { k: 'xw', tab: 'songs', label: '🙂 Q 版主播', type: 'check', def: true, show: c => c.style === 'diary', tip: '右上角坐着的主播' },
   { k: 'count', tab: 'songs', label: '✓ 已唱几首', type: 'check', def: true, show: c => c.head },
   { k: 'num', tab: 'songs', label: '# 序号', type: 'check', def: true },
   { k: 'light', tab: 'songs', label: '☀ 浅色', type: 'check', def: false, tip: '底板用白色、字用深色（不开是深色底板、浅色字）' },
@@ -320,7 +328,8 @@ function loadMode() {
   F = fields = MODES[mode].F;
   cfg = Object.fromEntries(fields.map(f => [f.k, f.def]));
   try { const saved = JSON.parse(localStorage.getItem(MODES[mode].key) || '{}'); Object.assign(cfg, saved); if (saved.square && saved.radius == null) cfg.radius = 6; delete cfg.square;
-    if (mode === 'dm' && ['card', 'glass', 'plain'].includes(cfg.style)) cfg.style = 'moon';  // 2026-11-21 这几个样式去掉了
+    if (mode === 'dm' && ['card', 'glass', 'plain', 'mist', 'diary'].includes(cfg.style)) cfg.style = 'moon';  // 2026-11-21 这几个样式去掉了（薄雾、留言本 11-25 从通用版去掉）
+    if (mode === 'songs' && ['mist', 'diary'].includes(cfg.style)) cfg.style = 'card';
     // 第一次打开：配色跟弹幕姬现在用的一样
     if (!('pal' in saved)) cfg.pal = JSON.parse(localStorage.getItem('xw-cfg') || '{}').pal || '';
     if ('anim_ms' in cfg && !(cfg.anim_ms > 0)) cfg.anim_ms = 600; } catch {}  // 以前 0 = 默认，默认就是 600
@@ -335,8 +344,6 @@ const LOOKS = {
   // 2026-11-21 用户挑的：月见 / 雾凇 / 星扣（雾月系，居中半透明）、气泡、票根；不要的流光 / 卡片 / 轻透 / 悬浮去掉了（旧网址自动当月见）
   moon: ['✨', '月见', { style: 'moon' }], rime: ['❄', '雾凇', { style: 'rime' }], clip: ['📌', '星扣', { style: 'clip' }],
   luna: ['🌙', '雾月', { style: 'luna' }], bubble: ['🫧', '气泡', { style: 'bubble' }], ticket: ['🏷', '票根', { style: 'ticket' }],
-  // 主播专属（2026-11-21）：薄雾 = 游戏时用，没有底板；留言本 = 聊天时用，整页夜蓝手账本
-  mist: ['🌫', '薄雾', { style: 'mist' }], diary: ['📖', '留言本', { style: 'diary', w: 560, h: 860 }],
 };
 // 文字效果：一键套一组描边 / 阴影
 const TEXTS = {
@@ -360,7 +367,7 @@ function setMode(m) {
 // 每一页：[编号, 图标, 标题, [[框的标题, 这框里的设置], ...]]；COLOR = 颜色小表，TEXTS = 文字效果一键套，IMPORT = 读旧网址
 const PAGES = {
   dm: [
-    ['look', 'sparkle', '样式', [['这个样式的', ['xw', 'htitle', 'peek', 'buy']], ['常用', ['size', 'max', 'pal']], ['进场动画', ['anim', 'anim_ms']]]],
+    ['look', 'sparkle', '样式', [['这个样式的', ['buy']], ['常用', ['size', 'max', 'pal']], ['进场动画', ['anim', 'anim_ms']]]],
     ['font', 'type', '文字', [['效果', 'TEXTS'], ['字体', ['font', 'fw']], ['描边和阴影', ['stroke', 'stroke_color', 'glow', 'glow_color']], ['行距', ['lh', 'ls']]]],
     ['color', 'palette', '颜色', 'COLOR'],
     ['who', 'user', '每条显示', [['显示什么', ['avatar', 'frame', 'badge', 'rank', 'names', 'wealth']], ['粉丝牌和头像', ['medal', 'avatar_size']]]],
@@ -371,7 +378,7 @@ const PAGES = {
     ['look', 'music', '样式', [['常用', ['size', 'pal', 'n', 'done']]]],
     ['font', 'type', '文字', [['字体', ['font']], ['描边和阴影', ['stroke', 'stroke_color', 'glow', 'glow_color']]]],
     ['color', 'palette', '颜色', 'COLOR'],
-    ['show', 'eye', '显示', [['显示什么', ['xw', 'head', 'count', 'num', 'light']], ['标题和底板', ['head_text', 'bg']]]],
+    ['show', 'eye', '显示', [['显示什么', ['head', 'count', 'num', 'light']], ['标题和底板', ['head_text', 'bg']]]],
     ['pos', 'grid', '位置', [['位置', ['align', 'pos']]]],
   ],
 };
@@ -386,23 +393,19 @@ const NA = {
   clip: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge'],
   bubble: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge', 'frame'],
   ticket: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge', 'frame'],
-  mist: ['anim', 'width', 'layout', 'light', 'stroke', 'stroke_color', 'glow', 'glow_color', 'avatar', 'frame', 'badge', 'avatar_size', 'sc_bg'],
-  diary: ['anim', 'width', 'layout', 'light', 'pal', 'card_color', 'stroke', 'stroke_color', 'glow', 'glow_color', 'frame', 'badge', 'avatar_size', 'medal', 'sc_bg'],
 };
 const SNA = {
   card: [], strip: ['done', 'n', 'head', 'num', 'head_text'], vinyl: ['done'],
-  mist: ['light', 'pal', 'bg', 'stroke', 'stroke_color', 'glow', 'glow_color'],
-  diary: ['light', 'pal', 'bg', 'stroke', 'stroke_color', 'glow', 'glow_color'],
 };
 function useless(f) {
   if (mode === 'songs') return (SNA[cfg.style] || []).includes(f.k);
   const look = lookNow();
   // 靠右：每条都铺满整行时看不出来，只有「宽度 → 随文字」才有用
-  if (f.k === 'right' && (cfg.width !== 'fit' || ['luna', 'mist', 'diary'].includes(look))) return true;
+  if (f.k === 'right' && (cfg.width !== 'fit' || look === 'luna')) return true;
   return (NA[look] || []).includes(f.k);
 }
 const visible = f => f && f.type !== 'hidden' && (!f.show || f.show(cfg)) && !useless(f);
-const SONG_LOOKS = { card: ['card', '卡片'], strip: ['square', '细条'], vinyl: ['music', '唱片'], mist: ['snow', '薄雾'], diary: ['book', '留言本'] };
+const SONG_LOOKS = { card: ['card', '卡片'], strip: ['square', '细条'], vinyl: ['music', '唱片'] };
 const fieldOf = k => fields.find(f => f.k === k);
 const sameV = (a, b) => JSON.stringify(a ?? '') === JSON.stringify(b ?? '');
 const chg = k => { const f = fieldOf(k); return !!f && !sameV(cfg[k], f.def); };
@@ -431,7 +434,7 @@ function renderPage(id, groups) {
   const tip = f => f.tip ? ` title="${esc(f.tip)}"` : '';
   const out = [];
   if (id === 'look') {
-    if (mode === 'dm') out.push(`<fieldset><legend>选样式</legend><div class="pick">${Object.entries(LOOKS).map(([k, [ic, name]]) => `<button data-look="${k}"${lookNow() === k ? ' class="on"' : ''}><i>${lab(ic + ' ').trim()}</i>${name}</button>`).join('')}</div></fieldset>`);
+    if (mode === 'dm') out.push(`<fieldset><legend>选样式</legend><div class="pick">${Object.entries(LOOKS).map(([k, [ic, name]]) => `<button data-look="${k}"${lookNow() === k ? ' class="on"' : ''}><i>${lab(ic + ' ').trim()}</i>${name}</button>`).join('')}</div><small class="hint" title="OBS 浏览器源要在「页面权限」里给「读取用户信息」才能读到场景名">OBS 场景名里写 [${LOOKS[lookNow()][1]}] 之类，切场景自动换样式</small></fieldset>`);
     else out.push(`<fieldset><legend>选样式</legend><div class="pick">${Object.entries(SONG_LOOKS).map(([k, [ic, name]]) => `<button data-seg="style" data-val="${k}"${cfg.style === k ? ' class="on"' : ''}><i>${icon(ic)}</i>${name}</button>`).join('')}</div></fieldset>`);
   }
   if (groups === 'COLOR') return pageKeys(groups).length ? `<fieldset><legend>名字和弹幕的颜色</legend>${colorTable()}</fieldset>` : null;
@@ -643,12 +646,12 @@ $('fixed').onchange = update;
 // ---------- 「发一条试试」 ----------
 let n = 0;
 const send = (type, data) => $('pv').contentWindow?.postMessage({ type, data }, location.origin);
-const dm = (name, text, guard, lv) => send('dm', { uid: 9000 + (++n), name, face: '', text, medal: '雾锁胃', medal_level: lv, medal_room: 1000001, guard, emoticon: '' });
+const dm = (name, text, guard, lv, wealth = 0) => send('dm', { uid: 9000 + (++n), name, face: '', text, medal: '粉丝团', medal_level: lv, medal_room: 1000001, guard, wealth, emoticon: '' });
 const T = {
-  dm: () => dm('雾里看花', '主播晚上好～今天唱什么呀', 0, 8),
-  g3: () => dm('路过的舰长', '来了来了，打卡', 3, 21),
-  g2: () => dm('紫色提督', '雾雾今天好可爱', 2, 25),
-  g1: () => dm('橙色总督', '主播冲鸭！', 1, 30),
+  dm: () => dm('雾里看花', '主播晚上好～今天唱什么呀', 0, 8, 12),
+  g3: () => dm('路过的舰长', '来了来了，打卡', 3, 21, 24),
+  g2: () => dm('紫色提督', '主播今天好可爱', 2, 25, 33),
+  g1: () => dm('橙色总督', '主播冲鸭！', 1, 30, 46),
   gift: () => send('gift', { item: { id: 't' + (++n), uid: 1, name: '雪糕不化', face: '', gift: '小花花', num: 10, yuan: 1, img: '', guard: 0, blind: '' } }),
   big: () => send('gift', { item: { id: 't' + (++n), uid: 2, name: '主播的猫', face: '', gift: '情书', num: 2, yuan: 104, img: '', guard: 3, blind: '' } }),
   sc: () => send('sc', { item: { id: ++n, uid: 3, name: '冬天的鱼', face: '', price: 50, text: '主播辛苦啦，今天的歌超好听，早点休息哦～', guard: 0 } }),
@@ -657,6 +660,24 @@ const T = {
   buy1: () => send('guard', { item: { uid: 6, name: '橙色总督', level: 1, level_name: '总督', num: 1, unit: '月', yuan: 19998 } }),
 };
 document.querySelectorAll('[data-t]').forEach(b => b.onclick = T[b.dataset.t]);
+
+// ---------- 顶栏显示哪些（2026-11-25 用户：让人自己选，开多少都不乱） ----------
+const BAR = [['bg', '预览背景'], ['real', '实时'], ['fixed', '固定'], ['dm', '弹幕'], ['gift', '礼物'], ['buy', '上舰']];
+let barOff = [];
+try { barOff = JSON.parse(localStorage.getItem('xw-obs-bar') || '[]'); } catch {}
+function applyBar() {
+  document.querySelectorAll('#bar > [data-bk]').forEach(el => el.classList.toggle('off', barOff.includes(el.dataset.bk)));
+  $('barpop').innerHTML = BAR.map(([k, n]) => `<label><input type="checkbox" data-bk="${k}"${barOff.includes(k) ? '' : ' checked'}>${n}</label>`).join('');
+}
+$('barpop').onchange = e => {
+  const k = e.target.dataset.bk; if (!k) return;
+  barOff = e.target.checked ? barOff.filter(x => x !== k) : [...new Set([...barOff, k])];
+  try { localStorage.setItem('xw-obs-bar', JSON.stringify(barOff)); } catch {}
+  applyBar();
+};
+$('barbtn').onclick = e => { e.stopPropagation(); $('barpop').hidden = !$('barpop').hidden; };
+document.addEventListener('click', e => { if (!$('barset').contains(e.target)) $('barpop').hidden = true; });
+applyBar();
 
 if (window !== window.top) document.querySelector('#panel > header').style.display = 'none';  // 嵌在弹幕姬里时外面已经有标题了
 $('modes').onclick = e => { const b = e.target.closest('[data-mode]'); if (b && b.dataset.mode !== mode) setMode(b.dataset.mode); };

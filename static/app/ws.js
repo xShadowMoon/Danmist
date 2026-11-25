@@ -62,7 +62,7 @@ function connect() {
       S.userCount = data.user_count;
       S.dmTotal = data.dm_total ?? (data.users || []).reduce((a, u) => a + (u.dm || 0), 0);
       $('roomid').textContent = data.room_id ? '' : '演示';
-      if (!S.admin) { S.notes = null; for (const k of ['sc_read', 'admin_links', 'connections', 'library', 'songbook', 'profiles', 'title_presets']) delete S[k]; }  // 切到普通视角时，把管理身份才有的东西从页面里清掉
+      if (!S.admin) { S.notes = null; for (const k of ['sc_read', 'admin_links', 'connections', 'library', 'songbook', 'profiles', 'title_presets', 'lan']) delete S[k]; }  // 切到普通视角时，把管理身份才有的东西从页面里清掉
       document.body.classList.toggle('nomoney', !S.admin);
       setViewer(!S.admin);
       document.body.classList.toggle('host', !!S.host);  // 主播专属链接：藏掉普通视角、链接管理、清零这些后台的东西
@@ -131,6 +131,7 @@ function connect() {
       if (String(data.cmd).startsWith('acct_')) { acctResult(data); drawRoomBtns(); return; }
       if (String(data.cmd).startsWith('profile_')) { profileResult(data); return; }
       if (String(data.cmd).startsWith('admin_link_')) { linkResult(data); return; }
+      if (data.cmd === 'lan_set') { note(data.msg, data.ok); if (!data.ok) drawLinks(); return; }
       if (data.cmd === 'mute_list' || data.cmd === 'unmute') { muteResult(data); return; }
       if (data.cmd === 'news_get' || data.cmd === 'news_set') { newsResult(data); return; }
       if (data.cmd === 'sc_read' || data.cmd === 'sc_read_all') { if (!data.ok) note(data.msg, false); return; }
@@ -147,6 +148,14 @@ function connect() {
       askMutes();  // 有人被禁言 / 解除了：开着名单的话重新查一次
     } else if (type === 'update') {  // GitHub 上出了新版本
       S.update = data; drawUpd();
+    } else if (type === 'face') {  // 没头像的人，后台去 B 站名片查到了（2026-11-25）：补上再画
+      const f = data.face, uid = data.uid;
+      const u = userOf(uid); if (u && !u.face) u.face = f;
+      let hit = false;
+      for (const list of [S.dm, S.gifts, S.guards, S.sc, S.enters]) for (const x of list || []) if (x.uid === uid && !x.face) { x.face = f; hit = true; }
+      if (hit) { soon(renderGifts, 'g'); soon(renderDm, 'd'); soon(renderSc, 's'); soon(renderEnters, 'e'); }
+    } else if (type === 'lan') {  // 手机打开（局域网）开关变了
+      S.lan = data; drawLinks();
     } else if (type === 'connections') {
       S.connections = data; drawLinks();
     } else if (type === 'profiles') {

@@ -26,10 +26,10 @@ const DEF = {
   // 进房并入弹幕的样子：位置 flow（弹幕区底部常驻小栏，默认）/ top / bottom（有人进来才弹出），停几秒，显示哪些，带不带头像
   enterTip: { pos: 'flow', sec: 3.5, enter: true, follow: true, share: true, like: true, guardOnly: false, avatar: true }, compact: false,
   snd: { on: false, dm: false, sc: true, gift: true, guard: true, enterGuard: false, follow: false, giftMin: 10, scMin: 0, vol: 0.6 }, giftAnim: true, bigGift: { on: true, min: 10, guard: true }, dmSize: 15.5, giftMin: 0, snow: false,
-  dmFilter: 'all', dmMedalMin: 10, hlWords: '主播 雾雾 点歌',
+  dmFilter: 'all', dmMedalMin: 10, hlWords: '主播 点歌',
   dm: { gap: 0, name: 12, bg: 'none', font: '', color: '', avatar: true, medal: true, time: true, bold: false, inline: false, guardBg: true, note: true, hoverPause: true, anim: 'in', animMs: 600 },
   sc: { size: 14.5, read: 'dim', avatar: true, bar: true, unreadTop: false, autoRead: false, min: 0 },
-  accent: '', bgAlpha: 85, fs: { sc: 100, gift: 100, enter: 100, users: 100, req: 100 },
+  accent: '', bgAlpha: 85, fs: { sc: 100, gift: 100, enter: 100, users: 100, req: 100 }, topHide: [],
   layout: clone(DEF_LAYOUT),
   tts: { on: false, voice: '', aiScope: 'thanks', volume: 1, rate: 1.15, pitch: 1,
     dm: true, sc: true, gift: true, giftMin: 1, guard: true, enter: false, enterGuardOnly: true, follow: false,
@@ -110,6 +110,7 @@ function applyCfg() {
   document.body.classList.toggle('compact', !!cfg.compact);
   document.body.classList.toggle('noframe', cfg.frames === false);
   $('compactbtn').classList.toggle('on', !!cfg.compact);
+  applyTopHide();
   renderLayoutBar();
   if (!cfg.tts.on) ttsClear();
   updateTtsBar();
@@ -265,6 +266,20 @@ function applyTheme() {
 }
 darkMQ.addEventListener?.('change', () => { if (cfg.theme === 'auto') applyTheme(); });
 $('themebtn').onclick = () => { cfg.theme = effTheme() === 'dark' ? 'light' : 'dark'; saveCfg(); applyTheme(); };
+// 顶栏按钮自己选（2026-11-25 用户：让人选显示哪些，开再多也不乱 —— 放不下的照旧收进「⋯」）
+const TOP_BTNS = [['librarybtn', '曲库'], ['preflightbtn', '自检'], ['histbtn', '历史'], ['obsbtn', 'OBS'], ['layoutbtn', '布局'], ['compactbtn', '紧凑'],
+  ['themebtn', '深浅色'], ['ttsbtn', '朗读'], ['copylink', '复制链接'], ['viewbtn', '普通视角'], ['newsbtn', '公告']];
+function applyTopHide() {
+  const off = Array.isArray(cfg.topHide) ? cfg.topHide : [];
+  for (const [id] of TOP_BTNS) $(id)?.classList.toggle('uhide', off.includes(id));
+  const box = $('topbtns');
+  if (box && !box.dataset.done) {
+    box.dataset.done = 1;
+    box.onchange = e => { const id = e.target.dataset.tb; if (!id) return; cfg.topHide = e.target.checked ? (cfg.topHide || []).filter(x => x !== id) : [...new Set([...(cfg.topHide || []), id])]; saveCfg(); applyTopHide(); };
+  }
+  if (box) box.innerHTML = TOP_BTNS.map(([id, n]) => `<label class="chip"><input type="checkbox" data-tb="${id}"${off.includes(id) ? '' : ' checked'}><span>${n}</span></label>`).join('');
+  window.fitTop?.();
+}
 function toggleCompact() { cfg.compact = !cfg.compact; saveCfg(); applyCfg(); renderLayoutBar(); }
 $('compactbtn').onclick = toggleCompact;
 
@@ -290,7 +305,14 @@ const GS = { 1: '总', 2: '提', 3: '舰' };
 const WEALTH_TIERS = [[50, '#ff6a3d'], [40, '#e85bd0'], [30, '#8d6cf0'], [20, '#3f8cf4'], [10, '#27b0a0'], [1, '#8fa2b5']];
 // 有 B 站官方的等级勋章图（1–80 级每级一张）就用官方的，没拿到再用自己画的小块
 let WEALTH_ICON = {};
-fetch('api/wealth_icons').then(r => r.json()).then(j => { WEALTH_ICON = j || {}; if (Object.keys(WEALTH_ICON).length && typeof renderDm === 'function') renderDm(); }).catch(() => {});
+// 2026-11-25：服务刚启动的几秒里还没拿到图标，那时打开的页面以前就一直是色块；没拿到就隔几秒再问
+function loadWealth(tries = 0) {
+  const again = () => { if (tries < 40) setTimeout(() => loadWealth(tries + 1), 3000); };
+  fetch('api/wealth_icons').then(r => r.json()).then(j => { WEALTH_ICON = j || {}; if (!Object.keys(WEALTH_ICON).length) return again(); if (typeof renderDm === 'function') renderDm(); }).catch(again);
+}
+loadWealth();
+// 舰长头像框（2026-11-25）：没放自己的框图时用 B 站官方的框，官方框底下自带「舰长」字，就不再叠锚徽章
+fetch('api/art').then(r => r.json()).then(a => document.body.classList.toggle('biliframe', !a.includes('frame3-s.png'))).catch(() => {});
 function wealthHtml(lv) {
   const u = WEALTH_ICON[lv];
   if (u) return `<img class="wealthimg" src="img?u=${encodeURIComponent(u)}&s=big" alt="荣耀 ${lv}" title="荣耀等级 ${lv}">`;
@@ -306,7 +328,7 @@ function avatar(face, name, guard, size) {
   const av = face ? `<img class="av${g}" style="${st}" src="img?u=${encodeURIComponent(face)}" loading="lazy" data-ch="${ch}" onerror="avFail(this)">`
     : `<span class="av${g}" style="${st}background:${c}">${ch}</span>`;
   // 舰长头像框（2026-11-19 改醒目）：头像和框之间一圈白边隔开，框外有等级色光晕，右下角一个锚徽章，一眼看出是舰长 / 提督 / 总督
-  return guard >= 1 && guard <= 3 ? `<span class="avw g${guard}">${av}<img class="avf" src="static/art/frame${guard}-s.png" alt="" onerror="this.remove()"><img class="avb" src="static/art/guard${guard}.png?v=2" alt="" onerror="this.remove()"></span>` : av;
+  return guard >= 1 && guard <= 3 ? `<span class="avw g${guard}">${av}<img class="avf" src="art/frame${guard}-s.png" alt="" onerror="this.remove()"><img class="avb" src="art/guard${guard}.png" alt="" onerror="this.remove()"></span>` : av;
 }
 fillIcons();
 
@@ -406,6 +428,6 @@ try { scRead = new Set(JSON.parse(localStorage.getItem('xw-scread') || '[]')); }
 const scSynced = () => !!S.admin && Array.isArray(S.sc_read);
 const saveScRead = () => { try { localStorage.setItem('xw-scread', JSON.stringify([...scRead].slice(-500))); } catch {} };
 // 上舰一条（2026-11-18 重做）：跟礼物一样两行（名字 / 开通了什么），右边放舰长 / 提督 / 总督的锚徽章，底色按等级淡淡地染
-const guardRow = (g, i, all, withDay) => `<div class="guardrow l${g.level}" data-uid="${g.uid}" data-k="g${g.uid}-${g.t}" data-t="${g.t}">${avatar(g.face || userOf(g.uid)?.face || '', g.name, g.level)}<div class="body"><div class="n"><span class="nm">${esc(g.name)}</span>${g.source === '下播' ? '<span class="tag off" title="下播期间开通的">下播</span>' : ''}</div><div class="g" title="${hhmm(g.t)} ${esc(g.op || '开通')}${esc(g.level_name)}">${g.op ? `${esc(g.op)}了 ` : ''}<b class="lv">${esc(g.level_name)}</b> ${g.num}${esc(g.unit)} ${g.yuan == null ? '' : ` · <span class="y">${yuan(g.yuan)}</span>`}${withDay || g.source === '下播' ? ` · ${fmtMd(g.t)}` : ''}</div>${g.days > 0 ? `<div class="gd"${g.days_est ? ' title="这条是按 B 站现在的陪伴天数往回推的"' : ''}>这是 TA 陪伴你的第 <b>${g.days}</b> 天</div>` : ''}</div><img class="gbadge" src="/static/art/guard${g.level}.png?v=2" alt="" onerror="this.remove()"></div>`;
+const guardRow = (g, i, all, withDay) => `<div class="guardrow l${g.level}" data-uid="${g.uid}" data-k="g${g.uid}-${g.t}" data-t="${g.t}">${avatar(g.face || userOf(g.uid)?.face || '', g.name, g.level)}<div class="body"><div class="n"><span class="nm">${esc(g.name)}</span>${g.source === '下播' ? '<span class="tag off" title="下播期间开通的">下播</span>' : ''}</div><div class="g" title="${hhmm(g.t)} ${esc(g.op || '开通')}${esc(g.level_name)}">${g.op ? `${esc(g.op)}了 ` : ''}<b class="lv">${esc(g.level_name)}</b> ${g.num}${esc(g.unit)} ${g.yuan == null ? '' : ` · <span class="y">${yuan(g.yuan)}</span>`}${withDay || g.source === '下播' ? ` · ${fmtMd(g.t)}` : ''}</div>${g.days > 0 ? `<div class="gd"${g.days_est ? ' title="这条是按 B 站现在的陪伴天数往回推的"' : ''}>这是 TA 陪伴你的第 <b>${g.days}</b> 天</div>` : ''}</div><img class="gbadge" src="/art/guard${g.level}.png" alt="" onerror="this.remove()"></div>`;
 const rankRow = (u, i) => `<div class="row" data-uid="${u.uid}" data-k="r${u.uid}"><span class="rank r${i + 1}">${i + 1}</span>${avatar(u.face, u.name, u.guard, 26)}<span class="n">${esc(u.name)}</span>${u.guard ? `<span class="tag g${u.guard}" title="${GN[u.guard]}">${GS[u.guard]}</span>` : ''}<span class="r money">${yuan(u.spend)}</span></div>`;
 

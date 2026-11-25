@@ -138,9 +138,8 @@ body { font: 400 var(--size)/var(--lh, 1.5) var(--ff, "HarmonyOS Sans SC", "Ping
 .lw .lav { width: 2.1em; height: 2.1em; flex: none; border-radius: 50%; box-shadow: 0 0 0 1.5px currentColor, 0 2px 6px #0006; }
 .lw .lav .av { font-size: .9em; letter-spacing: 0; text-shadow: none; }
 .noav .lw .lav { display: none; }
-.nonames .lw .name, .nonames.theme-mist .meta .name, .nonames.theme-diary .tag .name { display: none; }
-.nobadge .lw .gicon, .nobadge .lw .gtag, .norank.theme-mist .grk, .norank.theme-diary .tag .gt { display: none; }
-.noav.theme-diary .card .ring { display: none; }
+.nonames .lw .name { display: none; }
+.nobadge .lw .gicon, .nobadge .lw .gtag { display: none; }
 .lw .gicon { width: 1.5em; height: 1.5em; }
 .lw .medal { font-size: .82em; }
 .theme-luna .it.dm:not([class*=" g"]) { --accent: #cdd8ea; }
@@ -268,6 +267,8 @@ body { font: 400 var(--size)/var(--lh, 1.5) var(--ff, "HarmonyOS Sans SC", "Ping
 .giftline.theme-xw .xgift .name { display: inline; font-size: .8em; }
 .giftline.theme-xw .xgift .gl2 { font-size: .85em; }
 .giftline.theme-xw .xgift .gi { width: 1.5em; height: 1.5em; }
+/* 刷屏时（一秒超过 6 条）不放进场动画，省电脑（2026-11-25） */
+.flood .it, .flood .it * { animation: none !important; }
 /* 荣耀等级（wealth=1，2026-11-21）：B 站的等级勋章图，名字旁边 */
 .wl { height: 1.05em; width: auto; vertical-align: -.18em; flex: none; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .35)); }
 .wlp { display: inline-flex; align-items: center; font-size: .55em; font-weight: 700; color: #fff; background: var(--w, #8d6cf0); border-radius: .4em; padding: 0 .4em; line-height: 1.6; text-shadow: none; flex: none; }
@@ -331,117 +332,6 @@ body { font: 400 var(--size)/var(--lh, 1.5) var(--ff, "HarmonyOS Sans SC", "Ping
 .ct1 .dm.g1 .txt { color: var(--ct1) !important; -webkit-text-fill-color: var(--ct1); }
 .nc.theme-glass .it.g2 .name, .nc.theme-glass .it.g1 .name { background: none; -webkit-text-fill-color: var(--nc); }
 
-/* ===================== 主播专属风格（2026-11-21，按 GPT 的效果图做） =====================
-   style=mist  「薄雾」游戏款：没有底板，左边一根细竖线 + 四角星，名字小字，内容大号粗白字带深靛描边；只有 SC 有玻璃条；旧的往上飘、变淡变糊
-   style=diary 「留言本」聊天款：整页夜蓝手账本，卡片浅纸 / 深紫交替，名字在卡片上方小标签里 */
-.hk .it { all: unset; position: relative; display: block; box-sizing: border-box; width: 100%; animation: slidein var(--anim-ms, .6s) cubic-bezier(.22, 1, .36, 1) backwards; transition: opacity .6s, filter .6s, transform .6s; }
-.hk .it.out { opacity: 0 !important; transition: opacity .6s; }
-.hk .it .av { display: inline-grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; font-weight: 700; color: #fff; }
-.hk #list { gap: calc(var(--gap) * 1.1); }
-
-/* ---------- 薄雾 ---------- */
-.theme-mist #list { padding: 14px 16px 18px 20px; }
-.theme-mist .it { padding-left: 1.05em; --accent: #e8b84a; --rule: #ece4ff; --user: #f2edff; text-shadow: none; }
-.theme-mist .it.g3 { --accent: #9cc6ff; --rule: #9cc6ff; --user: #9cc6ff; }
-.theme-mist .it.g2, .theme-mist .it.g1 { --accent: #c7a8ff; --rule: #c7a8ff; --user: #c7a8ff; }
-.theme-mist .it.g1 { --accent: #ffc59a; --rule: #ffc59a; --user: #ffd2b0; }
-.theme-mist .it.entry::before { content: ""; position: absolute; left: .22em; top: .45em; bottom: 0; width: 2px; background: linear-gradient(var(--rule), transparent); }
-.theme-mist .star { position: absolute; top: .1em; left: -.06em; width: .68em; height: .78em; fill: var(--accent); filter: drop-shadow(0 0 2px #c7a8ff72); }
-.theme-mist .meta { display: flex; align-items: center; gap: .4em; min-height: 1.05em; color: var(--user); font-size: .78em; line-height: 1.35; font-weight: 600; letter-spacing: .2px; }
-.theme-mist .meta .name, .theme-mist .gl, .theme-mist .amount, .theme-mist .hmedal { paint-order: stroke fill; -webkit-text-stroke: 2px #1b1a44d9; text-shadow: 0 1.3px 3px #11112ee8; }
-.theme-mist .hmedal { display: inline-flex; align-items: center; border: 1px solid currentColor; border-radius: 3px; padding: 0 .35em; height: 1.1em; font-size: .72em; font-weight: 600; letter-spacing: .3px; line-height: 1; box-shadow: 0 0 1.5px #17182d; }
-.theme-mist .message { font-size: 1.333em; font-weight: 730; line-height: 1.34; letter-spacing: .35px; color: #fff; overflow-wrap: anywhere; paint-order: stroke fill; -webkit-text-stroke: 3px #1b1a44; text-shadow: 0 2px 3px #11122ad9; }
-.theme-mist .message img.emo { height: 1.2em; vertical-align: -.25em; }
-.theme-mist .message img:not(.emo) { height: 2em; vertical-align: middle; }
-.theme-mist .gl { display: flex; align-items: center; gap: .3em; font-size: .78em; line-height: 1.5; font-weight: 560; color: #f2edff; }
-.theme-mist .gl svg { width: 1.15em; height: 1.15em; color: #f2c768; flex: none; filter: drop-shadow(0 1px 1px #1b1a44); }
-.theme-mist .gl strong, .theme-mist .amount { color: #ffd47a; font-weight: 750; }
-.theme-mist .gl .gi { height: 1.5em; width: auto; margin-left: .15em; }
-.theme-mist .it.super { padding: .4em .72em .5em 1em; border: 1px solid #d8caff69; border-radius: 6px; background: linear-gradient(95deg, rgba(27, 26, 68, .45), rgba(27, 26, 68, .1)); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
-.theme-mist .it.super::before { content: ""; position: absolute; left: -1px; top: .35em; bottom: .35em; width: 3px; border-radius: 2px; background: #e8b84a; }
-.theme-mist .amount { font-size: 1.15em; }
-.theme-mist .it.buy .message { color: var(--user); }
-.theme-mist .it.oldest { opacity: .37; filter: blur(1px); transform: translate(3px, -3px); }
-.theme-mist .it.older { opacity: .74; filter: blur(.35px); transform: translateY(-1px); }
-.theme-mist .it.oldest::after { content: ""; position: absolute; left: -.4em; right: 20%; top: -1.1em; height: 2.4em; pointer-events: none; filter: blur(6px);
-  background: radial-gradient(60% 50% at 40% 60%, rgba(213, 203, 255, .35), transparent 70%); }
-
-/* ---------- 留言本 ---------- */
-.theme-diary #book { position: fixed; inset: 0; border-radius: 22px; overflow: hidden; pointer-events: none;
-  background:
-    radial-gradient(1.2px 1.2px at 12% 18%, #fff9 50%, transparent 51%), radial-gradient(1px 1px at 68% 9%, #fff8 50%, transparent 51%),
-    radial-gradient(1.4px 1.4px at 84% 31%, #fff7 50%, transparent 51%), radial-gradient(1px 1px at 36% 42%, #fff6 50%, transparent 51%),
-    radial-gradient(1.2px 1.2px at 57% 64%, #fff5 50%, transparent 51%), radial-gradient(1px 1px at 22% 77%, #fff6 50%, transparent 51%),
-    radial-gradient(1.3px 1.3px at 90% 86%, #fff5 50%, transparent 51%), radial-gradient(1px 1px at 46% 24%, #fff7 50%, transparent 51%),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 22px), repeating-linear-gradient(90deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 22px),
-    linear-gradient(180deg, #1b1c3a, #232548);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), inset 0 0 60px rgba(0, 0, 0, .35); }
-.theme-diary #book::before { content: ""; position: absolute; inset: 18% -10% auto 10%; height: 26%; filter: blur(28px); opacity: .55;
-  background: radial-gradient(50% 50% at 30% 50%, rgba(170, 160, 230, .35), transparent 70%), radial-gradient(40% 60% at 75% 40%, rgba(150, 140, 220, .28), transparent 70%); }
-.theme-diary #book .rings { position: absolute; left: 6px; top: 22px; bottom: 22px; width: 40px; background-repeat: repeat-y; background-size: 40px 46px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='46'%3E%3Cdefs%3E%3ClinearGradient id='m' x1='0' x2='0' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f4f6fb'/%3E%3Cstop offset='.5' stop-color='%23a9aec0'/%3E%3Cstop offset='1' stop-color='%23e6e9f2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='30' cy='23' r='5' fill='%23111228'/%3E%3Cpath d='M30 17 C 12 14, 4 20, 6 25 C 8 30, 22 30, 30 27' fill='none' stroke='url(%23m)' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E"); }
-.theme-diary #book .head { position: absolute; left: 64px; right: 24px; top: 18px; height: 128px; }
-.theme-diary #book .hand { font: italic 400 44px/1 "Segoe Script", "Lucida Handwriting", "Brush Script MT", cursive; color: #f4f1ff; letter-spacing: .5px; text-shadow: 0 2px 6px #0006; }
-.theme-diary #book .hand svg { width: 22px; height: 26px; fill: #f2c768; vertical-align: 14px; margin-left: 6px; filter: drop-shadow(0 0 4px #f2c76866); }
-.theme-diary #book .sub { margin-top: 10px; font-size: 16px; letter-spacing: 9px; color: #c9c6e6; font-family: "KaiTi", "STKaiti", serif; }
-.theme-diary #book .line { position: absolute; left: 0; right: 0; bottom: 0; border-top: 1.5px dashed rgba(220, 216, 255, .35); }
-.theme-diary #book .line::before, .theme-diary #book .line::after { content: "❄"; position: absolute; top: -.78em; font-size: 14px; color: #d8d4ff; }
-.theme-diary #book .line::before { left: -4px; } .theme-diary #book .line::after { right: -4px; }
-.theme-diary #book .xw { position: absolute; right: 8px; top: -6px; height: 128px; filter: drop-shadow(0 4px 8px #0006); }
-.nohead.theme-diary #list { top: 0 !important; padding-top: 22px !important; }
-.theme-diary #list { top: 160px; bottom: 0; inset-inline: 0; padding: 14px 26px 22px 68px; justify-content: flex-end; overflow: hidden; align-items: stretch; }
-.theme-diary .it { --ring: #e8b84a; color: #f2efff; font-size: 1em; }
-/* 头像圈：浅卡薰衣草、深卡金色；舰长蓝、提督紫、总督橙（设计说明 2026-11-21） */
-.theme-diary .it.paper { --ring: #b8a6ee; } .theme-diary .it.ink { --ring: #e8b84a; }
-.theme-diary .it.g3 { --ring: #8ebcff; } .theme-diary .it.g2 { --ring: #b9a0ff; } .theme-diary .it.g1 { --ring: #ffb37a; }
-.theme-diary .tag { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: .35em; margin: 0 0 -.3em 6.2em; padding: .12em .6em .12em .3em; border-radius: 6px 6px 0 0; font-size: .7em; line-height: 1.5; font-weight: 600; }
-.theme-diary .tag .pin { width: 1.15em; height: 1.15em; flex: none; }
-.theme-diary .tag .gt { font-size: .82em; padding: 0 .4em; border-radius: 4px; color: #fff; background: #4f7fe0; }
-.theme-diary .it.g2 .tag .gt { background: #8461e0; } .theme-diary .it.g1 .tag .gt { background: #e07a3f; }
-.theme-diary .card { position: relative; display: flex; align-items: center; gap: .8em; min-height: 3.3em; padding: .55em 2.4em .55em .7em; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, .35); }
-.theme-diary .ring { flex: none; width: 2.6em; height: 2.6em; border-radius: 50%; padding: 3px; background: var(--ring); box-shadow: 0 0 0 2px rgba(255, 255, 255, .25); box-sizing: border-box; }
-.theme-diary .ring .av { width: 100%; height: 100%; font-size: 1.05em; border: 2px solid rgba(255, 255, 255, .85); box-sizing: border-box; }
-.theme-diary .card .msg { flex: 1; min-width: 0; font-size: 1.08em; line-height: 1.45; overflow-wrap: anywhere; }
-.theme-diary .card .msg img.emo { height: 1.3em; vertical-align: -.3em; }
-.theme-diary .card .msg img:not(.emo) { height: 2.1em; vertical-align: middle; }
-.theme-diary .card .flake { position: absolute; right: .7em; bottom: .45em; width: 1.2em; height: 1.2em; opacity: .35; }
-.theme-diary .it.paper .tag { background: #f4f1fb; color: #3a3566; }
-.theme-diary .it.paper .card { background: linear-gradient(180deg, #f7f4fb, #ebe7f4); color: #2b2850; border: 1px solid #fff; }
-.theme-diary .it.paper .flake { color: #8d89b8; }
-.theme-diary .it.ink .tag { background: #2a2856; color: #ece8ff; }
-.theme-diary .it.ink .card { background: linear-gradient(180deg, #3a3670, #2d2a5e); color: #f2efff; border: 1px solid rgba(232, 184, 74, .55); }
-.theme-diary .it.ink .flake { color: #c9c3ff; }
-.theme-diary .note { position: relative; display: inline-flex; align-items: center; gap: .45em; margin: .35em 0 .1em 2.2em; padding: .5em 1.1em .5em 1em; max-width: 85%; transform: rotate(-1deg);
-  background: linear-gradient(180deg, #efe9fb, #e2dbf5); color: #3a3566; border-radius: 4px; box-shadow: 0 3px 8px rgba(0, 0, 0, .3); font-size: .9em; }
-.theme-diary .note::before { content: ""; position: absolute; left: -1.4em; top: -.55em; width: 4.2em; height: 1.2em; transform: rotate(-14deg);
-  background: repeating-linear-gradient(45deg, rgba(170, 196, 240, .85) 0 6px, rgba(210, 226, 250, .85) 6px 12px); box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
-.theme-diary .note svg { width: 1.2em; height: 1.2em; color: #6a5ac4; flex: none; }
-.theme-diary .note b { color: #6a4fd0; font-weight: 700; }
-.theme-diary .note .gi { height: 1.6em; width: auto; }
-.theme-diary .env { position: relative; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, .4); }
-.theme-diary .env .top { position: relative; display: flex; align-items: center; gap: .8em; padding: .55em 5em .55em .7em; background: linear-gradient(180deg, #c9b8f2, #b7a3ea); color: #2b2552; }
-.theme-diary .env .top small { display: block; font-size: .72em; opacity: .85; }
-.theme-diary .env .top b { font-size: 1.25em; font-weight: 800; color: #2b2552; }
-.theme-diary .env .seal { position: absolute; right: .8em; top: .3em; width: 3.6em; height: 3.6em; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .35)); }
-.theme-diary .env .paper { padding: .55em 1em .65em; background: repeating-linear-gradient(180deg, transparent 0 1.55em, rgba(120, 110, 170, .25) 1.55em calc(1.55em + 1px)), linear-gradient(180deg, #f7f4fb, #ece8f4); color: #2b2850; font-size: 1.04em; line-height: 1.55; overflow-wrap: anywhere; }
-.theme-diary .it.buy .card { background: linear-gradient(180deg, #f8edd2, #efdcae); color: #4a3a14; border: 1px solid #fff3; }
-.theme-diary .it.buy .tag { background: #f8edd2; color: #5b4718; }
-.theme-diary .it.enter .note { background: linear-gradient(180deg, #e6e3f5, #d8d3ee); }
-.theme-diary .it.oldest { opacity: .45; filter: blur(1px); }
-.theme-diary .it.older { opacity: .8; }
-#peek { position: fixed; right: 10px; bottom: 0; width: min(28vw, 150px); pointer-events: none; filter: drop-shadow(0 2px 6px #0006); animation: peek 3.2s ease-in-out infinite alternate; }
-@keyframes peek { to { transform: translateY(4px); } }
-/* 这两个风格自己管描边 / 阴影，弹幕姬通用的「描边、文字阴影」设置不套上来（纸面卡片上会糊） */
-.hk .it, .hk .it * { text-shadow: none; }
-.theme-diary .it, .theme-diary .it * { -webkit-text-stroke: 0 !important; }
-.theme-diary .it::before { content: none; }
-.theme-mist .meta .name, .theme-mist .gl, .theme-mist .amount, .theme-mist .hmedal { text-shadow: 0 1.3px 3px #11112ee8; }
-.theme-mist .message { text-shadow: 0 2px 3px #11122ad9; }
-.theme-mist .rep { display: inline-block; margin-left: .3em; font-size: .7em; color: #ffd47a; -webkit-text-stroke: 2px #1b1a44; paint-order: stroke fill; }
-.theme-mist .it.buy .message { font-size: 1.12em; }
-.theme-diary .rep { margin-left: .4em; font-size: .8em; font-weight: 700; color: #8a6cf0; }
-.hk .it .name { font-size: 1em; color: inherit; font-weight: inherit; }
-.hk .it .txt { display: inline; }
 </style>
 </head>
 <body>
@@ -494,34 +384,35 @@ if (light) B.add('light');
   if (PAL) { document.documentElement.style.setProperty('--pal-rgb', PAL[0]); document.documentElement.style.setProperty('--pal-ink', light ? PAL[2] : PAL[1]); } }
 // 2026-11-21 用户不要「流光、卡片、轻透、悬浮」了：style=glass / card / plain（还有不写 style 的旧网址）一律换成月见
 const XWS = ['moon', 'rime', 'clip', 'bubble', 'ticket'];
-const THEME = ['luna', 'mist', 'diary', ...XWS].includes(str('style', '')) ? str('style', '') : 'moon', LUNA = THEME === 'luna';
+const THEME = ['luna', ...XWS].includes(str('style', '')) ? str('style', '') : 'moon', LUNA = THEME === 'luna';
 if (LUNA) B.add('theme-luna');
+// 按 OBS 场景名换样式（2026-11-25）：场景名里写 [雾凇]（或 [rime]）这个浏览器源就换成雾凇，切到没写的场景换回网址里的样式。
+// 只在 OBS 里有效；scene=0 关掉
+if (window.obsstudio && str('scene', '1') !== '0') {
+  const SCENE_STYLE = { 月见: 'moon', 雾凇: 'rime', 星扣: 'clip', 雾月: 'luna', 气泡: 'bubble', 票根: 'ticket' };
+  const base = str('style0', THEME);
+  const want = name => {
+    for (const m of String(name || '').matchAll(/[\[【]([^\]】]+)[\]】]/g)) {
+      const k = m[1].trim(), v = SCENE_STYLE[k] || (Object.values(SCENE_STYLE).includes(k.toLowerCase()) ? k.toLowerCase() : '');
+      if (v) return v;
+    }
+    return base;
+  };
+  const apply = name => {
+    const w = want(name);
+    if (w === THEME) return;
+    const u = new URL(location.href);
+    u.searchParams.set('style', w); u.searchParams.set('style0', base);
+    location.replace(u.href);
+  };
+  try { window.obsstudio.getCurrentScene?.(s => apply(s?.name)); } catch {}
+  addEventListener('obsSceneChanged', e => apply(e.detail?.name));
+}
 // 新样式（2026-11-21）：月见 moon、雾凇 rime、星扣 clip（雾月系，居中半透明）；气泡 bubble、票根 ticket（靠左卡片）
 const XW = XWS.includes(THEME) ? THEME : '';
 if (XW) B.add('theme-xw', 'xw-' + XW);
-// 主播专属的两个风格（2026-11-21）：mist 薄雾（游戏款）、diary 留言本（聊天款）
-const HK = THEME === 'mist' || THEME === 'diary' ? THEME : '';
-if (HK) { B.add('hk', 'theme-' + HK); }
-// peek=1：薄雾右下角放一张探头的主播（可选）
-if (HK === 'mist' && str('peek', '0') === '1') { const pk = document.createElement('img'); pk.id = 'peek'; pk.src = 'static/art/mist-peek.webp'; pk.alt = ''; document.body.append(pk); }
-const SPARK = '<svg class="star" viewBox="0 0 12 14"><path d="M6 0C6.8 4.85 7.8 6.1 12 7C7.65 7.95 6.8 9.35 6 14C5.2 9.25 4.3 7.95 0 7C4.3 6.1 5.25 4.9 6 0Z"/></svg>';
-const GIFT_SVG = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.4 7.5h15.2v3H2.4zM3.7 10.5v7.1h12.6v-7.1M10 7.5v10M10 7.4C7 7.5 4.2 6.7 4.2 4.6c0-2.7 4.2-3.6 5.8 2.8Zm0 0c3.1.1 5.8-.7 5.8-2.8 0-2.7-4.2-3.6-5.8 2.8Z"/></svg>';
-const FLAKE = '<svg class="flake" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M12 2l-2 2.2M12 2l2 2.2M12 22l-2-2.2M12 22l2-2.2"/></svg>';
+// 2026-11-25：通用版去掉了主播专属的薄雾 / 留言本两个样式（旧网址自动当月见）
 const PIN_CLIP = '<svg class="pin" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.2" fill="#e9b949" stroke="#8a5a14" stroke-width="1.3"/><circle cx="10" cy="10" r="6" fill="#f3cd6a"/><rect x="5.2" y="8.9" width="9.6" height="2.2" rx="1" fill="#6b4512"/></svg>';
-const PIN_STAR = '<svg class="pin" viewBox="0 0 12 14"><path d="M6 0C6.8 4.85 7.8 6.1 12 7C7.65 7.95 6.8 9.35 6 14C5.2 9.25 4.3 7.95 0 7C4.3 6.1 5.25 4.9 6 0Z" fill="#f2c24e" stroke="#9a6a12" stroke-width=".7"/></svg>';
-let hkN = 0;
-if (HK === 'diary') {
-  const bk = document.createElement('div');
-  bk.id = 'book';
-  // 2026-11-21 用户：上面的小人和标题字都能关。xw=0 不要小人，htitle=0 不要标题（标题字用 hname / hsub 改）；两个都关就整条头去掉，弹幕往上铺满
-  const xw = str('xw', '0') !== '0', ttl = str('htitle', '1') !== '0';
-  const hesc = t => String(t).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
-  bk.innerHTML = `<div class="rings"></div>${xw || ttl ? `<div class="head">${ttl ? `<div class="hand">${hesc(str('hname', 'Diary'))}<svg viewBox="0 0 12 14"><path d="M6 0C6.8 4.85 7.8 6.1 12 7C7.65 7.95 6.8 9.35 6 14C5.2 9.25 4.3 7.95 0 7C4.3 6.1 5.25 4.9 6 0Z"/></svg></div><div class="sub">${hesc(str('hsub', '留言本'))}</div><div class="line"></div>` : ''}${xw ? '<img class="xw" src="static/art/diary-xw.webp" alt="" onerror="this.remove()">' : ''}</div>` : ''}`;
-  if (!xw && !ttl) document.body.classList.add('nohead');
-  document.body.prepend(bk);
-}
-const hkMedal = d => (d.medal && opt.medal !== '0' && !(opt.medal === 'own' && realRoom && d.medal_room && d.medal_room !== realRoom)) ? `<span class="hmedal">${esc(d.medal)} ${d.medal_level}</span>` : '';
-const hkRing = (face, name) => `<span class="ring">${avatar(face, name)}</span>`;
 // ---- 新样式用的小图 ----
 const XSTAR = '<svg class="xstar" viewBox="0 0 12 14"><path d="M6 0C6.8 4.85 7.8 6.1 12 7C7.65 7.95 6.8 9.35 6 14C5.2 9.25 4.3 7.95 0 7C4.3 6.1 5.25 4.9 6 0Z"/></svg>';
 const XMOON = '<svg class="xmoon" viewBox="0 0 20 20"><path d="M13.5 2.5a8 8 0 1 0 4 13.5A7 7 0 0 1 13.5 2.5Z"/></svg>';
@@ -542,28 +433,29 @@ function xwDm(d, txt) {
     : XW === 'rime' ? `<div class="xn">${XFLAKE}${nm}${rank}${XFLAKE}</div>` : `<div class="xn">${XMOON}${nm}${rank}${XSTAR}</div>`;
   return `<div class="body">${fan}${head}<span class="txt">${txt}</span></div>`;
 }
-// 旧的往上飘、变淡变糊：最老一条最淡，第二老的淡一点（太少的时候不做）
-function hkAge() {
-  if (!HK) return;
-  const kids = [...$list.children].filter(x => !x.classList.contains('out'));
-  kids.forEach(x => x.classList.remove('oldest', 'older'));
-  if (kids.length >= 4) kids[0].classList.add('oldest');
-  if (kids.length >= 5) kids[1].classList.add('older');
-}
 
 if (str('square', '0') === '1') B.add('square');
 if (str('gift_line', '0') === '1') B.add('giftline');
 // 荣耀等级：有 B 站官方的等级勋章图就用图，没拿到用小色块（跟主页面一样）
 const WEALTH = str('wealth', '0') === '1';
 let WEALTH_ICON = {};
-if (WEALTH) fetch('api/wealth_icons').then(r => r.json()).then(j => { WEALTH_ICON = j || {}; }).catch(() => {});
+const wlImg = (u, lv) => `<img class="wl" src="img?u=${encodeURIComponent(u)}&s=big" alt="荣耀 ${lv}">`;
+// 2026-11-25：服务刚启动时图标还没拿到，页面先开了就一直是色块 —— 没拿到就隔几秒再问，拿到后把已经上屏的色块换成官方图
+function loadWealth(tries = 0) {
+  fetch('api/wealth_icons').then(r => r.json()).then(j => {
+    WEALTH_ICON = j || {};
+    if (!Object.keys(WEALTH_ICON).length) { if (tries < 40) setTimeout(() => loadWealth(tries + 1), 3000); return; }
+    document.querySelectorAll('.wlp[data-lv]').forEach(el => { const u = WEALTH_ICON[el.dataset.lv]; if (u) el.outerHTML = wlImg(u, el.dataset.lv); });
+  }).catch(() => { if (tries < 40) setTimeout(() => loadWealth(tries + 1), 3000); });
+}
+if (WEALTH) loadWealth();
 const WEALTH_TIERS = [[50, '#ff6a3d'], [40, '#e85bd0'], [30, '#8d6cf0'], [20, '#3f8cf4'], [10, '#27b0a0'], [1, '#8fa2b5']];
 const wealth = d => {
   const lv = Number(d.wealth) || 0;
   if (!WEALTH || lv < 1) return '';
   const u = WEALTH_ICON[lv];
-  if (u) return `<img class="wl" src="img?u=${encodeURIComponent(u)}&s=big" alt="荣耀 ${lv}">`;
-  return `<span class="wlp" style="--w:${(WEALTH_TIERS.find(x => lv >= x[0]) || WEALTH_TIERS[5])[1]}">${lv}</span>`;
+  if (u) return wlImg(u, lv);
+  return `<span class="wlp" data-lv="${lv}" style="--w:${(WEALTH_TIERS.find(x => lv >= x[0]) || WEALTH_TIERS[5])[1]}">${lv}</span>`;
 };
 if (str('right', '0') === '1') B.add('right');
 if (str('avatar', '1') === '0') B.add('noav');
@@ -626,7 +518,7 @@ if (str('width', 'full') === 'fit') B.add('fitwidth');
   if (gl) parts.push(`0 0 ${gl}px ${gcol}`, `0 ${Math.max(1, gl / 4).toFixed(1)}px ${(gl / 2).toFixed(1)}px ${gcol}`);
   if (parts.length) {
     // 主播专属风格、新样式、雾月自己画外圈；在设置里改过描边 / 阴影才用设置的
-    const own = HK || ((XW || LUNA) && !['stroke', 'glow', 'stroke_color', 'glow_color'].some(k => P.has(k)));
+    const own = ((XW || LUNA) && !['stroke', 'glow', 'stroke_color', 'glow_color'].some(k => P.has(k)));
     if (!own) B.add('ts');
     R.setProperty('--ts', parts.join(', '));
     const f = [];
@@ -643,7 +535,7 @@ const art = {};
 for (const n of ['guard1', 'guard2', 'guard3', 'banner1', 'banner2', 'banner3']) {
   const im = new Image();
   im.onload = () => { art[n] = im.src; art[n + '_r'] = im.naturalWidth / im.naturalHeight; };
-  im.src = 'static/art/' + n + '.png?v=2';  // 换了图就改一下 v，免得 OBS 用旧的缓存
+  im.src = (n.startsWith('guard') ? 'art/' : 'static/art/') + n + '.png?v=2';  // 换了图就改一下 v，免得 OBS 用旧的缓存
 }
 
 const $list = document.getElementById('list');
@@ -675,7 +567,7 @@ const gtag = g => !g ? '' : art['guard' + g] ? `<img class="gicon" src="${art['g
 // noBadge：礼物卡、SC 卡里只留头像框，不在头像前面再放身份徽章（2026-11-12 用户要求）
 function identity(face, name, guard, noBadge) {
   const g = GN[guard] ? Number(guard) : 0;
-  const frame = g ? `<img class="avatar-frame" src="static/art/frame${g}-v2.png" alt="" onerror="this.parentElement.classList.remove('has-art');this.remove()">` : '';
+  const frame = g ? `<img class="avatar-frame" src="art/frame${g}-v2.png" alt="" onerror="this.parentElement.classList.remove('has-art');this.remove()">` : '';
   return `<span class="identity${g ? ' tier' + g : ''}">${noBadge ? '' : gtag(g)}<span class="portrait${g ? ' has-art' : ''}">${avatar(face, name)}${frame}</span></span>`;
 }
 const rankLabel = g => GN[g] ? `<span class="rank rank${g}">${GN[g]}</span>` : '';
@@ -698,16 +590,37 @@ function glide(h) {
   $list.style.transition = `transform ${getComputedStyle(document.documentElement).getPropertyValue('--anim-ms').trim() || '.6s'} cubic-bezier(.22, 1, .36, 1)`;
   $list.style.transform = 'translateY(0)';
 }
+// 2026-11-25 刷屏不卡：同一帧里来的几条攒起来一次放进去，只排一次版、只滑一次；
+// 一秒超过 6 条就不放进场动画（body.flood），安静 3 秒后恢复
+let pending = [], flushing = 0, recentAdds = [], floodT = 0;
+function flushAdds() {
+  flushing = 0;
+  const items = pending.splice(0).filter(el => !el._drop);
+  if (!items.length) return;
+  const frag = document.createDocumentFragment();
+  for (const el of items) { el._pending = false; frag.append(el); }
+  $list.append(frag);
+  if (!B.contains('flood')) {
+    const gap = parseFloat(getComputedStyle($list).rowGap) || 0;
+    glide(items.reduce((h, el) => h + el.offsetHeight + gap, 0));
+  }
+  while ($list.children.length > opt.max) $list.firstElementChild.remove();
+}
 function add(html, cls = '', key = '', stay = 1) {
   const el = document.createElement('div');
   el.className = 'it ' + cls;
   if (key) el.dataset.k = key;
+  if (curUid) el.dataset.uid = curUid;
   el.innerHTML = html;
-  $list.append(el);
-  glide(el.offsetHeight + (parseFloat(getComputedStyle($list).rowGap) || 0));
-  while ($list.children.length > opt.max) $list.firstElementChild.remove();
-  if (opt.fade > 0) setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); hkAge(); }, 700); }, opt.fade * stay * 1000);
-  hkAge();
+  const now = performance.now();
+  recentAdds.push(now);
+  while (recentAdds.length && now - recentAdds[0] > 1000) recentAdds.shift();
+  if (recentAdds.length > 6) { B.add('flood'); clearTimeout(floodT); floodT = setTimeout(() => B.remove('flood'), 3000); }
+  el._pending = true;
+  pending.push(el);
+  if (pending.length > opt.max) pending.shift()._drop = true;  // 一帧里来的比能显示的还多：最早的直接不上屏
+  if (!flushing) flushing = requestAnimationFrame(flushAdds);
+  if (opt.fade > 0) setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 700); }, opt.fade * stay * 1000);
   return el;
 }
 function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
@@ -726,7 +639,7 @@ function showDm(d, quiet) {
   if (blocked(d.text)) return;
   if (opt.merge && !d.emoticon && !d.guard) {
     const r = recent.get(d.text);
-    if (r && r.el.isConnected && !r.el.classList.contains('out') && Date.now() - r.t < 10000) {
+    if (r && (r.el.isConnected || r.el._pending) && !r.el.classList.contains('out') && Date.now() - r.t < 10000) {
       r.n++; r.t = Date.now();
       let b = r.el.querySelector('.rep');
       if (!b) { b = document.createElement('span'); b.className = 'rep'; (XW ? r.el.querySelector('.txt') : r.el.querySelector('.body')).append(b); }  // 新样式：「×2」跟在字后面，不掉到下一行
@@ -735,15 +648,11 @@ function showDm(d, quiet) {
     }
   }
   const txt = d.emoticon ? `<img src="img?u=${encodeURIComponent(d.emoticon)}" alt="${esc(d.text)}">` : emoText(d);
-  const html = HK === 'mist'
-    ? `${SPARK}<div class="meta"><span class="name">${esc(d.name)}</span>${wealth(d)}${hkMedal(d)}${d.guard ? `<span class="hmedal grk">${GN[d.guard]}</span>` : ''}</div><div class="message body"><span class="txt">${txt}</span></div>`
-    : HK === 'diary'
-    ? `<div class="tag">${hkN % 2 ? PIN_STAR : PIN_CLIP}<span class="name">${esc(d.name)}</span>${wealth(d)}${d.guard ? `<span class="gt">${GN[d.guard]}</span>` : ''}</div><div class="card">${hkRing(d.face, d.name)}<div class="msg body"><span class="txt">${txt}</span></div>${FLAKE}</div>`
-    : XW ? xwDm(d, txt)
+  const html = XW ? xwDm(d, txt)
     : LUNA
     ? `<div class="body"><div class="lw"><span class="lav">${avatar(d.face, d.name)}</span>${d.guard ? gtag(d.guard) : ''}<span class="name">${esc(d.name)}</span>${wealth(d)}${medal(d)}</div><span class="txt">${txt}</span></div>`
     : `${identity(d.face, d.name, d.guard)}<div class="body"><span class="who"><span class="name">${esc(d.name)}</span>${wealth(d)}${medal(d)}${rankLabel(d.guard)}</span><span class="txt">${txt}</span></div>`;
-  const el = add(html, 'dm' + (d.guard ? ' g' + d.guard : '') + (HK === 'mist' ? ' entry' : HK === 'diary' ? (hkN++ % 2 ? ' ink' : ' paper') : ''));
+  const el = add(html, 'dm' + (d.guard ? ' g' + d.guard : ''));
   if (d.guard === 1 && !quiet) el.classList.add('shine');
   if (quiet) { el.style.animation = 'none'; $list.style.transition = 'none'; $list.style.transform = ''; }
   if (opt.merge && !d.emoticon && !d.guard) {
@@ -754,8 +663,6 @@ function showDm(d, quiet) {
 function giftHtml(g) {
   const name = g.blind ? `${esc(g.blind)} 爆出 ${esc(g.gift)}` : esc(g.gift);
   const gimg = g.img ? `<img class="gi" src="img?u=${encodeURIComponent(g.img)}">` : '';
-  if (HK === 'mist') return `<div class="gl">${GIFT_SVG}<span>${esc(g.name)} 送出</span><strong>${name} <span class="num">×${g.num}</span></strong>${opt.price ? `<span class="amount">${yuan(g.yuan)}</span>` : ''}${gimg}</div>`;
-  if (HK === 'diary') return `<div class="note">${GIFT_SVG}<span>${esc(g.name)} 送出</span><b>${name} <span class="num">×${g.num}</span></b>${opt.price ? `<b>${yuan(g.yuan)}</b>` : ''}${gimg}</div>`;
   if (XW) return `${XMC}<span class="xbadge">${avatar(g.face, g.name)}</span><div class="body"><span class="name">${esc(g.name)}</span><div class="gl2">投喂 <b>${name}</b><span class="num"> ×${g.num}</span></div></div>${gimg}${opt.price ? `<span class="yen">${yuan(g.yuan)}</span>` : ''}<i class="deco"></i>`;
   if (LUNA) return `${identity(g.face, g.name, g.guard, true)}<div class="lb"><div class="lk">PRESENT</div><span class="name">${esc(g.name)}</span><div class="lm">${name}<span class="num"> ×${g.num}</span></div></div>${g.img ? `<img class="gi" src="img?u=${encodeURIComponent(g.img)}">` : ''}${opt.price ? `<span class="wm">${yuan(g.yuan)}</span>` : ''}`;
   return `${identity(g.face, g.name, g.guard, true)}<div class="body"><span class="who"><span class="name">${esc(g.name)}</span>${rankLabel(g.guard)}</span><span class="giftverb">送出</span> ${name}<span class="num">×${g.num}</span>${opt.price ? `<span class="yuan">${yuan(g.yuan)}</span>` : ''}</div>${g.img ? `<img class="gi" src="img?u=${encodeURIComponent(g.img)}">` : ''}`;
@@ -777,8 +684,6 @@ const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(' '
 function showSc(s) {
   if (!opt.sc || blocked(s.text)) return;
   const [c1, c2] = scColor(s.price);
-  if (HK === 'mist') { add(`<div class="meta"><span class="name">${esc(s.name)}</span><strong class="amount">¥${s.price}</strong></div><div class="message">${esc(s.text)}</div>`, 'super', '', 3); return; }
-  if (HK === 'diary') { add(`<div class="env"><div class="top">${hkRing(s.face, s.name)}<div><small>${esc(s.name)}</small><b>¥${s.price}</b></div><img class="seal" src="static/art/diary-seal.webp" alt="" onerror="this.remove()"></div><div class="paper">${esc(s.text)}</div></div>`, 'sc-env g' + (s.guard || 0), '', 3); return; }
   if (XW) { add(`<div class="st"><span class="cap">SUPER CHAT</span><span class="name">${esc(s.name)}</span><span class="p">¥${s.price}</span></div><div class="sb">${esc(s.text)}</div>`, 'xsc', '', 3).style.setProperty('--tone', hexRgb(c1)); return; }
   if (LUNA) {
     const el = add(`${identity(s.face, s.name, s.guard, true)}<div class="lb"><div class="lk">SUPER CHAT</div><span class="name">${esc(s.name)}</span><div class="lm">${esc(s.text)}</div></div><span class="wm">¥${s.price}</span>`, 'lcard sc-l', '', 3);
@@ -789,8 +694,6 @@ function showSc(s) {
 }
 function showGuard(g) {
   if (!opt.guardbuy) return;
-  if (HK === 'mist') { add(`${SPARK}<div class="meta"><span class="name">${esc(g.name)}</span><span class="hmedal">${g.level_name}</span></div><div class="message">开通了${g.level_name} · ${g.num}${esc(g.unit)}</div>`, `entry buy g${g.level}`, '', 2); return; }
-  if (HK === 'diary') { add(`<div class="tag">${PIN_STAR}<span class="name">${esc(g.name)}</span><span class="gt">${g.level_name}</span></div><div class="card">${hkRing('', g.name)}<div class="msg">开通了${g.level_name} · ${g.num}${esc(g.unit)}，欢迎上船～</div>${FLAKE}</div>`, `buy g${g.level}`, '', 2); return; }
   if (XW) { add(`${XSTAR}<div class="lv">${g.level_name}</div><div class="who2"><span class="name">${esc(g.name)}</span> · 开通了 ${g.num}${esc(g.unit)}</div>`, `xbuy g${g.level}`, '', 2); return; }
   if (LUNA && (str('buy', 'banner') === 'badge' || !art['banner' + g.level])) {
     // 徽章式：中间一个大船锚徽章（舰长单圈 / 提督双圈 / 总督双圈 + 光芒），下面等级和名字
@@ -816,8 +719,6 @@ function showEnter(e) {
   if (opt.enter === '0' || e.kind !== 'enter') return;
   if (opt.enter !== 'all' && !e.guard) return;
   $list.querySelector(`[data-k="e${e.uid}"]`)?.remove();  // 同一个人进房的消息可能来两条（普通 + 舰长特效），只留一条
-  if (HK === 'mist') { add(`<div class="gl">${SPARK.replace('class="star"', 'style="width:1em;height:1em;fill:#e8b84a"')}<span>${e.guard ? `欢迎${GN[e.guard]} ` : ''}<b class="name">${esc(e.name)}</b> 进入直播间</span></div>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid); return; }
-  if (HK === 'diary') { add(`<div class="note">${PIN_STAR}<span>${e.guard ? `欢迎${GN[e.guard]} ` : ''}<b>${esc(e.name)}</b> 进入直播间</span></div>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid); return; }
   if (XW) { add(`${XSTAR}<span>${e.guard ? `欢迎${GN[e.guard]} ` : ''}<span class="name">${esc(e.name)}</span> 进入直播间</span>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid); return; }
   add(`${identity(e.face, e.name, e.guard)}<div class="body">${e.guard ? `欢迎${GN[e.guard]} ` : ''}<span class="name">${esc(e.name)}</span> 进入直播间</div>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid);
 }
@@ -829,8 +730,14 @@ function checkVer(v) {
   if (!myVer) { myVer = n; return; }
   if (n !== myVer) location.reload();
 }
+let curUid = 0;  // 正在上屏的这条是谁的：没头像的话，后台查到会推 face 过来补（2026-11-25）
 function handle(type, data) {
   if (type === 'emots') { Object.assign(EMO, data); return; }
+  if (type === 'face') {
+    $list.querySelectorAll(`[data-uid="${Number(data.uid) || 0}"] span.av`).forEach(sp => { sp.outerHTML = `<img class="av" src="img?u=${encodeURIComponent(data.face)}" alt="">`; });
+    return;
+  }
+  curUid = Number((data && (data.item?.uid ?? data.uid)) || 0);
   if (type === 'ver') { checkVer(data); return; }
   if (type === 'snapshot') {
     checkVer(data.ver);
@@ -855,8 +762,8 @@ function demo() {
   realRoom = 1000001;
   if (str('demo', '0') === 'static') {
     setTimeout(() => {
-      const people = [['雾里看花',0,8,'主播晚上好～今天唱什么呀'],['路过的舰长',3,21,'来了来了，今晚也陪你听歌。'],['紫色提督',2,25,'这首歌的氛围好温柔。'],['橙色总督',1,30,'把今天的好心情都留在这里。']];
-      people.forEach(([name,guard,medal_level,text],i)=>showDm({uid:8000+i,name,guard,medal:'雾锁胃',medal_level,medal_room:1000001,text,face:''},true));
+      const people = [['雾里看花',0,8,'主播晚上好～今天唱什么呀',12],['路过的舰长',3,21,'来了来了，今晚也陪你听歌。',24],['紫色提督',2,25,'这首歌的氛围好温柔。',33],['橙色总督',1,30,'把今天的好心情都留在这里。',46]];
+      people.forEach(([name,guard,medal_level,text,wealth],i)=>showDm({uid:8000+i,name,guard,medal:'粉丝团',medal_level,medal_room:1000001,text,face:'',wealth},true));
       showGift({id:'sample-gift',uid:8004,name:'主播的猫',face:'',gift:'情书',num:2,yuan:104,guard:3});
       showSc({uid:8005,name:'冬天的鱼',face:'',price:50,text:'主播辛苦啦，今天的歌超好听～',guard:0});
     }, 400);
@@ -864,14 +771,14 @@ function demo() {
   }
 
   const names = ['雾里看花', '冬天的鱼', '主播的猫', '晚安主播', '雪糕不化', '今天也想听歌', '路过的舰长', '紫色提督', '橙色总督'];
-  const texts = ['主播晚上好～', '这首好好听！', '哈哈哈哈哈', '唱晴天吗', '来了来了', '雾雾今天好可爱', '打卡', '想听稻香', '好听好听好听', '下一首唱什么呀'];
+  const texts = ['主播晚上好～', '这首好好听！', '哈哈哈哈哈', '唱晴天吗', '来了来了', '主播今天好可爱', '打卡', '想听稻香', '好听好听好听', '下一首唱什么呀'];
   const pick = a => a[Math.floor(Math.random() * a.length)];
   let i = 0;
-  const user = () => { const k = Math.floor(Math.random() * names.length); return { uid: 1000 + k, name: names[k], g: k === 6 ? 3 : k === 7 ? 2 : k === 8 ? 1 : 0, lv: 4 + k * 3 }; };
+  const user = () => { const k = Math.floor(Math.random() * names.length); return { uid: 1000 + k, name: names[k], g: k === 6 ? 3 : k === 7 ? 2 : k === 8 ? 1 : 0, lv: 4 + k * 3, w: k % 3 ? 6 + k * 5 : 0 }; };
   const step = () => {
     i++;
     const u = user(), r = Math.random(), t = Math.floor(Date.now() / 1000);
-    if (r < 0.66) handle('dm', { t, uid: u.uid, name: u.name, face: '', text: pick(texts), medal: u.uid % 4 ? '雾锁胃' : '别家', medal_level: u.lv, medal_room: u.uid % 4 ? 1000001 : 1, guard: u.g, emoticon: '' });
+    if (r < 0.66) handle('dm', { t, uid: u.uid, name: u.name, face: '', text: pick(texts), medal: u.uid % 4 ? '粉丝团' : '别家', medal_level: u.lv, medal_room: u.uid % 4 ? 1000001 : 1, guard: u.g, wealth: u.w, emoticon: '' });
     else if (r < 0.86) { const g = pick([['小花花', 0.1], ['打call', 0.5], ['这个好诶', 1], ['情书', 52]]), n = 1 + Math.floor(Math.random() * 5); handle('gift', { item: { id: 'd' + i, uid: u.uid, name: u.name, face: '', gift: g[0], num: n, yuan: g[1] * n, img: '', guard: u.g, blind: '' } }); }
     else if (r < 0.93) handle('sc', { item: { id: i, uid: u.uid, name: u.name, face: '', price: pick([30, 50, 100]), text: '主播辛苦啦，今天的歌超好听，早点休息哦～', guard: u.g } });
     else if (r < 0.97) handle('enter', { uid: u.uid, name: u.name, face: '', kind: 'enter', guard: u.g || 3 });
@@ -879,7 +786,7 @@ function demo() {
     setTimeout(step, 700 + Math.random() * 1100);
   };
   // 先等一下图片探测完再开始，免得第一批用不上自己画的图
-  setTimeout(() => { for (let k = 0; k < 5; k++) { const u = user(); handle('dm', { uid: u.uid, name: u.name, face: '', text: pick(texts), medal: '雾锁胃', medal_level: u.lv, medal_room: 1000001, guard: u.g, emoticon: '' }); } step(); }, 400);
+  setTimeout(() => { for (let k = 0; k < 5; k++) { const u = user(); handle('dm', { uid: u.uid, name: u.name, face: '', text: pick(texts), medal: '粉丝团', medal_level: u.lv, medal_room: 1000001, guard: u.g, wealth: u.w, emoticon: '' }); } step(); }, 400);
 }
 
 // ---------- 连接（断了自动重连） ----------

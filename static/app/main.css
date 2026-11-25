@@ -180,7 +180,9 @@ body.resizing.ry { cursor: row-resize; }
 .avw > .av { box-shadow: 0 0 0 2px var(--card, #fff) !important; }
 .avw > .avf { left: -21%; top: -21%; width: 142%; height: 142%; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--gc) 75%, transparent)); }
 .avw > .avb { position: absolute; right: -16%; bottom: -16%; width: 46%; height: 46%; pointer-events: none; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .35)); }
-.noframe .avb { display: none; }
+.noframe .avb, .biliframe .avb { display: none; }
+.biliframe .avw > .avf { top: -23%; filter: drop-shadow(0 1px 2px rgb(0 0 0 / .3)); }  /* B 站官方框：圈的中心比图中心高一点；框自己有颜色，不加光晕 */
+.biliframe .avw > .av { box-shadow: none !important; }
 .dm > .avw, .gift > .avw, .guardrow > .avw, .row > .avw { margin-right: 4px; }  /* 框和徽章比头像大，跟名字隔开一点 */
 .noframe .avf { display: none; } .noframe .avw > .av.g3 { box-shadow: 0 0 0 2px var(--g3) !important; } .noframe .avw > .av.g2 { box-shadow: 0 0 0 2px var(--g2) !important; } .noframe .avw > .av.g1 { box-shadow: 0 0 0 2px var(--g1) !important; }
 
@@ -1130,6 +1132,7 @@ body.fdrag iframe { pointer-events: none; }
 .xrmenu button small { margin-left: auto; color: var(--ink3); font-size: 11px; }
 .xrmenu button.on { color: var(--mist-d); background: var(--chip); }
 .xrwrap[hidden] { display: none !important; }
+.panel > header > .xrwrap { flex: none; min-width: max-content; }  /* 2026-11-25：窄的时候以前被挤到 39px，按钮压住后面的「全部」 */
 .xrmenu .xrrow { display: flex; align-items: center; }
 .xrmenu .xrrow > button[data-xr] { flex: 1; min-width: 0; }
 .xrmenu .xrdel { flex: none; width: 26px !important; height: 26px; padding: 0 !important; justify-content: center; color: var(--ink3); background: none; border: 0; border-radius: 6px; cursor: pointer; }
@@ -1196,6 +1199,12 @@ body.side .saybar, body.side #tprebtn, body.side #tedit, body.side #golive { dis
 .cpbtn:hover { color: var(--mist-d); border-color: var(--mist-d); }
 .hdm .it > .cpbtn { bottom: auto; top: 1px; }
 /* 设置 → 链接 */
+#lkboxqr { padding: 0 12px 12px; display: grid; place-items: center; }
+#lkboxqr svg { width: 160px; height: 160px; background: #fff; border-radius: 8px; }
+#lkbox:has(#lkboxqr:not([hidden])) { height: auto; }
+.top .uhide { display: none !important; }
+.disc { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--ink3); }
+.lk-tip { display: block; color: var(--ink3); padding: 2px 2px 4px; }
 .lkrow { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px dashed var(--line-soft); }
 .lkrow > div { flex: 1; min-width: 0; }
 .lkrow b { font-size: 13.5px; }
@@ -1289,7 +1298,7 @@ body.host #viewbtn, body.host #copylink, body.host #stabs [data-st="link"], body
 .pgear { flex: none; order: 99; margin-left: 2px; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--ink3); cursor: pointer; }
 .panel > header:not(:has(.tabs)) .pgear { margin-left: auto; }  /* 没有页签的面板：推到最右 */
 /* 齿轮在最右边，窄的时候让中间的页签、筛选收窄（页签可以左右滑），齿轮不被挤出去 */
-.panel > header > :not(.ttl):not(.pgear):not(.ptools):not(.ginc) { flex-shrink: 1; min-width: 0; }
+.panel > header > :not(.ttl):not(.pgear):not(.ptools):not(.ginc):not(.xrwrap):not(.dmfilter) { flex-shrink: 1; min-width: 0; }
 .panel > header .tabs { overflow-x: auto; scrollbar-width: none; }
 .panel > header .tabs > * { flex: none; }
 .panel > header select { min-width: 4.6em; }

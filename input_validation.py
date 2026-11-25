@@ -177,6 +177,7 @@ COMMAND_FIELDS = {
     'news_get': set(), 'news_set': {'acct', 'text'},
     'room_edit': {'acct', 'title', 'area_id'}, 'acct_poll': {'key'}, 'acct_info': {'acct'}, 'acct_logout': {'acct'},
     'tpre_set': {'list'}, 'xrooms_set': {'open', 'rooms'}, 'live_start': {'acct', 'area_id', 'title'}, 'live_stop': {'acct'},
+    'lan_set': {'on'},
 }
 
 TITLE_PRESETS_MAX = 12
@@ -254,6 +255,8 @@ def validate_command(c, clean_rules):
         boolean(c.get('done'), '已感谢')
     elif cmd == 'tpre_set':
         title_presets(c.get('list'))
+    elif cmd == 'lan_set':
+        boolean(c.get('on'), '手机打开')
     elif cmd == 'xrooms_set':
         xrooms({'open': c.get('open', False), 'rooms': c.get('rooms', [])})
     elif cmd in ('live_start', 'live_stop'):

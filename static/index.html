@@ -271,6 +271,9 @@
           <label class="chip" title="舰长、提督、总督的头像框，跟 OBS 一样"><input type="checkbox" data-k="frames"><span>头像框</span></label>
         </div>
       </fieldset>
+      <fieldset class="ckg"><legend>顶栏按钮</legend>
+        <div class="chips" id="topbtns" title="不勾的按钮不在顶栏显示；放不下的会收进「⋯」"></div>
+      </fieldset>
       <fieldset><legend>背景图</legend>
         <div class="opt r"><span>背景图</span><div class="ctl"><button class="btn sm" id="bgpick">选图</button><button class="btn sm" id="bgclear" title="去掉背景图">去掉</button><input type="file" id="bgfile" accept="image/*" hidden></div><span></span></div>
         <div class="opt r" title="有背景图时，面板透出多少"><span>面板浓度</span><div class="ctl"><input type="range" min="30" max="100" step="5" data-k="bgAlpha" data-u="%"></div><button class="rs" title="恢复默认">↺</button></div>
@@ -388,6 +391,11 @@
         <div class="opt" title="发给别人看的网址"><input type="text" id="lk-public" readonly style="flex:1;min-width:0"><button class="btn sm" id="lk-copy">复制</button></div>
         <div class="opt"><span>现在在看</span><b id="lk-online">-</b></div>
       </fieldset>
+      <fieldset id="lk-lanbox"><legend>手机打开</legend>
+        <div class="chips"><label class="chip" title="同一个 Wi-Fi 的手机、平板也能打开弹幕姬。只有拿到管理链接的人才能管理"><input type="checkbox" id="lk-lan"><span><i class="ic" data-ic="phone"></i> 同一个 Wi-Fi 能打开</span></label></div>
+        <div class="opt" id="lk-lanrow" hidden><input type="text" id="lk-lanurl" readonly style="flex:1;min-width:0"><button class="btn sm" id="lk-lancopy">复制</button></div>
+        <small class="lk-tip" id="lk-lantip" hidden>手机上要管理：下面新建一个管理链接，用手机扫码</small>
+      </fieldset>
       <fieldset><legend>管理链接</legend>
         <div id="lk-list"></div>
         <div class="opt"><input type="text" id="lk-name" maxlength="12" placeholder="备注，比如「手机」" style="flex:1;min-width:0"><select id="lk-days" title="多久以后失效"><option value="1">1 天</option><option value="7">7 天</option><option value="30" selected>30 天</option><option value="0">长期</option></select><button class="btn sm" id="lk-new">新建</button></div>
@@ -408,7 +416,7 @@
 
 <div id="card"></div>
 <div id="spot"><span id="spottip"></span></div>
-<div class="fwin" id="lkbox" hidden><header><i class="ic" data-ic="link"></i><b>新的管理链接</b><small>只显示这一次</small><span class="sp"></span><button class="btn sm" id="lkboxclose"><i class="ic" data-ic="close"></i></button></header><div style="padding:12px;display:flex;gap:8px"><input type="text" id="lkboxurl" readonly style="flex:1;min-width:0"><button class="btn sm accent" id="lkboxcopy">复制</button></div></div>
+<div class="fwin" id="lkbox" hidden><header><i class="ic" data-ic="link"></i><b>新的管理链接</b><small>只显示这一次</small><span class="sp"></span><button class="btn sm" id="lkboxclose"><i class="ic" data-ic="close"></i></button></header><div style="padding:12px;display:flex;gap:8px"><input type="text" id="lkboxurl" readonly style="flex:1;min-width:0"><button class="btn sm accent" id="lkboxcopy">复制</button></div><div id="lkboxqr" hidden></div></div>
 <div id="pwatip" hidden><img src="/static/art/icon-64.png" alt=""><div class="pt"><b>把弹幕姬装到桌面？</b><small>独立窗口，任务栏有主播图标</small></div><div class="pb"><button class="btn sm" id="pwalater">以后再说</button><button class="btn sm accent" id="pwayes">安装</button></div></div>
 <div id="tour" hidden><div class="tt" id="tourtxt"></div><div class="tb"><span id="tourn"></span><button class="btn sm" id="tourskip">跳过</button><button class="btn sm accent" id="tournext">下一步</button></div></div>
 <div class="fwin" id="lyr" hidden><header><i class="ic" data-ic="lyrics"></i><b id="lyrname">歌词</b><span class="sp"></span><button class="btn sm" id="lyrsm" title="字小一点">A−</button><button class="btn sm" id="lyrbig" title="字大一点">A+</button><button class="btn sm" id="lyrclose" title="关掉"><i class="ic" data-ic="close"></i></button></header><div id="lyrbody"></div></div>

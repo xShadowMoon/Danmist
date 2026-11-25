@@ -24,6 +24,7 @@ import shutil
 import sys
 import time
 import zipfile
+import urllib.parse
 import uuid
 import copy
 from pathlib import Path
@@ -120,7 +121,7 @@ def public_view(data):
 VIEWER_ROOM = ('title', 'live', 'room_real', 'bili_ok', 'online', 'watched', 'watched_text', 'live_time', 'likes', 'area', 'area_id',
                'area_rank', 'area_rank_name', 'pop_rank', 'top', 'uid', 'face', 'cover', 'guard', 'up_at', 'down_at')
 VIEWER_ENTER = ('t', 'uid', 'name', 'face', 'kind', 'guard')
-VIEWER_GUARD = ('id', 't', 'uid', 'name', 'level', 'level_name', 'num', 'unit', 'op', 'days', 'fx', 'fxj')
+VIEWER_GUARD = ('id', 't', 'uid', 'name', 'face', 'level', 'level_name', 'num', 'unit', 'op', 'days', 'fx', 'fxj')
 VIEWER_USER = ('uid', 'name', 'face', 'first', 'last', 'dm', 'enter', 'guard', 'medal')
 VIEWER_REQ = ('id', 't', 'uid', 'name', 'face', 'guard', 'kind', 'text', 'song', 'done', 'over', 'queued_id')
 VIEWER_GUARDLIST = ('uid', 'name', 'face', 'level', 'days', 't')
@@ -176,6 +177,8 @@ def viewer_view(kind, data):
         return out
     if kind == 'guards_all':
         return [pick(x, VIEWER_GUARD) for x in data]
+    if kind == 'face':
+        return pick(data, ('uid', 'face'))
     if kind == 'guardlist':
         return [pick(x, VIEWER_GUARDLIST) for x in data]
     if kind == 'req':
@@ -891,6 +894,31 @@ class Hub:
         # 一起发，网速慢的人不拖累别人
         await asyncio.gather(*(send(ws, a) for ws, a in list(self.sockets.items())))
 
+    def need_face(self, uid):
+        """没头像的人（2026-11-25）：排队去 B 站名片接口查一下（不带登录），查到了推 face 给网页补上"""
+        q = getattr(self, 'face_q', None)
+        if q is None or not isinstance(uid, int) or uid <= 0 or uid in self.face_seen:
+            return
+        if (self.state.users.get(str(uid)) or {}).get('face'):
+            return
+        if len(self.face_seen) > 5000:
+            self.face_seen.clear()
+        self.face_seen.add(uid)
+        if q.qsize() < 200:
+            q.put_nowait(uid)
+
+    def got_face(self, uid, face):
+        s = self.state
+        u = s.users.get(str(uid))
+        if u is not None and not u.get('face'):
+            u['face'] = face
+            s.dirty = True
+        for g in s.guards[-200:]:
+            if g.get('uid') == uid and not g.get('face'):
+                g['face'] = face
+                s.dirty = True
+        self.emit('face', {'uid': uid, 'face': face})
+
     def emit(self, kind, data, **extra):
         asyncio.get_event_loop().create_task(self.push(kind, data, **extra))
 
@@ -1181,6 +1209,8 @@ class Hub:
         s.touch_user(uid, name, face, dm=1, guard=guard, medal=(f'{medal} {medal_level}' + ('' if medal_lit else ' dim')) if medal else '')
         if not emoticon and uid not in s.bot_uids and uid != s.room.get('uid'):
             self.collect(item)
+        if not item.get('face'):
+            self.need_face(item.get('uid'))
         self.emit('dm', item, uc=len(s.users))
 
     block_logged = False
@@ -1453,6 +1483,8 @@ class Hub:
         s.enters.append(item)
         del s.enters[:-200]
         s.touch_user(uid, name, face, enter=1 if kind == 'enter' else 0, guard=guard)
+        if not item.get('face'):
+            self.need_face(item.get('uid'))
         self.emit('enter', item, uc=len(s.users))
 
     def room_warn(self, kind, msg):
@@ -1497,6 +1529,8 @@ class Hub:
         st['yuan'] = round(st['yuan'] + yuan, 2)
         s.flow['gift'] = round(s.flow['gift'] + yuan, 2)
         s.touch_user(uid, name, face, spend=yuan, guard=guard)
+        if not item.get('face'):
+            self.need_face(uid)
         self.emit('gift', {'item': item, 'flow': s.flow, 'user': self.user(uid)})
 
     def xrooms_set(self, c):
@@ -1639,6 +1673,8 @@ class Hub:
         s.scs.append(item)
         s.flow['sc'] = round(s.flow['sc'] + price, 2)
         s.touch_user(uid, name, face, spend=price, guard=guard)
+        if not item.get('face'):
+            self.need_face(uid)
         self.emit('sc', {'item': item, 'flow': s.flow, 'user': self.user(uid)})
         return True
 
@@ -1649,6 +1685,11 @@ class Hub:
         s = self.state
         item = {'id': uuid.uuid4().hex, 't': int(time.time()), 'uid': uid, 'name': name, 'level': level,
                 'level_name': GUARD_NAMES.get(level, '舰长'), 'num': num, 'unit': unit, 'yuan': round(yuan, 2)}
+        face = (s.users.get(str(uid)) or {}).get('face') or ''
+        if face:
+            item['face'] = face  # 上舰消息不带头像（2026-11-25）：认得这个人就用他的头像，不认得就去 B 站名片查
+        else:
+            self.need_face(uid)
         if op in ('开通', '续费'):
             item['op'] = op
         if isinstance(days, int) and 0 < days < 100000:
@@ -2283,7 +2324,28 @@ def gift_fx(gift_id=0, gift_name=''):
     return GIFT_FX.get(gift_id) or GIFT_FX.get(GIFT_NAME_ID.get(gift_name, -1)) or ('', '')
 
 
+WEALTH_CACHE = ''  # 荣耀等级图标存一份在 data 里，重启后第一时间就有（演示模式不存）
+
+
+def load_wealth_cache():
+    try:
+        with open(WEALTH_CACHE, encoding='utf-8') as f:
+            j = json.load(f)
+        icons = {int(k): v for k, v in j.items() if str(k).isdigit() and isinstance(v, str) and validation.safe_url(v)}
+        if icons and not WEALTH_ICON:
+            WEALTH_ICON.update(icons)
+    except (OSError, ValueError, TypeError, AttributeError):
+        pass
+
+
 async def watch_gift_anim(session, room_id):
+    # 2026-11-25：荣耀等级图标先拿（以前排在礼物列表后面，刚启动那几秒打开的页面只能显示色块）
+    if WEALTH_CACHE:
+        load_wealth_cache()
+    try:
+        await fetch_wealth_icons(session)
+    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as e:
+        log.warning('荣耀等级图标没拿到：%s', e)
     while True:
         try:
             async with session.get('https://api.live.bilibili.com/xlive/web-room/v1/giftPanel/giftConfig',
@@ -2344,6 +2406,11 @@ async def fetch_wealth_icons(session):
     if icons:
         WEALTH_ICON.clear(); WEALTH_ICON.update(icons)
         log.info('荣耀等级图标：认得 %d 级', len(icons))
+        if WEALTH_CACHE:
+            try:
+                write_json(WEALTH_CACHE, icons)
+            except OSError:
+                pass
 
 
 async def fetch_gift_fx(session, room_id, effect_of):
@@ -2657,7 +2724,7 @@ def load_config(path):
 
 
 async def main():
-    global LOGIN_FILE, DISCORD_WEBHOOK, BOT_SAY_URL
+    global LOGIN_FILE, DISCORD_WEBHOOK, BOT_SAY_URL, WEALTH_CACHE
     pre = argparse.ArgumentParser(add_help=False)
     pre.add_argument('--config', default=os.path.join(DIR, 'config.json'))
     cfg = load_config(pre.parse_known_args()[0].config)
@@ -2665,6 +2732,7 @@ async def main():
     ap.add_argument('--room', type=int, default=int(cfg.get('room') or 0), help='直播间号（必填，或者写在 config.json）')
     ap.add_argument('--anchor-name', default=str(cfg.get('anchor_name') or ''), help='主播名字，显示在切换直播间菜单里')
     ap.add_argument('--port', type=int, default=int(cfg.get('port') or 8373))
+    cfg_lan = cfg.get('lan') is True
     ap.add_argument('--host', default=str(cfg.get('host') or '127.0.0.1'))
     ap.add_argument('--login-file', default=str(cfg.get('login_file') or LOGIN_FILE), help='B 站登录信息文件（{"cookie": "..."}）')
     ap.add_argument('--discord-webhook', default=str(cfg.get('discord_webhook') or ''), help='掉线提醒发到这个 Discord webhook')
@@ -2851,8 +2919,71 @@ async def main():
     async def side_gc():
         return await collect_side_rooms(side_hubs)
 
+    # 手机打开（2026-11-25）：默认只听本机 127.0.0.1，手机打不开；在设置 → 链接里打开后，同一个 Wi-Fi 的手机
+    # 用「http://电脑的局域网地址:端口」就能打开（还是要管理链接才有管理身份）。开关记在 config.json 的 "lan"
+    lan = {'on': False, 'ip': '', 'site': None}
+
+    def lan_ip():
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('10.255.255.255', 1))  # 不会真的发包，只是让系统选一块网卡
+            ip = s.getsockname()[0]
+        except OSError:
+            ip = ''
+        finally:
+            s.close()
+        return ip if ip and not ip.startswith('127.') else ''
+
+    def lan_url():
+        return f'http://{lan["ip"]}:{args.port}' if lan['on'] and lan['ip'] else ''
+
+    def origin_ok(request):
+        if trusted_origin(request.headers.get('Origin', ''), request.host, args.public_url, args.port):
+            return True
+        return bool(lan_url()) and trusted_origin(request.headers.get('Origin', ''), request.host, lan_url(), args.port)
+
+    async def lan_set(on, save=True):
+        if on and not lan['site']:
+            ip = lan_ip()
+            if not ip:
+                return False, '没找到这台电脑的局域网地址，连上 Wi-Fi 或网线再试'
+            if args.host in ('0.0.0.0', '::', ip):
+                lan.update(on=True, ip=ip)
+            else:
+                try:
+                    site = web.TCPSite(runner, ip, args.port)
+                    await site.start()
+                except OSError as e:
+                    return False, f'打不开局域网端口：{e}'
+                lan.update(on=True, ip=ip, site=site)
+        elif not on:
+            if lan['site']:
+                try:
+                    await lan['site'].stop()
+                except Exception:  # 关不掉也只是还能连上，不影响本机
+                    pass
+            lan.update(on=False, site=None)
+        if save and not args.demo:
+            try:
+                conf = load_config(args.config)
+                conf['lan'] = bool(on)
+                write_json(args.config, conf)
+            except (OSError, SystemExit, ValueError):
+                pass
+        log.info('手机打开（局域网）：%s', lan_url() or '关')
+        return True, ('手机连同一个 Wi-Fi，打开 ' + lan_url()) if on else '已关掉，手机打不开了'
+
+    def qr_svg(text):
+        import io
+        import qrcode
+        import qrcode.image.svg
+        buf = io.BytesIO()
+        qrcode.make(text, image_factory=qrcode.image.svg.SvgPathImage, box_size=10, border=2).save(buf)
+        return buf.getvalue().decode('utf-8')
+
     async def ws_handler(request):
-        if not trusted_origin(request.headers.get('Origin', ''), request.host, args.public_url, args.port):
+        if not origin_ok(request):
             raise web.HTTPForbidden(text='浏览器来源不受信任，请从直播姬页面打开')
         ws = web.WebSocketResponse(heartbeat=30, max_msg_size=WS_IMPORT_LIMIT + 1, compress=False)
         client_kind = request.query.get('client', '')
@@ -2927,6 +3058,7 @@ async def main():
             if admin:
                 snap['notes'] = hub.notes.data
                 snap['public_url'] = args.public_url  # 「复制普通链接」用
+                snap['lan'] = {'on': lan['on'], 'url': lan_url()}
                 snap['connections'] = limits.snapshot()
                 snap['profiles'] = [] if hub.profiles.load_error else hub.profiles.listing()
                 snap['title_presets'] = hub.title_presets
@@ -3010,8 +3142,18 @@ async def main():
                                 extra = {}
                             await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': note, **extra}})
                             continue
+                        if cmd == 'lan_set':
+                            ok, note = await lan_set(c.get('on') is True)
+                            hub.emit_admin('lan', {'on': lan['on'], 'url': lan_url()})
+                            await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': note}})
+                            continue
                         if cmd.startswith('admin_link_'):
-                            result = links.command(c, args.public_url, link_id, args.key)
+                            result = links.command(c, args.public_url or lan_url(), link_id, args.key)
+                            if result.get('url', '').startswith('http'):
+                                try:
+                                    result['qr'] = qr_svg(result['url'])
+                                except Exception:  # 没装 qrcode 就不给二维码，链接照样能复制
+                                    pass
                             closed = hub.invalidate_links()
                             try:
                                 await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': '管理链接已更新', **result}})
@@ -3620,6 +3762,35 @@ async def main():
                 pass
         return web.json_response({'url': hit.get('url', '')}, headers={'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*'})
 
+    # 舰长 / 提督 / 总督的头像框和小徽章（2026-11-25）：static/art 里有自己的图就用自己的，没有就用 B 站官方的
+    # （官方图不放进仓库，用的时候经 /img 去 B 站拿，存在 data/imgcache）
+    official_art = {
+        'frame': {1: 'https://i0.hdslb.com/bfs/live/39164ebfdd39db3d284b1221765e7e57f5a49958.png',
+                  2: 'https://i0.hdslb.com/bfs/live/09937c3beb0608e267a50ac3c7125c3f2d709098.png',
+                  3: 'https://i0.hdslb.com/bfs/live/80f732943cc3367029df65e267960d56736a82ee.png'},
+        'guard': {g: f'https://i0.hdslb.com/bfs/activity-plat/static/20211222/627754775478985e330c25a90ec7baf0/icon-guard{g}.png'
+                  for g in (1, 2, 3)},
+    }
+
+    async def art_file(request):
+        name = request.match_info.get('name', '')
+        m = re.fullmatch(r'(frame|guard)([123])(-s|-v2)?\.png', name)
+        if not m or (m.group(1) == 'guard' and m.group(3)) or (m.group(1) == 'frame' and not m.group(3)):
+            raise web.HTTPNotFound()
+        local = os.path.join(DIR, 'static', 'art', name)
+        if os.path.isfile(local):
+            return web.FileResponse(local, headers={'Cache-Control': 'no-cache'})
+        url = official_art[m.group(1)][int(m.group(2))]
+        raise web.HTTPFound('/img?u=' + urllib.parse.quote(url, safe='') + '&s=big', headers={'Cache-Control': 'max-age=3600'})
+
+    async def art_list(request):
+        """static/art 里自己放了哪些图（只回文件名），页面据此决定用不用 B 站官方的框"""
+        try:
+            names = sorted(n for n in os.listdir(os.path.join(DIR, 'static', 'art')) if re.fullmatch(r'[\w-]+\.(?:png|webp)', n))
+        except OSError:
+            names = []
+        return web.json_response(names, headers={'Cache-Control': 'no-store'})
+
     async def wealth_icons(request):
         return web.json_response(WEALTH_ICON, headers={'Cache-Control': 'no-store'})
 
@@ -3737,7 +3908,7 @@ async def main():
     # 管理密钥也是第一次带上之后记在 cookie 里
     @web.middleware
     async def remember_admin(request, handler):
-        if request.method not in ('GET', 'HEAD', 'OPTIONS') and not trusted_origin(request.headers.get('Origin', ''), request.host, args.public_url, args.port):
+        if request.method not in ('GET', 'HEAD', 'OPTIONS') and not origin_ok(request):
             raise web.HTTPForbidden(text='请从直播姬页面操作')
         resp = await handler(request)
         a = request.query.get('admin', '')
@@ -3879,6 +4050,8 @@ async def main():
     app.router.add_get('/obs-songs', lambda request: web.FileResponse(os.path.join(DIR, 'static', 'obs-songs.html'), headers={'Cache-Control': 'no-cache'}))  # 不让浏览器用旧版（2026-11-19：雾蓝预览一直是旧页面，没有唱片封面）
     app.router.add_get('/ws', ws_handler)
     app.router.add_get('/img', img_proxy)
+    app.router.add_get('/art/{name}', art_file)
+    app.router.add_get('/api/art', art_list)
     app.router.add_get('/api/history', hist_list)
     app.router.add_get('/api/offline', offline_list)
     app.router.add_get('/api/history/{sid}', hist_get)
@@ -3906,8 +4079,31 @@ async def main():
     await runner.setup()
     await web.TCPSite(runner, args.host, args.port).start()
     log.info('网页已启动：http://%s:%d  直播间 %s', args.host, args.port, 'demo' if args.demo else args.room)
+    if cfg_lan and not args.demo:
+        await lan_set(True, save=False)
 
+    WEALTH_CACHE = '' if args.demo else os.path.join(DIR, 'data', 'wealth-icons.json')
+
+    async def face_worker():
+        """没头像的人去 B 站名片接口查（不带登录，慢慢查，一秒多一个），查到了补给网页（2026-11-25）"""
+        while True:
+            uid = await hub.face_q.get()
+            try:
+                async with bare.get('https://api.bilibili.com/x/web-interface/card', params={'mid': str(uid)},
+                                    headers={'Referer': 'https://www.bilibili.com/'}, timeout=aiohttp.ClientTimeout(total=10)) as r:
+                    j = await r.json(content_type=None)
+                face = validation.safe_url(str((((j or {}).get('data') or {}).get('card') or {}).get('face') or '')) if isinstance(j, dict) else ''
+                if face and 'noface' not in face:
+                    hub.got_face(uid, face)
+            except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as e:
+                log.debug('名片没查到 %s：%s', uid, e)
+            await asyncio.sleep(1.5)
+
+    if not args.demo:
+        hub.face_q, hub.face_seen = asyncio.Queue(), set()
     tasks = [asyncio.create_task(watch_static()), asyncio.create_task(watch_access()), asyncio.create_task(watch_gift_anim(bare, args.room))]
+    if not args.demo:
+        tasks.append(asyncio.create_task(face_worker()))
     # 有新版本就在管理页面上提示（只读 GitHub 最新 Release 的版本号，不下载任何东西）；演示模式只在测试时查
     if not args.no_update_check and (not args.demo or args.update_url):
         def on_new_release(info):

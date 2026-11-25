@@ -61,8 +61,8 @@
 | 点歌 | 歌单和完整曲库、弹幕点歌和点歌规则、「正在唱」「已唱」、拖动排序和分组、歌词提词小窗 |
 | 朗读和提示音 | 用浏览器自带的声音朗读弹幕、SC、礼物，可以设过滤条件和屏蔽词；可选接本机的 GPT-SoVITS，用自己训练的 AI 音色念；不同事件可以配不同提示音 |
 | 历史 | 每场完整保存弹幕、礼物、SC 和上舰，概览里有收益、送礼榜、礼物和上舰统计 |
-| OBS 弹幕 | `/obs` 8 种样式（月见、雾凇、星扣、雾月、气泡、票根、薄雾、留言本），10 款开源字体，描边阴影、按身份配色、屏蔽词，全部在 `/obs-setup` 里点选 |
-| OBS 歌单 | `/obs-songs` 5 种样式（卡片、细条、唱片、薄雾、留言本） |
+| OBS 弹幕 | `/obs` 6 种样式（月见、雾凇、星扣、雾月、气泡、票根），10 款开源字体，描边阴影、按身份配色、屏蔽词，全部在 `/obs-setup` 里点选 |
+| OBS 歌单 | `/obs-songs` 3 种样式（卡片、细条、唱片） |
 | 直播间 | 改标题和分区、常用标题一键切换、直播画面小窗、人气榜和小时榜、超管警告和切断提醒 |
 | 开播前自检 | 一键检查和 B 站的连接、登录、OBS 能不能收到；工作模式（唱歌 / 聊天 / 房管）一键换布局 |
 | 更新提醒 | GitHub 上出了新版本时，在顶栏提示（只有管理身份能看到），点开看更新内容和下载 |
@@ -170,11 +170,15 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 
 ### 分享给房管或主播
 
-默认只监听 `127.0.0.1`，只有这台电脑能打开。想分享，就放在反向代理或隧道（比如 Cloudflare Tunnel）后面，并填好 `public_url`：
+默认只监听 `127.0.0.1`，只有这台电脑能打开（同一个 Wi-Fi 的手机见下面）。想发到外网，就放在反向代理或隧道（比如 Cloudflare Tunnel）后面，并填好 `public_url`：
 
 - **普通链接**：只读，看不到收益、礼物价格、历史和备注，也不能操作。
 - **管理链接**：在「设置 → 链接」里新建，给房管用，可以随时作废或换新。
 - **主播专属链接**（`/host`）：给主播本人，界面更简单。
+
+### 手机打开（同一个 Wi-Fi）
+
+设置 → 链接 → 打开「同一个 Wi-Fi 能打开」，下面会给出 `http://电脑的局域网地址:8373`，同一个 Wi-Fi 的手机、平板输入就能看。要在手机上管理，就在同一页新建一个管理链接，用手机扫弹出来的二维码。第一次打开时 Windows 可能问要不要允许网络访问，选「专用网络」允许。也可以直接在 `config.json` 写 `"lan": true`。
 
 ### 自己的图片
 
@@ -196,6 +200,12 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 | 改标题、改分区提示没权限 | 这些操作要用**主播本人**的 B 站号扫码登录（发送框左边的头像）。 |
 | 怎么看现在是哪个版本 | 鼠标停在「有新版本」标签上会写现在的版本；也可以在文件夹里运行 `python\python.exe server.py --version`（源码运行是 `python server.py --version`）。 |
 | 浏览器不朗读 | 浏览器要求网页先被点过一下才能出声；点一下页面再试。声音列表来自系统，Windows 自带中文语音即可。 |
+
+## 免责声明
+
+- 本工具是第三方的非官方工具，与哔哩哔哩无关。
+- 在弹幕姬里扫码登录、保存 Cookie、用账号发弹幕 / 禁言 / 改标题 / 开播，都是在用你自己的账号操作。B 站可能限制、风控或封禁使用第三方工具的账号，**由此造成的任何损失（包括账号被封禁）由使用者自己承担，作者不承担任何责任**。建议连接直播间用小号。
+- 使用本工具即表示你同意以上内容。
 
 ## 数据与隐私
 
@@ -285,8 +295,8 @@ Running from source: `git pull`, `pip install -r requirements.txt`, then restart
 | Song requests | Song list and full song library, requests from danmaku with rules, "now singing" / "done", drag to reorder, groups, lyrics prompter |
 | Text-to-speech and sounds | Read danmaku, SC and gifts aloud with the browser's voices, with filters and blocked words; optionally use your own trained voice through a local GPT-SoVITS; separate notification sounds per event |
 | History | Every stream archived with full danmaku, gifts, SC and guards; per-stream summary with revenue and rankings |
-| OBS danmaku overlay | `/obs` with 8 styles (moon, rime, clip, luna, bubble, ticket, mist, diary), 10 open-source fonts, outline and shadow, colours by guard level, blocked words, all configured visually at `/obs-setup` |
-| OBS song overlay | `/obs-songs` with 5 styles (card, strip, vinyl, mist, diary) |
+| OBS danmaku overlay | `/obs` with 6 styles (moon, rime, clip, luna, bubble, ticket), 10 open-source fonts, outline and shadow, colours by guard level, blocked words, all configured visually at `/obs-setup` |
+| OBS song overlay | `/obs-songs` with 3 styles (card, strip, vinyl) |
 | Live room | Change title and area, saved title presets, live video pop-out, popularity and hourly ranks, warnings from Bilibili moderators |
 | Pre-stream check | One click to check the Bilibili connection, login and OBS; work modes (singing / chatting / moderating) switch layouts |
 | Update reminder | Shows a tag at the top when a new version is on GitHub (admins only), linking to the release notes and download |
@@ -394,11 +404,15 @@ Besides the browser's voices, text-to-speech can use a voice trained with [GPT-S
 
 ### Sharing with moderators or the streamer
 
-By default it only listens on `127.0.0.1`. To share it, put it behind a reverse proxy or tunnel (for example Cloudflare Tunnel) and set `public_url`:
+By default it only listens on `127.0.0.1` (see below for phones on the same Wi-Fi). To share it over the internet, put it behind a reverse proxy or tunnel (for example Cloudflare Tunnel) and set `public_url`:
 
 - **Public link**: read-only, no revenue, gift prices, history or notes, no actions.
 - **Admin links**: created under Settings → Links for moderators; revoke or rotate any time.
 - **Host link** (`/host`): for the streamer, with a simpler interface.
+
+### Opening it on a phone (same Wi-Fi)
+
+Settings → Links → turn on "Open on the same Wi-Fi". It shows `http://<your computer's LAN address>:8373`, which phones and tablets on the same Wi-Fi can open. To manage from the phone, create an admin link on the same page and scan the QR code it shows. Windows may ask whether to allow network access the first time; allow it for private networks. You can also set `"lan": true` in `config.json`.
 
 ### Your own artwork
 
@@ -420,6 +434,12 @@ No artwork is included apart from the app icon. See [`static/art/README.md`](sta
 | Changing the title or area says no permission | These need the **streamer's own** Bilibili account, logged in by QR code (avatar left of the send box). |
 | Which version am I on? | Hover over the "new version" tag, or run `python\python.exe server.py --version` in the folder (`python server.py --version` from source). |
 | Text-to-speech is silent | Browsers only play sound after you've clicked the page once. Voices come from your operating system. |
+
+## Disclaimer
+
+- This is an unofficial third-party tool, not affiliated with Bilibili.
+- Logging in by QR code, saving a cookie, and sending danmaku, muting, changing the title or going live all act through your own Bilibili account. Bilibili may restrict or ban accounts that use third-party tools. **You use it at your own risk: the author is not responsible for any loss, including a banned account.** A secondary account is recommended for the room connection.
+- By using this tool you accept these terms.
 
 ## Data and privacy
 

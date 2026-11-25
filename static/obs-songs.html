@@ -42,47 +42,6 @@ li.new { animation: pop .5s ease-out; }
 .more { font-size: .72em; color: var(--ink2); margin-top: .2em; }
 .empty { font-size: .8em; color: var(--ink2); }
 
-/* ===== 主播专属（2026-11-21）：跟 OBS 弹幕的「薄雾」「留言本」配套 ===== */
-.hk .panel { all: unset; display: block; box-sizing: border-box; max-width: 100%; position: relative; }
-/* 薄雾：没有底板，金色四角星 + 细竖线，大号白字带深靛描边 */
-.s-mist .panel { padding-left: 1.05em; }
-.s-mist .panel::before { content: ""; position: absolute; left: .22em; top: 1.6em; bottom: .2em; width: 2px; background: linear-gradient(#ece4ff, transparent); }
-.s-mist .head { color: #ffd47a; font-size: .7em; letter-spacing: .14em; paint-order: stroke fill; -webkit-text-stroke: 2px #1b1a44d9; text-shadow: 0 1.3px 3px #11112ee8; }
-.s-mist .head svg { width: 1.1em; height: 1.25em; fill: #e8b84a; margin-left: -1.55em; margin-right: .15em; filter: drop-shadow(0 0 2px #c7a8ff72); }
-.s-mist .head small { color: #f2edff; }
-.s-mist .now .k { background: none; color: #ffd47a; padding: 0; font-size: .62em; letter-spacing: .12em; -webkit-text-stroke: 2px #1b1a44d9; paint-order: stroke fill; }
-.s-mist .now .n { color: var(--now, #fff); font-size: 1.3em; font-weight: 760; paint-order: stroke fill; -webkit-text-stroke: 3px #1b1a44; text-shadow: 0 2px 3px #11122ad9; }
-.s-mist li { color: #f2edff; font-weight: 600; paint-order: stroke fill; -webkit-text-stroke: 2.4px #1b1a44; text-shadow: 0 1.5px 3px #11122ad9; }
-.s-mist li i { color: #c7a8ff; -webkit-text-stroke: 2px #1b1a44; }
-.s-mist .sung li { opacity: .55; filter: blur(.3px); }
-.s-mist .sung li i { color: #8fd19e; }
-.s-mist .more, .s-mist .empty { color: #ece4ff; -webkit-text-stroke: 2px #1b1a44d9; paint-order: stroke fill; }
-/* 留言本：一小页夜蓝手账，左边线圈；正在唱是一张浅纸卡，下面的歌写在横线上 */
-.s-diary #box { left: 8px; right: 8px; top: 8px; }
-.s-diary.bottom #box { top: auto; bottom: 8px; }
-.s-diary .panel { padding: .7em 1em .9em 2.6em; border-radius: 16px; overflow: hidden;
-  background: radial-gradient(1.2px 1.2px at 18% 22%, #fff8 50%, transparent 51%), radial-gradient(1px 1px at 72% 14%, #fff7 50%, transparent 51%), radial-gradient(1.2px 1.2px at 88% 70%, #fff6 50%, transparent 51%),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 18px), repeating-linear-gradient(90deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 18px),
-    linear-gradient(180deg, #1b1c3a, #232548);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 6px 18px rgba(0, 0, 0, .35); color: #f2efff; }
-.s-diary .rings { position: absolute; left: 2px; top: 10px; bottom: 10px; width: 1.7em; background-repeat: repeat-y; background-size: 100% 1.9em;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='46'%3E%3Cdefs%3E%3ClinearGradient id='m' x1='0' x2='0' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f4f6fb'/%3E%3Cstop offset='.5' stop-color='%23a9aec0'/%3E%3Cstop offset='1' stop-color='%23e6e9f2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='30' cy='23' r='5' fill='%23111228'/%3E%3Cpath d='M30 17 C 12 14, 4 20, 6 25 C 8 30, 22 30, 30 27' fill='none' stroke='url(%23m)' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E"); }
-.s-diary .xw { position: absolute; right: .3em; top: .2em; height: 3.4em; filter: drop-shadow(0 3px 6px #0006); }
-.s-diary .head { display: block; margin: 0 4em .4em 0; color: #f4f1ff; }
-.s-diary.noxw .head { margin-right: 0; }
-.s-diary .xwsp { height: 3.2em; margin: 0; }  /* 标题关了、小人还开着：给小人留出位置，别压到歌名 */
-.s-diary .head .hand { font: italic 400 1.9em/1.1 "Segoe Script", "Lucida Handwriting", "Brush Script MT", cursive; letter-spacing: 0; }
-.s-diary .head .hand svg { width: .45em; height: .55em; fill: #f2c768; vertical-align: .55em; margin-left: .15em; }
-.s-diary .head .sub { font: 400 .78em/1.4 "KaiTi", "STKaiti", serif; letter-spacing: .4em; color: #c9c6e6; border-bottom: 1.5px dashed rgba(220, 216, 255, .35); padding-bottom: .35em; }
-.s-diary .head small { letter-spacing: .05em; color: #e8b84a; font-family: inherit; margin-left: .3em; }
-.s-diary .now { display: flex; align-items: center; gap: .6em; margin: .35em 0 .45em; padding: .45em .7em; border-radius: 10px; background: linear-gradient(180deg, #f7f4fb, #ebe7f4); color: #2b2850; box-shadow: 0 3px 8px rgba(0, 0, 0, .35); }
-.s-diary .now .k { flex: none; display: grid; place-items: center; width: 1.9em; height: 1.9em; padding: 0; border-radius: 50%; font-size: .75em; letter-spacing: 0; color: #fff; background: #6a5ac4; box-shadow: 0 0 0 3px #e8b84a; }
-.s-diary .now .n { color: var(--now, #2b2850); font-size: 1.15em; font-weight: 700; }
-.s-diary ol { gap: 0; }
-.s-diary li { padding: .12em .2em; border-bottom: 1px solid rgba(220, 216, 255, .16); color: #ece8ff; }
-.s-diary li i { color: #e8b84a; }
-.s-diary .sung li { color: #b9b4dc; }
-.s-diary .more, .s-diary .empty { color: #c9c6e6; margin-top: .35em; }
 /* 样式「细条」：一行胶囊 */
 .s-strip .panel { display: inline-flex; align-items: center; gap: .6em; padding: .35em 1em .35em .45em; border-radius: 999px; white-space: nowrap; max-width: 100%; overflow: hidden; }
 .s-strip .k { flex: none; font-size: .62em; font-weight: 700; letter-spacing: .12em; color: #fff; background: var(--accent); border-radius: 999px; padding: .3em .8em; text-shadow: none; }
@@ -132,7 +91,7 @@ const P = new URLSearchParams(location.search);
 const num = (k, d) => { const v = parseFloat(P.get(k)); return isFinite(v) ? v : d; };
 const str = (k, d) => P.get(k) ?? d;
 const B = document.body.classList, R = document.documentElement.style;
-const STYLE = ['strip', 'vinyl', 'mist', 'diary'].includes(str('style', 'card')) ? str('style', 'card') : 'card';  // card 卡片 / strip 细条（一行）/ vinyl 唱片 / mist 薄雾 / diary 留言本（主播专属，2026-11-21）
+const STYLE = ['strip', 'vinyl'].includes(str('style', 'card')) ? str('style', 'card') : 'card';  // card 卡片 / strip 细条（一行）/ vinyl 唱片 / mist 薄雾 / diary 留言本（主播专属，2026-11-21）
 const HK = STYLE === 'mist' || STYLE === 'diary';
 B.add('s-' + STYLE);
 if (HK) B.add('hk');

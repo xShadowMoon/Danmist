@@ -98,7 +98,12 @@ const sendLink = o => window._ws?.readyState === 1 && window._ws.send(JSON.strin
 const dayStr = t => { const d = new Date(t * 1000); return `${d.getMonth() + 1}月${d.getDate()}日`; };
 function drawLinks() {
   if (!S.admin) return;
-  $('lk-public').value = (S.public_url || location.origin + location.pathname).replace(/[?#].*$/, '');
+  $('lk-public').value = (S.public_url || S.lan?.url || location.origin + location.pathname).replace(/[?#].*$/, '');
+  // 手机打开（2026-11-25）：有外网地址的（比如隧道）不需要这一块
+  $('lk-lanbox').hidden = !!S.public_url;
+  $('lk-lan').checked = !!S.lan?.on;
+  $('lk-lanrow').hidden = $('lk-lantip').hidden = !S.lan?.url;
+  $('lk-lanurl').value = S.lan?.url ? S.lan.url + '/' : '';
   const c = S.connections;
   $('lk-online').textContent = c ? `${c.public} 人${c.obs ? ` · OBS ${c.obs}` : ''}` : '-';
   $('copylink').title = `复制普通链接：发给别人看的那个网址${c ? `（现在 ${c.public} 人在看）` : ''}`;
@@ -132,11 +137,14 @@ function linkResult(d) {
   if (d.links) { S.admin_links = d.links; drawLinks(); }
   if (d.url) {  // 新建 / 换新：明文只有这一次，先复制到剪贴板，再放进一个不会自己关的小窗
     $('lkboxurl').value = d.url; $('lkbox').hidden = false;
+    $('lkboxqr').innerHTML = d.qr || ''; $('lkboxqr').hidden = !d.qr;  // 手机扫这个码直接打开
     navigator.clipboard?.writeText(d.url).then(() => note('新的管理链接已复制', true)).catch(() => {});
   }
 }
 $('stabs').addEventListener('click', e => { if (e.target.closest('[data-st="link"]')) sendLink({ cmd: 'admin_link_list' }); });
 $('lk-copy').onclick = () => $('copylink').click();
+$('lk-lan').onchange = e => window._ws?.send(JSON.stringify({ cmd: 'lan_set', on: e.target.checked }));
+$('lk-lancopy').onclick = () => navigator.clipboard?.writeText($('lk-lanurl').value).then(() => note('已复制', true)).catch(() => $('lk-lanurl').select());
 $('lk-new').onclick = () => { sendLink({ cmd: 'admin_link_create', name: $('lk-name').value.trim(), days: Number($('lk-days').value), host: $('lk-host').checked }); $('lk-name').value = ''; $('lk-host').checked = false; };
 $('lk-list').onclick = e => {
   const b = e.target.closest('[data-lkdel]'); if (!b) return;
@@ -148,7 +156,7 @@ $('lk-rotate').onclick = () => {
   if (Date.now() - rotateArm > 3000) { rotateArm = Date.now(); $('lk-rotate').textContent = '再点一次：全部作废'; setTimeout(() => { $('lk-rotate').textContent = '全部作废，换新的'; }, 3000); return; }
   rotateArm = 0; sendLink({ cmd: 'admin_link_rotate', name: $('lk-name').value.trim(), days: Number($('lk-days').value) });
 };
-$('lkboxclose').onclick = () => { $('lkbox').hidden = true; $('lkboxurl').value = ''; };
+$('lkboxclose').onclick = () => { $('lkbox').hidden = true; $('lkboxurl').value = ''; $('lkboxqr').innerHTML = ''; };
 $('lkboxcopy').onclick = () => navigator.clipboard?.writeText($('lkboxurl').value).then(() => note('已复制', true)).catch(() => { $('lkboxurl').select(); });
 /* ---------- 禁言名单（观众栏的「禁言」页签）：现查现看，点两下解除。查名单 5 秒内只能查一次 ---------- */
 let mutes = null, muteMsg = '', muteAt = 0, muteT = 0;
@@ -318,6 +326,7 @@ function acctDialog(state = {}) {
       : state.svg ? `<div style="text-align:center"><div style="width:220px;margin:0 auto;background:#fff;border-radius:12px;padding:6px">${state.svg}</div>
         <div id="qrstate" style="margin-top:8px;color:var(--ink2)">${esc(state.msg || '用 B 站 App 扫码')}</div></div>`
       : `<p style="margin:0 0 10px">现在用 ${esc(S.room?.bot_name || '默认账号')} 发。</p>`}
+      ${acct ? '' : '<p class="disc">登录后用你的账号发弹幕。B 站可能限制或封禁用第三方工具的账号，风险自负，作者不承担责任。</p>'}
       
     </div>
     <div class="acts">${acct ? '<button class="btn danger" id="acctout">退出登录</button>' : `<button class="btn" id="acctqr">${state.svg ? '换一张二维码' : icon('phone') + ' 扫码登录'}</button>`}
