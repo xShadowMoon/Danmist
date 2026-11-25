@@ -78,9 +78,16 @@ dmList.addEventListener('scroll', () => {
 });
 dmList.addEventListener('wheel', e => { if (e.deltaY < 0) { unstick(); hoverHeld = false; } }, { passive: true });
 // 鼠标停在弹幕上：先不往下滚（方便看清某一条、点名字），移开再接着跟到最新。设置 → 弹幕里能关
-let hoverHeld = false;
-dmList.addEventListener('mouseenter', () => { if (cfg.dm.hoverPause && stick && !touching) { hoverHeld = true; stick = false; } });
-dmList.addEventListener('mouseleave', () => { if (hoverHeld) { hoverHeld = false; stick = true; toBottom(); hideNewbar(); } });
+// 2026-11-25 修（B 站评论反馈）：以前鼠标只是放在弹幕栏上不动，也一直停着不跟，观众的新弹幕变成「↓ n 条新弹幕」，只能自己去滚。
+// 现在：鼠标在弹幕上动的时候才停；停着不动 2 秒就接着跟到最新；停的时候不弹「新弹幕」条
+let hoverHeld = false, hoverMoveAt = 0;
+function hoverResume() { if (!hoverHeld) return; hoverHeld = false; stick = true; toBottom(); hideNewbar(); }
+dmList.addEventListener('mousemove', () => {
+  hoverMoveAt = performance.now();
+  if (cfg.dm.hoverPause && stick && !touching && !hoverHeld) { hoverHeld = true; stick = false; }
+});
+dmList.addEventListener('mouseleave', hoverResume);
+setInterval(() => { if (hoverHeld && performance.now() - hoverMoveAt > 2000) hoverResume(); }, 500);
 dmList.addEventListener('touchstart', e => { touchY = e.touches[0].clientY; touching = true; unstick(); }, { passive: true });
 dmList.addEventListener('touchmove', e => { if (e.touches[0].clientY > touchY + 3) unstick(); }, { passive: true });
 const touchEnd = () => { touching = false; if (dmList.scrollHeight - dmList.scrollTop - dmList.clientHeight < 30) { stick = true; hideNewbar(); } };
@@ -133,6 +140,7 @@ function flushDm() {
   } else {
     // 在往上翻看时先不删旧的，免得看着的内容往上跳
     while (dmList.children.length > 1500) dmList.firstElementChild.remove();
+    if (hoverHeld) return;  // 只是鼠标停在上面：一会儿自己会接着跟，不用提示
     newCount += items.length;
     $('newbar').textContent = `↓ ${newCount} 条新弹幕`;
     $('newbar').style.display = 'block';

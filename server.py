@@ -2042,7 +2042,7 @@ async def watch_login(session, state):
             if mtime and m != mtime:
                 cookie = load_cookie()
                 session.cookie_jar.update_cookies(make_cookies(cookie))
-                state.bot_uids = [u for u in [uid_of(cookie)] if u]
+                state.bot_uids = [u for u in [uid_of(cookie)] if u] if BOT_SAY_URL else []  # 2026-11-25：只有另外接了机器人（bot_say_url）才算机器人
                 log.info('机器人的登录信息更新了，已换上')
             mtime = m
         except OSError:
@@ -4350,7 +4350,9 @@ async def main():
     else:
         if not cookies:
             log.warning('没读到 B 站登录信息（%s），用户名会打码', LOGIN_FILE)
-        state.bot_uids = [u for u in [uid_of(load_cookie())] if u]
+        # 2026-11-25 用户：连直播间的号多半是主播自己扫码登录的号，不能当成机器人（以前自己发的弹幕都标「机器人」、还不朗读）。
+        # 只有在 config.json 里接了单独的机器人（bot_say_url）时，连直播间的这个号才算机器人
+        state.bot_uids = [u for u in [uid_of(load_cookie())] if u] if BOT_SAY_URL else []
         state.enters = [e for e in state.enters if e.get('uid') not in state.bot_uids]  # 以前记下的机器人「进房」清掉
         client = TrackedClient(hub, args.room, session)
         client.set_reconnect_policy(connection_recovery.retry_delay)

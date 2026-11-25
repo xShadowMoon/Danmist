@@ -5,6 +5,22 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.9 · 2026-11-25
+
+### 修复 · Fixes
+
+- 弹幕栏在最底下时，观众的新弹幕有时不自动跟上，变成「↓ n 条新弹幕」要自己去滚：原因是鼠标只要停在弹幕栏上就一直暂停跟随。现在只有鼠标在弹幕上移动时才暂停，停着不动 2 秒就接着跟到最新，暂停时也不再弹「新弹幕」条。
+  New danmaku sometimes stopped following at the bottom and showed "↓ n new" instead: resting the mouse over the list paused following indefinitely. Now it only pauses while the mouse moves, resumes after 2 idle seconds, and doesn't show the "new" bar while paused.
+- 自己扫码登录的号发的弹幕不再标「机器人」（也不再被当成机器人跳过朗读、点歌）。只有在 `config.json` 里另外接了机器人（`bot_say_url`）时，连直播间的号才算机器人。
+  Danmaku from your own logged-in account are no longer tagged as "bot" (or skipped by text-to-speech and song requests). The room-connection account only counts as a bot when a separate bot is configured via `bot_say_url`.
+
+### 怎么更新 · How to update
+
+v0.9.5 起：顶栏点「下载更新」→「重启生效」。更早的版本见 README「更新到新版本」。
+From v0.9.5: click **download update** → **restart**. Older versions: see "Updating to a new version" in the README.
+
+---
+
 ## v0.9.8 · 2026-11-25
 
 ### 斗鱼、虎牙 · Douyu and Huya
