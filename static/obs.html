@@ -267,6 +267,25 @@ body { font: 400 var(--size)/var(--lh, 1.5) var(--ff, "HarmonyOS Sans SC", "Ping
 .giftline.theme-xw .xgift .name { display: inline; font-size: .8em; }
 .giftline.theme-xw .xgift .gl2 { font-size: .85em; }
 .giftline.theme-xw .xgift .gi { width: 1.5em; height: 1.5em; }
+/* 整体靠左 / 靠右（2026-11-25，所有样式都能选；居中的样式内部也跟着靠边） */
+.al-left #list { align-items: flex-start !important; }
+.al-right #list { align-items: flex-end !important; }
+.al-center #list { align-items: center !important; }
+.al-left .it.dm, .al-left .it.dm .body, .al-left .it.xbuy, .al-left .lguard { align-items: flex-start !important; text-align: left !important; }
+.al-right .it.dm, .al-right .it.dm .body, .al-right .it.xbuy, .al-right .lguard { align-items: flex-end !important; text-align: right !important; }
+.al-left .xn, .al-left .lw, .al-left .theme-xw .xf { justify-content: flex-start !important; }
+.al-right .xn, .al-right .lw { justify-content: flex-end !important; }
+.al-left .it.artbanner, .al-left .it.xbuy, .al-left .it.lguard { align-self: flex-start !important; }
+.al-right .it.artbanner, .al-right .it.xbuy, .al-right .it.lguard { align-self: flex-end !important; }
+.al-right.xw-bubble .it.dm, .al-right.xw-ticket .it.dm { flex-direction: row-reverse; }
+.al-right.xw-bubble .it.dm .xn, .al-right.xw-ticket .it.dm .xn { justify-content: flex-end; }
+/* 礼物卡大小（gift_size）；太长的礼物条换行，不超出 OBS 源（2026-11-25） */
+.it.gift, .it.xgift, .it.sc, .it.xsc, .it.lcard, .it.guardbuy, .it.xbuy { font-size: calc(1em * var(--gs, 1)); }
+.it.gift .body, .it.xgift .body, .it.xgift .name, .it.gift .name { min-width: 0; overflow-wrap: anywhere; }
+.giftline.theme-xw .xgift .body { flex-wrap: wrap; white-space: normal !important; row-gap: 0; }
+.giftline.theme-xw .it.xgift { border-radius: 1.1em; }
+/* 名字太长不换成好几行：最多 12 个字宽，多的用省略号（2026-11-25） */
+.it .name { max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
 /* 刷屏时（一秒超过 6 条）不放进场动画，省电脑（2026-11-25） */
 .flood .it, .flood .it * { animation: none !important; }
 /* 荣耀等级（wealth=1，2026-11-21）：B 站的等级勋章图，名字旁边 */
@@ -290,6 +309,10 @@ body { font: 400 var(--size)/var(--lh, 1.5) var(--ff, "HarmonyOS Sans SC", "Ping
 .theme-xw .it.enter .name { font-size: 1em; }
 /* 用了文字设置里的描边 / 阴影时，用设置的；颜色设置照旧生效 */
 .ts.theme-xw .txt, .ts.theme-xw .name, .ts.theme-xw .xl b, .ts.theme-xw .xsc .sb, .ts.theme-xw .gl2 { text-shadow: var(--ts) !important; }
+/* 浅色卡片里的深色字（气泡、票根的正文）：描白边，不然黑边糊成一团（2026-11-25） */
+.ts.xw-bubble .dm .txt, .ts.xw-ticket .dm .txt { text-shadow: var(--ts-card, none) !important; }
+/* 票根的提督、总督正文以前被通用的浅色字盖掉，浅底浅字看不清（2026-11-25） */
+.xw-ticket .it.dm.g2 .txt, .xw-ticket .it.dm.g1 .txt, .xw-ticket .it.dm.g3 .txt { color: #2d2a44; }
 .xw-bubble .txt, .xw-ticket .txt, .xw-ticket .dm .name { text-shadow: none !important; }
 /* ===== 风格 B「流光」：左对齐玻璃条，左侧色条分等级（2026-11-21 用户不要了，旧网址自动换成月见；样式先留着不删） ===== */
 .theme-glass .it:not(.guardbuy) { --rgb: 214 224 240; border: 0; border-radius: 10px; background: linear-gradient(90deg, rgb(var(--rgb) / .16), rgba(12, 16, 26, .64) 42%); box-shadow: inset 3px 0 0 rgb(var(--rgb) / .55), 0 6px 18px #0003; }
@@ -457,7 +480,14 @@ const wealth = d => {
   if (u) return wlImg(u, lv);
   return `<span class="wlp" data-lv="${lv}" style="--w:${(WEALTH_TIERS.find(x => lv >= x[0]) || WEALTH_TIERS[5])[1]}">${lv}</span>`;
 };
-if (str('right', '0') === '1') B.add('right');
+// 整体靠哪边（2026-11-25 用户：居中的样式把 OBS 源挪到画面最左边时，礼物这些会被切掉 —— 所有样式都能选靠左 / 居中 / 靠右）
+// align=left / center / right；不写就按样式默认（月见、雾凇、星扣、雾月居中，其他靠左）。旧网址的 right=1 当靠右
+{ const al = str('align', str('right', '0') === '1' ? 'right' : '');
+  if (al === 'left' || al === 'right' || al === 'center') B.add('al-' + al);
+  if (al === 'right') B.add('right'); }
+// 礼物、SC、上舰这些卡片单独调大小（gift_size=60~150，百分比）
+{ const gs = Math.max(60, Math.min(150, num('gift_size', 100)));
+  if (gs !== 100) document.documentElement.style.setProperty('--gs', gs / 100); }
 if (str('avatar', '1') === '0') B.add('noav');
 B.add('anim-' + str('anim', 'slide'));
 // anim_ms=600 动画时长（毫秒），不写就用默认
@@ -516,6 +546,14 @@ if (str('width', 'full') === 'fit') B.add('fitwidth');
     for (let a = 0; a < n; a++) { const r = a * 2 * Math.PI / n; parts.push(`${(Math.cos(r) * sw).toFixed(2)}px ${(Math.sin(r) * sw).toFixed(2)}px 0 ${scol}`); }
   }
   if (gl) parts.push(`0 0 ${gl}px ${gcol}`, `0 ${Math.max(1, gl / 4).toFixed(1)}px ${(gl / 2).toFixed(1)}px ${gcol}`);
+  // 2026-11-25 用户：气泡、票根、礼物卡这些浅色底上的深色字，以前也描黑边，糊成一团看不清。
+  // 没自己选描边颜色时，浅色卡片里的字改描白边、阴影也用白的
+  if (sw || gl) {
+    const cs = hex('stroke_color') || '#ffffff', cg = hex('glow_color') || cs, card = [];
+    if (sw) for (let a = 0; a < 8; a++) { const r = a * Math.PI / 4, w = Math.min(sw, 1.5); card.push(`${(Math.cos(r) * w).toFixed(2)}px ${(Math.sin(r) * w).toFixed(2)}px 0 ${cs}`); }
+    if (gl) card.push(`0 0 ${Math.min(gl, 8)}px ${cg}`);
+    R.setProperty('--ts-card', card.join(', '));
+  }
   if (parts.length) {
     // 主播专属风格、新样式、雾月自己画外圈；在设置里改过描边 / 阴影才用设置的
     const own = ((XW || LUNA) && !['stroke', 'glow', 'stroke_color', 'glow_color'].some(k => P.has(k)));
@@ -593,8 +631,12 @@ function glide(h) {
 // 2026-11-25 刷屏不卡：同一帧里来的几条攒起来一次放进去，只排一次版、只滑一次；
 // 一秒超过 6 条就不放进场动画（body.flood），安静 3 秒后恢复
 let pending = [], flushing = 0, recentAdds = [], floodT = 0;
+// OBS 里这个源被隐藏（眼睛关掉 / 切到没有它的场景）时不画，只留最后几条，显示出来时一次补上，省电脑（2026-11-25）
+let srcHidden = false;
+addEventListener('obsSourceVisibleChanged', e => { srcHidden = !e.detail?.visible; if (!srcHidden && pending.length && !flushing) flushing = requestAnimationFrame(flushAdds); });
 function flushAdds() {
   flushing = 0;
+  if (srcHidden) { pending = pending.filter(el => !el._drop).slice(-opt.max); return; }
   const items = pending.splice(0).filter(el => !el._drop);
   if (!items.length) return;
   const frag = document.createDocumentFragment();

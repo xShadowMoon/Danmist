@@ -170,7 +170,7 @@ function drawUpd() {
   drawDesktop();
   if (!show) return;
   const a = $('updlink'), v = ready ? D.staged : u.v;
-  a.href = u && /^https:\/\/github\.com\//.test(u.url) ? u.url : 'https://github.com/xShadowMoon/bili-danmaku-board/releases/latest';
+  a.href = u && /^https:\/\/github\.com\//.test(u.url) ? u.url : 'https://github.com/xShadowMoon/Danmist/releases/latest';
   a.title = `现在是 v${S.app_version || '?'}。点开看更新内容`;
   a.textContent = `新版本 v${v}`;
   let act = $('updact');

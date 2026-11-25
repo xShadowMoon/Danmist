@@ -18,8 +18,9 @@ import zipfile
 
 import aiohttp
 
-VERSION = '0.9.5'
-REPO = 'xShadowMoon/bili-danmaku-board'
+VERSION = '0.9.6'
+REPO = 'xShadowMoon/Danmist'  # 2026-11-25 仓库从 bili-danmaku-board 改名成 Danmist（旧地址 GitHub 会自动转过来）
+REPOS = ('xshadowmoon/bili-danmaku-board', 'xshadowmoon/danmist')  # 下载地址认这两个名字（比的时候不分大小写）
 LATEST_API = f'https://api.github.com/repos/{REPO}/releases/latest'
 RELEASES_PAGE = f'https://github.com/{REPO}/releases/latest'
 FIRST_DELAY = 20          # 启动后等一会儿再查，先让直播间连上
@@ -57,13 +58,13 @@ async def fetch_latest(session, url=LATEST_API):
     if not parse(tag):
         return None
     page = str(data.get('html_url') or '')
-    if not page.startswith(f'https://github.com/{REPO}/'):
+    if not any(page.lower().startswith(f'https://github.com/{r}/') for r in REPOS):
         page = RELEASES_PAGE
     info = {'v': tag.lstrip('v'), 'url': page, 'name': str(data.get('name') or '')[:120]}
     # 桌面版自己更新用：Windows 压缩包和它的 .sha256（只认这个仓库的下载地址）
     for a in data.get('assets') or []:
         u = str((a or {}).get('browser_download_url') or '')
-        if not u.startswith(f'https://github.com/{REPO}/releases/download/'):
+        if not any(u.lower().startswith(f'https://github.com/{r}/releases/download/') for r in REPOS):
             continue
         if u.endswith('-windows-x64.zip'):
             info['zip'], info['size'] = u, int(a.get('size') or 0)

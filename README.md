@@ -6,7 +6,7 @@
 
 **中文** | [English](#english)
 
-[![Release](https://img.shields.io/github/v/release/xShadowMoon/bili-danmaku-board?label=%E4%B8%8B%E8%BD%BD)](https://github.com/xShadowMoon/bili-danmaku-board/releases/latest)
+[![Release](https://img.shields.io/github/v/release/xShadowMoon/Danmist?label=%E4%B8%8B%E8%BD%BD)](https://github.com/xShadowMoon/Danmist/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 给 B 站主播用的弹幕工作台。在自己电脑上运行，连上你的直播间：弹幕、礼物、SC、上舰、点歌都在一个网页里看，还能直接给 OBS 当弹幕和歌单的浏览器源。每一场直播都会自动存档，下播后随时回看。
@@ -19,7 +19,10 @@
 
 ## 怎么用（Windows）
 
-1. 打开 [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases/latest)，下载 `bili-danmaku-board-vX.Y.Z-windows-x64.zip`（自带 Python，不用另外安装）。
+**最简单：安装版**（v0.9.6 起）。在 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) 下载 `Danmist-Setup-vX.Y.Z.exe`，双击就装好（不用管理员，装在 `%LOCALAPPDATA%\Programs\Danmist`），开始菜单和桌面都会有「雾幕」。第一次打开会问直播间号。以后有新版本在软件里点「下载更新」就行；不要了在「设置 → 应用」里卸载（会问要不要连存档一起删）。Windows 可能提示「已保护你的电脑」，点「更多信息 → 仍要运行」（安装包没有花钱买签名）。
+
+**免安装版**：
+1. 打开 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest)，下载 `bili-danmaku-board-vX.Y.Z-windows-x64.zip`（自带 Python，不用另外安装）。
 2. 解压到一个固定的文件夹（不要直接在压缩包里双击运行），比如 `D:\雾幕\`。
 3. 双击 `start.bat`。第一次会问你的**直播间号**（直播间网址 `live.bilibili.com/` 后面那串数字），再问**打开方式**：
    - **软件窗口**（推荐，v0.9.5 起）：雾幕像一个软件一样单独开一个窗口，没有黑色窗口；桌面上会多一个「雾幕」图标，以后双击它就行。关掉窗口，雾幕就停了。
@@ -46,7 +49,7 @@
 v0.9.4 及以前，或者想手动更新，按下面做：
 
 1. 关掉雾幕的黑色窗口。
-2. 从 [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases/latest) 下载新的 `windows-x64.zip`。
+2. 从 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) 下载新的 `windows-x64.zip`。
 3. 解压后把里面的文件**覆盖**到原来的文件夹，提示重名时选「替换」。
 4. 双击 `start.bat`。
 
@@ -103,7 +106,7 @@ v0.9.4 及以前，或者想手动更新，按下面做：
 需要 Python 3.11 或更新。
 
 ```sh
-git clone https://github.com/xShadowMoon/bili-danmaku-board.git
+git clone https://github.com/xShadowMoon/Danmist.git
 cd bili-danmaku-board
 pip install -r requirements.txt
 cp config.example.json config.json   # 把 room 改成你的直播间号
@@ -267,7 +270,10 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 
 ## Getting started (Windows)
 
-1. Go to [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases/latest) and download `bili-danmaku-board-vX.Y.Z-windows-x64.zip`. Python is bundled; nothing else to install.
+**Easiest: the installer** (from v0.9.6). Download `Danmist-Setup-vX.Y.Z.exe` from [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and double-click it. No admin rights needed; it installs to `%LOCALAPPDATA%\Programs\Danmist` and adds 雾幕 to the Start menu and desktop. The first launch asks for your room id. Later updates are one click inside the app; uninstall from Settings → Apps (it asks whether to delete your archives too). Windows SmartScreen may warn about an unknown publisher (the installer isn't code-signed): click "More info → Run anyway".
+
+**Portable zip**:
+1. Go to [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and download `bili-danmaku-board-vX.Y.Z-windows-x64.zip`. Python is bundled; nothing else to install.
 2. Unzip it to a normal folder (don't run it from inside the zip).
 3. Double-click `start.bat`. The first time, it asks for your **live room id** (the number after `live.bilibili.com/`) and how to open it:
    - **App window** (recommended, from v0.9.5): the board opens in its own window with no console; a 雾幕 shortcut appears on the desktop for next time. Closing the window stops the board.
@@ -294,7 +300,7 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 Up to v0.9.4, or to update by hand:
 
 1. Close the console window.
-2. Download the new `windows-x64.zip` from [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases/latest).
+2. Download the new `windows-x64.zip` from [Releases](https://github.com/xShadowMoon/Danmist/releases/latest).
 3. Unzip it and copy the files **over** your existing folder, replacing files when asked.
 4. Double-click `start.bat`.
 
@@ -351,7 +357,7 @@ Running from source: `git pull`, `pip install -r requirements.txt`, then restart
 Requires Python 3.11 or newer.
 
 ```sh
-git clone https://github.com/xShadowMoon/bili-danmaku-board.git
+git clone https://github.com/xShadowMoon/Danmist.git
 cd bili-danmaku-board
 pip install -r requirements.txt
 cp config.example.json config.json   # then set room to your live room id

@@ -129,6 +129,25 @@ def window_open():
         return True
 
 
+def ask_room():
+    """用 Windows 自带的输入框问直播间号（只能填数字）；点取消返回 0"""
+    if sys.platform != 'win32':
+        return int(input('直播间号：').strip() or 0)
+    ps = ("Add-Type -AssemblyName Microsoft.VisualBasic;"
+          "[Microsoft.VisualBasic.Interaction]::InputBox('第一次使用，请输入你的 B 站直播间号（直播间网址 live.bilibili.com/ 后面那串数字）', '雾幕', '')")
+    for _ in range(3):
+        r = subprocess.run(['powershell', '-NoProfile', '-Command', ps], capture_output=True, creationflags=NO_WINDOW)
+        text = r.stdout.decode('utf-8', 'replace').strip() if r.stdout else ''
+        if not text:
+            text = r.stdout.decode('gbk', 'replace').strip() if r.stdout else ''
+        if not text:
+            return 0
+        if text.isdigit():
+            return int(text)
+        message('只能填数字，再输一次')
+    return 0
+
+
 def make_shortcut():
     """桌面上建「雾幕」快捷方式：双击就是软件窗口，没有黑窗口，图标是雾幕的"""
     if sys.platform != 'win32':
@@ -149,9 +168,18 @@ def main():
         message('桌面上已经有「雾幕」了，以后双击它打开' if ok else '快捷方式没建成，可以直接双击 start.bat')
         return
     c = config()
-    if not c.get('room'):
-        message('还没设置直播间：先双击 start.bat，输入直播间号，以后再用这个')
-        return
+    if not c.get('room'):  # 第一次打开（安装版没有黑窗口可以问）：弹个小框问直播间号
+        room = ask_room()
+        if not room:
+            return
+        try:
+            with open(os.path.join(APP, 'config.example.json'), encoding='utf-8') as f:
+                base = json.load(f)
+        except (OSError, ValueError):
+            base = {}
+        c = {**base, **c, 'room': room, 'open': c.get('open', 'app')}
+        with open(os.path.join(APP, 'config.json'), 'w', encoding='utf-8') as f:
+            json.dump(c, f, ensure_ascii=False, indent=2)
     port = int(c.get('port') or 8373)
     web = '--web' in args or c.get('open') == 'web'
     url = f'http://127.0.0.1:{port}/'

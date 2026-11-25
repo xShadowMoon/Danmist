@@ -238,7 +238,9 @@ let F = [
   { k: 'anim', tab: 'look', label: '✨ 动画', type: 'select', def: 'slide', opts: [['slide', '上滑'], ['fade', '淡入'], ['pop', '弹出'], ['left', '左滑'], ['right', '右滑'], ['none', '无']] },
   // SC / 上舰动画用户说没用，2026-11-19 删掉（OBS 页里还是默认的上浮）
   { k: 'anim_ms', tab: 'look', label: '⏩ 动画时长', type: 'range', min: 100, max: 1500, step: 50, def: 600, unit: 'ms', show: c => c.anim !== 'none', tip: '数字越大越慢' },
-  { k: 'right', tab: 'look', label: '➡ 靠右', type: 'check', def: false, tip: '弹幕靠画面右边排（不开就是靠左）' },
+  // 2026-11-25 用户：所有样式都能整体靠左 / 靠右（居中的样式把 OBS 源挪到画面边上时礼物会被切掉）
+  { k: 'align', tab: 'look', label: '↔ 靠哪边', type: 'select', def: '', opts: [['', '按样式'], ['left', '靠左'], ['center', '居中'], ['right', '靠右']], tip: '整列弹幕、礼物靠 OBS 源的哪一边。把源放在画面左边就选靠左，礼物不会被切掉' },
+  { k: 'gift_size', tab: 'look', label: '🎁 礼物卡大小', type: 'range', min: 60, max: 150, step: 5, def: 100, unit: '%', tip: '礼物、SC、上舰这些卡片的大小（弹幕字号不变）' },
   { k: 'bubble', tab: 'look', label: '🟦 底色', type: 'check', def: true, show: CARD },
   { k: 'border', tab: 'look', label: '▢ 边框', type: 'check', def: true, show: CARD },
   { k: 'shadow', tab: 'look', label: '🌫 阴影', type: 'check', def: false, show: CARD },
@@ -330,6 +332,8 @@ function loadMode() {
   try { const saved = JSON.parse(localStorage.getItem(MODES[mode].key) || '{}'); Object.assign(cfg, saved); if (saved.square && saved.radius == null) cfg.radius = 6; delete cfg.square;
     if (mode === 'dm' && ['card', 'glass', 'plain', 'mist', 'diary'].includes(cfg.style)) cfg.style = 'moon';  // 2026-11-21 这几个样式去掉了（薄雾、留言本 11-25 从通用版去掉）
     if (mode === 'songs' && ['mist', 'diary'].includes(cfg.style)) cfg.style = 'card';
+    if (mode === 'dm' && saved.right === true && !saved.align) cfg.align = 'right';  // 2026-11-25 「靠右」换成「靠哪边」
+    delete cfg.right;
     // 第一次打开：配色跟雾幕现在用的一样
     if (!('pal' in saved)) cfg.pal = JSON.parse(localStorage.getItem('xw-cfg') || '{}').pal || '';
     if ('anim_ms' in cfg && !(cfg.anim_ms > 0)) cfg.anim_ms = 600; } catch {}  // 以前 0 = 默认，默认就是 600
@@ -367,12 +371,12 @@ function setMode(m) {
 // 每一页：[编号, 图标, 标题, [[框的标题, 这框里的设置], ...]]；COLOR = 颜色小表，TEXTS = 文字效果一键套，IMPORT = 读旧网址
 const PAGES = {
   dm: [
-    ['look', 'sparkle', '样式', [['这个样式的', ['buy']], ['常用', ['size', 'max', 'pal']], ['进场动画', ['anim', 'anim_ms']]]],
+    ['look', 'sparkle', '样式', [['这个样式的', ['buy']], ['常用', ['size', 'max', 'align', 'gift_size', 'pal']], ['进场动画', ['anim', 'anim_ms']]]],
     ['font', 'type', '文字', [['效果', 'TEXTS'], ['字体', ['font', 'fw']], ['描边和阴影', ['stroke', 'stroke_color', 'glow', 'glow_color']], ['行距', ['lh', 'ls']]]],
     ['color', 'palette', '颜色', 'COLOR'],
     ['who', 'user', '每条显示', [['显示什么', ['avatar', 'frame', 'badge', 'rank', 'names', 'wealth']], ['粉丝牌和头像', ['medal', 'avatar_size']]]],
     ['what', 'p-dm', '上屏内容', [['哪个直播间', ['room']], ['哪些上屏', ['merge', 'bot', 'gifts', 'price', 'gift_line', 'sc', 'sc_bg', 'guardbuy']], ['进房和筛选', ['enter', 'gift_min', 'block']]]],
-    ['more', 'grid', '排版', [['排版', ['gap', 'fade', 'width', 'layout', 'right']], ['底板', ['bubble', 'border', 'shadow', 'light', 'bg', 'radius']], ['读旧网址', 'IMPORT']]],
+    ['more', 'grid', '排版', [['排版', ['gap', 'fade', 'width', 'layout']], ['底板', ['bubble', 'border', 'shadow', 'light', 'bg', 'radius']], ['读旧网址', 'IMPORT']]],
   ],
   songs: [
     ['look', 'music', '样式', [['常用', ['size', 'pal', 'n', 'done']]]],
@@ -388,11 +392,11 @@ let curPg = 'look';
 const NA = {
   // 2026-11-21 用户：头像、牌子、名字、身份这些每个样式都要能开关 —— 雾月、薄雾、留言本补上了，下面只剩真的没有的
   luna: ['pal', 'rank', 'avatar_size', 'sc_bg', 'bubble', 'border', 'shadow', 'light', 'radius'],
-  moon: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge'],
-  rime: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge'],
-  clip: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge'],
-  bubble: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge', 'frame'],
-  ticket: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'right', 'badge', 'frame'],
+  moon: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'badge'],
+  rime: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'badge'],
+  clip: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'badge'],
+  bubble: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'badge', 'frame'],
+  ticket: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'badge', 'frame'],
 };
 const SNA = {
   card: [], strip: ['done', 'n', 'head', 'num', 'head_text'], vinyl: ['done'],
@@ -401,7 +405,6 @@ function useless(f) {
   if (mode === 'songs') return (SNA[cfg.style] || []).includes(f.k);
   const look = lookNow();
   // 靠右：每条都铺满整行时看不出来，只有「宽度 → 随文字」才有用
-  if (f.k === 'right' && (cfg.width !== 'fit' || look === 'luna')) return true;
   return (NA[look] || []).includes(f.k);
 }
 const visible = f => f && f.type !== 'hidden' && (!f.show || f.show(cfg)) && !useless(f);

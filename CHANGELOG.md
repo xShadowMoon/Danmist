@@ -1,7 +1,34 @@
 # 更新日志 · Changelog
 
-每个版本的 Release 说明从这里摘出来。下载见 [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases)。
-Release notes for each version are taken from this file. Downloads are on the [Releases](https://github.com/xShadowMoon/bili-danmaku-board/releases) page.
+每个版本的 Release 说明从这里摘出来。下载见 [Releases](https://github.com/xShadowMoon/Danmist/releases)。
+Release notes for each version are taken from this file. Downloads are on the [Releases](https://github.com/xShadowMoon/Danmist/releases) page.
+
+---
+
+## v0.9.6 · 2026-11-25
+
+### 安装包 · Installer
+
+- 新增 `Danmist-Setup-v0.9.6.exe`：双击就装好（不用管理员），开始菜单和桌面都有「雾幕」，第一次打开弹框问直播间号；以后在软件里点「下载更新」；在「设置 → 应用」里能卸载，卸载时会问要不要连存档一起删。原来的免安装 zip 照旧提供。
+  New `Danmist-Setup-v0.9.6.exe`: double-click to install (no admin rights), with Start menu and desktop shortcuts; the first launch asks for your room id; updates are one click inside the app; uninstall from Settings → Apps (it asks whether to delete your archives too). The portable zip is still available.
+- 仓库改名为 [xShadowMoon/Danmist](https://github.com/xShadowMoon/Danmist)，旧地址会自动跳过来。
+  The repository is now [xShadowMoon/Danmist](https://github.com/xShadowMoon/Danmist); old links redirect.
+
+### OBS 弹幕 · OBS overlay
+
+- 所有样式都能选**整体靠左 / 居中 / 靠右**（设置页「样式 → 常用 → 靠哪边」）。把 OBS 源放在画面边上时，居中的礼物卡不会再被切掉。原来的「靠右」自动换成这个。
+  Every style can now be aligned **left / center / right** as a whole, so centred gift cards aren't cut off when the source sits at the edge of the canvas. The old "align right" option is migrated.
+- **礼物卡大小**可以单独调（60%–150%，弹幕字号不变）；「礼物只占一行」时太长的会换行，不再超出 OBS 源。
+  Gift / SC / guard cards have their own **size** slider (60–150%), and one-line gifts wrap instead of overflowing the source.
+- 气泡、票根这种浅色底的样式：改过描边以后，深色字以前也描黑边，糊成一团；现在浅色卡片里的字描白边。票根样式里提督、总督的正文以前是浅色字配浅色底，现在改成深色。
+  Bubble and ticket styles: dark text on light cards no longer gets a black outline once you change the outline settings (it gets a light one), and admiral / governor text in the ticket style is no longer pale on pale.
+- 这个源在 OBS 里被隐藏（关掉小眼睛、切到没有它的场景）时不再画新弹幕，显示出来时一次补上，更省电脑。名字太长用省略号，不再挤成好几行。
+  While the source is hidden in OBS it stops drawing and catches up when shown again, saving CPU. Very long names are truncated with an ellipsis.
+
+### 怎么更新 · How to update
+
+已经是 v0.9.5：顶栏点「下载更新」→「重启生效」。更早的版本：下载下面的安装包直接装，或者下载 zip 解压覆盖。
+On v0.9.5: click **download update** → **restart** in the top bar. Older versions: run the installer below, or extract the zip over your folder.
 
 ---
 
