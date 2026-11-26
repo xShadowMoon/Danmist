@@ -33,7 +33,10 @@ body { font: 400 var(--size)/var(--lh, 1.5) var(--ff, "HarmonyOS Sans SC", "Ping
 .name { font-size: .76em; font-weight: 600; color: var(--accent); overflow-wrap: anywhere; }
 .txt { display: block; line-height: 1.5; letter-spacing: .01em; }
 .txt img.emo { height: 1.45em; vertical-align: -.32em; margin: 0 .04em; }
-.txt img:not(.emo) { height: 2.2em; max-width: 100%; object-fit: contain; vertical-align: middle; }
+.txt img:not(.emo) { height: calc(2.2em * var(--emo-k, 1)); max-width: 100%; object-fit: contain; vertical-align: middle; }  /* emo_size：表情包大小（2026-11-26） */
+/* idle：一段时间没有新消息，整列淡出；来了新的再出来（2026-11-26） */
+#list { transition: opacity .4s; }
+body.idle #list { opacity: 0; transition: opacity 1.5s; }
 .rank { font-size: .56em; line-height: 1.5; color: var(--accent); padding: 0 .45em; border: 1px solid rgb(var(--rgb) / .4); border-radius: 4px; white-space: nowrap; margin-left: auto; letter-spacing: .08em; text-shadow: none; }
 .rank3 { --accent: var(--g3); --rgb: 76 151 247; } .rank2 { --accent: var(--g2); --rgb: 165 94 232; } .rank1 { --accent: var(--g1); --rgb: 245 111 56; }
 /* 粉丝牌：B 站新版样式（半透明底色 + 右边实色等级块，舰长牌子有亮边） */
@@ -398,10 +401,15 @@ const opt = {
   gifts: str('gifts', '1') !== '0', giftMin: num('gift_min', 0), price: str('price', '0') === '1',
   sc: str('sc', '1') !== '0', guardbuy: str('guardbuy', '1') !== '0',
   enter: str('enter', 'guard'), bot: str('bot', '0') === '1', demo: ['1', 'static'].includes(str('demo', '0')),
+  // 2026-11-26：idle=秒 没人说话整列隐藏；sc_stay=秒 SC 停多久（不管 fade）；emo_size=百分比 表情包大小
+  idle: Math.max(0, num('idle', 0)), scStay: Math.max(0, num('sc_stay', 0)), emoSize: Math.max(30, Math.min(300, num('emo_size', 100))),
   // block=词1 词2  屏蔽词（空格或逗号隔开）：弹幕、SC 里带这些词的不上屏，雾幕主页面照样看得到
   block: str('block', '').toLowerCase().split(/[\s,，、;；]+/).filter(Boolean).slice(0, 100),
 };
 const B = document.body.classList, light = str('light', '0') === '1';
+if (opt.emoSize !== 100) document.documentElement.style.setProperty('--emo-k', opt.emoSize / 100);
+let idleT = 0;
+const wake = () => { B.remove('idle'); clearTimeout(idleT); if (opt.idle > 0) idleT = setTimeout(() => B.add('idle'), opt.idle * 1000); };
 document.documentElement.style.setProperty('--size', opt.size + 'px');
 document.documentElement.style.setProperty('--card', `rgba(${light ? '255,255,255' : '16,22,32'},${opt.bg / 100})`);
 if (light) B.add('light');
@@ -673,7 +681,10 @@ function add(html, cls = '', key = '', stay = 1) {
   pending.push(el);
   if (pending.length > opt.max) pending.shift()._drop = true;  // 一帧里来的比能显示的还多：最早的直接不上屏
   if (!flushing) flushing = requestAnimationFrame(flushAdds);
-  if (opt.fade > 0) setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); EXT?.after?.(); }, 700); }, opt.fade * stay * 1000);
+  // SC（stay = 3 的都是 SC）设了停留时长就按它来，不管淡出
+  const life = stay === 3 && opt.scStay > 0 ? opt.scStay : opt.fade > 0 ? opt.fade * stay : 0;
+  if (life > 0) setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); EXT?.after?.(); }, 700); }, life * 1000);
+  wake();
   return el;
 }
 function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
@@ -776,6 +787,7 @@ function showGuard(g) {
 function showEnter(e) {
   if (opt.enter === '0' || e.kind !== 'enter') return;
   if (opt.enter !== 'all' && !e.guard) return;
+  if ((opt.enter === 'g2' && !(e.guard <= 2)) || (opt.enter === 'g1' && e.guard !== 1)) return;  // 提督以上 / 只总督（2026-11-26）
   $list.querySelector(`[data-k="e${e.uid}"]`)?.remove();  // 同一个人进房的消息可能来两条（普通 + 舰长特效），只留一条
   if (EXT?.enter) { EXT.enter(e); return; }
   if (XW) { add(`${XSTAR}<span>${e.guard ? `欢迎${GN[e.guard]} ` : ''}<span class="name">${esc(e.name)}</span> 进入直播间</span>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid); return; }

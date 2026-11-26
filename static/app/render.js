@@ -62,12 +62,23 @@ function glideBottom() {
 // 往上翻看时来了几条新的：底下按钮写上条数，点一下回到最新
 let newCount = 0;
 function hideNewbar() { newCount = 0; $('newbar').style.display = 'none'; }
-function unstick() {
-  hoverHeld = false;  // 人自己往上翻了：鼠标停着不动也不再自己跳回最底下（2026-11-26）
+// ---- 跟不跟最新：只在这两个函数里改（2026-11-26 体检 B8）。以前十几处各改各的 stick / hoverHeld，修一处常常带坏另一处 ----
+// followNow(scroll)：接着跟最新。scroll=false 时只记状态（已经在最底下了，不用再滚）
+function followNow(scroll = true) {
+  hoverHeld = false;
+  stick = true;
+  if (scroll) toBottom();
+  hideNewbar();
+}
+// followStop(hover)：先不跟。hover=true 是鼠标停在弹幕上（静止 2 秒自己恢复）；false 是人自己往上翻了（滚回最底下才恢复）
+function followStop(hover = false) {
+  hoverHeld = !!hover;
   if (!stick) return;
   stick = false;
   autoScroll = false;
 }
+// 人自己往上翻了：鼠标停着不动也不再自己跳回最底下（2026-11-26）
+function unstick() { followStop(false); }
 // 手机上手指滑是一点点滚的：以前刚往上滚几像素，还离底不到 30 像素，就又被算成「跟到最新」，
 // 下一条弹幕一来又被拽回最底下，看起来就是滑不动（2026-11-12 修）。
 // 现在：手指按着的时候不跟随；只有往下滚到底才重新跟随，往上滚永远不会被算成跟随
@@ -86,30 +97,30 @@ dmList.addEventListener('scroll', () => {
   const top = dmList.scrollTop, down = top >= lastTop, byUser = dragging || performance.now() - userAt < 800;
   lastTop = top;
   if (touching || (!byUser && (autoScroll || performance.now() < holdUntil))) return;  // 页面自己滚的，不算人在滚
-  if (down && dmList.scrollHeight - top - dmList.clientHeight < 30) { stick = true; hideNewbar(); }
-  else if (!down && byUser) { stick = false; hoverHeld = false; }
+  if (down && dmList.scrollHeight - top - dmList.clientHeight < 30) followNow(false);
+  else if (!down && byUser) followStop(false);
 });
-dmList.addEventListener('wheel', e => { if (e.deltaY < 0) { unstick(); hoverHeld = false; } }, { passive: true });
+dmList.addEventListener('wheel', e => { if (e.deltaY < 0) followStop(false); }, { passive: true });
 // 鼠标停在弹幕上：先不往下滚（方便看清某一条、点名字），移开再接着跟到最新。设置 → 弹幕里能关
 // 2026-11-25 修（B 站评论反馈）：以前鼠标只是放在弹幕栏上不动，也一直停着不跟，观众的新弹幕变成「↓ n 条新弹幕」，只能自己去滚。
 // 现在：鼠标在弹幕上动的时候才停；停着不动 2 秒就接着跟到最新；停的时候不弹「新弹幕」条
 let hoverHeld = false, hoverMoveAt = 0;
-function hoverResume() { if (!hoverHeld) return; hoverHeld = false; stick = true; toBottom(); hideNewbar(); }
+function hoverResume() { if (hoverHeld) followNow(); }
 dmList.addEventListener('mousemove', () => {
   hoverMoveAt = performance.now();
-  if (cfg.dm.hoverPause && stick && !touching && !hoverHeld) { hoverHeld = true; stick = false; }
+  if (cfg.dm.hoverPause && stick && !touching && !hoverHeld) followStop(true);
 });
 dmList.addEventListener('mouseleave', hoverResume);
 setInterval(() => { if (hoverHeld && performance.now() - hoverMoveAt > 2000) hoverResume(); }, 500);
 dmList.addEventListener('touchstart', e => { touchY = e.touches[0].clientY; touching = true; unstick(); }, { passive: true });
 dmList.addEventListener('touchmove', e => { if (e.touches[0].clientY > touchY + 3) unstick(); }, { passive: true });
-const touchEnd = () => { touching = false; if (dmList.scrollHeight - dmList.scrollTop - dmList.clientHeight < 30) { stick = true; hideNewbar(); } };
+const touchEnd = () => { touching = false; if (dmList.scrollHeight - dmList.scrollTop - dmList.clientHeight < 30) followNow(false); };
 dmList.addEventListener('touchend', touchEnd, { passive: true });
 dmList.addEventListener('touchcancel', touchEnd, { passive: true });
 dmList.addEventListener('pointerdown', e => { if (e.offsetX > dmList.clientWidth) unstick(); });  // 按住滚动条
 // 表情图片晚一点加载完会把高度撑高，跟随时再滚到底
 dmList.addEventListener('load', e => { if (stick && !e.target.classList?.contains('avf')) toBottom(); }, true);  // 头像框图大小固定，加载完不用再滚
-$('newbar').onclick = () => { stick = true; toBottom(); hideNewbar(); };
+$('newbar').onclick = () => followNow();
 // 高亮关键词（设置里改），弹幕筛选（弹幕面板右上角选）
 const hlWords = () => String(cfg.hlWords || '').toLowerCase().split(/[\s,，、;；]+/).filter(Boolean);
 function dmPass(d) {
@@ -207,7 +218,7 @@ async function renderDm() {
   dmList.innerHTML = arr.length ? arr.map(dmHtml).join('') : `<div class="empty">${filtering ? '没有匹配的' : '暂无弹幕'}</div>`;
   olderFrom(dmQuery ? next : arr[0]?.i ?? next, more);
   $('dmn').textContent = filtering ? `${arr.length}${DMV.more ? '+' : ''} 条` : '';
-  stick = true; toBottom(); hideNewbar();
+  followNow();
 }
 // 其它面板（最新的在最上面）刷新时：如果正往下翻着看，保持看到的内容不动
 // 只有之前没出现过的那几条才淡入，整个列表重画时不会一闪一闪

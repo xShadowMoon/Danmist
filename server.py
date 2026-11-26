@@ -2948,6 +2948,24 @@ def apply_pack_config(cfg):
     ALERT_PORT = int(cfg.get('alert_port') or 0)
 
 
+SECRET_WORDS = ('webhook', 'key', 'cookie', 'token', 'password', 'secret', 'sessdata')
+
+
+def redact(obj):
+    """诊断信息里藏掉密钥一类的东西"""
+    if isinstance(obj, dict):
+        return {k: ('***' if any(w in str(k).lower() for w in SECRET_WORDS) and obj[k] else redact(v)) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [redact(v) for v in obj]
+    return obj
+
+
+def mask_line(line):
+    """日志里的 IP 打码、像 cookie 的长串去掉"""
+    line = re.sub(r'\b(\d{1,3})\.\d{1,3}\.\d{1,3}\.(\d{1,3})\b', r'\1.*.*.\2', line)
+    return re.sub(r'(SESSDATA|bili_jct|MUSIC_U|DedeUserID)=[^;\s]+', r'\1=***', line)
+
+
 def load_config(path):
     """config.json（可选）：命令行没写的就用这里的值，见 config.example.json。"""
     try:
@@ -4283,6 +4301,29 @@ async def main():
             raise web.HTTPNotFound()
         return web.FileResponse(p, headers={'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*'})
 
+    async def diag(request):
+        """导出诊断信息（2026-11-26）：版本、系统、设置（密钥藏掉）、连接状态、最近的日志。只给管理身份"""
+        if not is_admin(request, links, args.port):
+            raise web.HTTPForbidden()
+        import platform as pf
+        room = state.room
+        lines = [f'{BRAND["name"]} 诊断信息', f'时间：{time.strftime("%Y-%m-%d %H:%M:%S")}',
+                 f'版本：{updates.VERSION}', f'系统：{pf.platform()}  Python {pf.python_version()}',
+                 f'演示模式：{bool(args.demo)}', '',
+                 '== 连接 ==', json.dumps({k: room.get(k) for k in ('live', 'bili_ok', 'login_ok', 'room_real', 'live_time')}, ensure_ascii=False),
+                 '== 其他平台 ==', json.dumps(hub.platforms.view(), ensure_ascii=False),
+                 '== 设置（config.json，密钥已藏掉） ==', json.dumps(redact(load_config(args.config)), ensure_ascii=False, indent=1)]
+        log_file = args.log and (args.log if os.path.isabs(args.log) else os.path.join(DIR, args.log))
+        lines.append('== 最近的日志（IP 已打码） ==')
+        try:
+            with open(log_file, encoding='utf-8', errors='replace') as f:
+                lines += [mask_line(x.rstrip()) for x in collections.deque(f, 400)]
+        except (OSError, TypeError):
+            lines.append('（没有日志文件：用桌面版或者 start.bat 打开才会写）')
+        name = time.strftime('danmist-diag-%Y%m%d-%H%M.txt')
+        return web.Response(text='\n'.join(lines) + '\n', content_type='text/plain', charset='utf-8',
+                            headers={'Content-Disposition': f'attachment; filename="{name}"', 'Cache-Control': 'no-store'})
+
     async def music_url(request):
         """放歌页来要「现在这首」的播放地址（2026-11-25）。只给正在放的那首，不能拿它去下别的歌"""
         it = hub.music.current()
@@ -4570,6 +4611,7 @@ async def main():
     app.router.add_get('/api/art', art_list)
     app.router.add_post('/api/launcher/quit', launcher_quit)
     app.router.add_post('/api/mascot', mascot_put)
+    app.router.add_get('/api/diag', diag)
     app.router.add_post('/api/mascot/reset', mascot_reset)
     app.router.add_get('/api/history', hist_list)
     app.router.add_get('/api/offline', offline_list)

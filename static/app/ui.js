@@ -49,7 +49,7 @@ async function openPop() {
   document.querySelectorAll('style, link[rel=stylesheet]').forEach(s => { const c = s.cloneNode(true); if (s.href) c.href = s.href; d.head.appendChild(c); });
   p.style.flex = '';
   d.body.appendChild(p);
-  syncPop(); renderLayout(); stick = true; toBottom();
+  syncPop(); renderLayout(); followNow();
   popBtn.classList.add('on'); popBtn.title = '收回主窗口';
   pipPanel = p;
   pipWin.addEventListener('pagehide', popBack);
@@ -62,7 +62,7 @@ function popBack() {
   pipWin = null; pipPanel = null;
   if (p && p.ownerDocument !== document) $('pool').appendChild(document.adoptNode(p));
   popBtn.classList.remove('on'); popBtn.title = '弹幕小窗：浮在最上面';
-  renderLayout(); stick = true; toBottom();
+  renderLayout(); followNow();
   try { if (w && !w.closed) w.close(); } catch {}
 }
 setInterval(() => { if (pipWin && pipWin.closed) popBack(); }, 2000);

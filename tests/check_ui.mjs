@@ -39,7 +39,7 @@ try {
   // 每一步最多等 3 分钟，卡住就算没过（以前一卡就整个挂住）
   const ev = async expr => {
     const r = await Promise.race([send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }), sleep(180000).then(() => ({ timeout: true }))]);
-    if (r.timeout) { fails.push('卡住：' + expr.slice(0, 60)); throw new Error('页面里一步卡住超过 3 分钟：' + expr.slice(0, 60)); }
+    if (r.timeout) { console.log('FAIL 卡住超过 3 分钟：' + expr.slice(0, 80)); fails.push('卡住：' + expr.slice(0, 60)); throw new Error('页面里一步卡住超过 3 分钟：' + expr.slice(0, 60)); }
     return r.result?.result?.value;
   };
   await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable');
@@ -103,6 +103,9 @@ try {
   })()`);
   ok(!yank.stick && yank.gap > 200, `鼠标停着时键盘往上翻，不会被拽回最底下（离底 ${yank.gap}）`);
   ws.close();
+} catch (e) {
+  console.log('FAIL ' + e.message);
+  if (!fails.length) fails.push(e.message);
 } finally {
   edge.kill(); await sleep(800);
   try { rmSync(dir, { recursive: true, force: true }); } catch {}

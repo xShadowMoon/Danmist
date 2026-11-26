@@ -236,6 +236,8 @@ let F = [
   { k: 'size', tab: 'look', label: '🔠 字号', type: 'range', min: 12, max: 40, step: 1, def: 18, unit: 'px' },
   { k: 'max', tab: 'look', label: '📚 最多显示', type: 'range', min: 3, max: 30, step: 1, def: 12, unit: '条' },
   { k: 'gap', tab: 'look', label: '↕ 间距', type: 'range', min: 0, max: 30, step: 1, def: 10, unit: 'px' },
+  { k: 'idle', tab: 'look', label: '💤 没人说话就隐藏', type: 'range', min: 0, max: 300, step: 10, def: 0, unit: '秒', zero: '不隐藏', tip: '这么多秒没有新消息，整列淡出；来了新的再出来' },
+  { k: 'emo_size', tab: 'look', label: '😀 表情包大小', type: 'range', min: 50, max: 250, step: 10, def: 100, unit: '%', tip: '弹幕里整张的表情包（小表情不变）' },
   { k: 'fade', tab: 'look', label: '⏳ 淡出', type: 'range', min: 0, max: 120, step: 5, def: 0, unit: '秒', zero: '不淡出', tip: '显示多久后淡出' },
   { k: 'anim', tab: 'look', label: '✨ 动画', type: 'select', def: 'slide', opts: [['slide', '上滑'], ['fade', '淡入'], ['pop', '弹出'], ['left', '左滑'], ['right', '右滑'], ['none', '无']] },
   // SC / 上舰动画用户说没用，2026-11-19 删掉（OBS 页里还是默认的上浮）
@@ -290,9 +292,10 @@ let F = [
   // 直播间（2026-11-21）：只能选切房名单里的，名单在雾幕里「主播名字 ▾」管理
   { k: 'room', tab: 'what', label: '📡 直播间', type: 'select', def: '', opts: [['', window.BRAND?.short || '主播']], tip: '这个 OBS 网址显示哪个直播间的弹幕。只能选雾幕切房名单里的' },
   { k: 'sc', tab: 'what', label: '✉ SC', type: 'check', def: true },
+  { k: 'sc_stay', tab: 'what', label: '⏱ SC 停留', type: 'range', min: 0, max: 600, step: 10, def: 0, unit: '秒', zero: '跟着淡出', tip: 'SC 在屏幕上停多久再消失，不管上面的「淡出」', show: c => c.sc },
   { k: 'sc_bg', tab: 'what', label: '✉ SC 底色', type: 'check', def: true },
   { k: 'guardbuy', tab: 'what', label: '⚓ 上舰', type: 'check', def: true },
-  { k: 'enter', tab: 'what', label: '🚪 进房', type: 'select', def: 'guard', opts: [['guard', '舰长'], ['all', '所有人'], ['0', '无']] },
+  { k: 'enter', tab: 'what', label: '🚪 进房', type: 'select', def: 'guard', opts: [['guard', '舰长以上'], ['g2', '提督以上'], ['g1', '只总督'], ['all', '所有人'], ['0', '无']] },
   { k: 'block', tab: 'what', label: '🚫 屏蔽词', type: 'text', def: '', tip: '空格隔开；带这些词的弹幕、SC 不上屏，雾幕里照样看得到', ph: '空格隔开' },
   { k: 'gift_min', tab: 'what', label: '🎁 礼物 ≥', type: 'num', min: 0, max: 1000, step: 0.1, def: 0, unit: '元', show: c => c.gifts },
 ];
@@ -379,12 +382,12 @@ function setMode(m) {
 // 每一页：[编号, 图标, 标题, [[框的标题, 这框里的设置], ...]]；COLOR = 颜色小表，TEXTS = 文字效果一键套，IMPORT = 读旧网址
 const PAGES = {
   dm: [
-    ['look', 'sparkle', '样式', [['这个样式的', [...(SX.lookExtra || []), 'buy']], ['常用', ['size', 'max', 'align', 'gift_size', 'pal']], ['进场动画', ['anim', 'anim_ms']]]],
+    ['look', 'sparkle', '样式', [['这个样式的', [...(SX.lookExtra || []), 'buy']], ['常用', ['size', 'max', 'align', 'gift_size', 'emo_size', 'pal']], ['进场动画', ['anim', 'anim_ms']]]],
     ['font', 'type', '文字', [['效果', 'TEXTS'], ['字体', ['font', 'fw']], ['描边和阴影', ['stroke', 'stroke_color', 'glow', 'glow_color']], ['行距', ['lh', 'ls']]]],
     ['color', 'palette', '颜色', 'COLOR'],
     ['who', 'user', '每条显示', [['显示什么', ['avatar', 'frame', 'badge', 'rank', 'names', 'wealth']], ['粉丝牌和头像', ['medal', 'avatar_size']]]],
-    ['what', 'p-dm', '上屏内容', [['哪个直播间', ['room']], ['哪些上屏', ['merge', 'bot', 'gifts', 'price', 'gift_line', 'sc', 'sc_bg', 'guardbuy']], ['进房和筛选', ['enter', 'gift_min', 'block']]]],
-    ['more', 'grid', '排版', [['排版', ['gap', 'fade', 'width', 'layout']], ['底板', ['bubble', 'border', 'shadow', 'light', 'bg', 'radius']], ['读旧网址', 'IMPORT']]],
+    ['what', 'p-dm', '上屏内容', [['哪个直播间', ['room']], ['哪些上屏', ['merge', 'bot', 'gifts', 'price', 'gift_line', 'sc', 'sc_stay', 'sc_bg', 'guardbuy']], ['进房和筛选', ['enter', 'gift_min', 'block']]]],
+    ['more', 'grid', '排版', [['排版', ['gap', 'fade', 'idle', 'width', 'layout']], ['底板', ['bubble', 'border', 'shadow', 'light', 'bg', 'radius']], ['读旧网址', 'IMPORT']]],
   ],
   songs: [
     ['look', 'music', '样式', [['常用', ['size', 'pal', 'n', 'done']]]],
