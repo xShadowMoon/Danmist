@@ -2138,7 +2138,7 @@ def mascot_ver(folder):
     times = []
     for n in MASCOT_SIZES:
         try:
-            times.append(int(os.path.getmtime(os.path.join(folder, f'icon-{n}.png'))))
+            times.append(int(os.path.getmtime(os.path.join(folder, f'icon-{n}.png')) * 1000))  # 毫秒：5 张图一秒内传完，按秒算会重名
         except OSError:
             pass
     return max(times, default=0)
@@ -4030,7 +4030,8 @@ async def main():
             f.write(body)
         os.replace(tmp, path)
         v = mascot_ver(mascot_dir)
-        hub.emit('mascot', v)
+        if request.query.get('last') == '1':  # 5 张都传完才让各个网页刷新图标，不然会先拿到没换完的旧图
+            hub.emit('mascot', v)
         return web.json_response({'ok': True, 'v': v})
 
     async def mascot_reset(request):

@@ -244,7 +244,7 @@ $('mascotfile')?.addEventListener('change', async e => {
     await new Promise((ok, bad) => { img.onload = ok; img.onerror = () => bad(new Error('这张图打不开')); img.src = url; });
     tip.textContent = '正在换…';
     let v = 0;
-    for (const n of MASCOT_SIZES) v = await mascotPost('api/mascot?size=' + n, await squarePng(img, n));
+    for (const n of MASCOT_SIZES) v = await mascotPost('api/mascot?size=' + n + (n === MASCOT_SIZES.at(-1) ? '&last=1' : ''), await squarePng(img, n));
     applyMascot(v);
     tip.textContent = '换好了';
   } catch (err) {

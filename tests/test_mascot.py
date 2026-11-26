@@ -23,7 +23,7 @@ class MascotTests(unittest.TestCase):
             with open(path, 'wb') as f:
                 f.write(b'\x89PNG\r\n\x1a\n')
             os.utime(path, (1700000000, 1700000000))
-            self.assertEqual(server.mascot_ver(d), 1700000000)
+            self.assertEqual(server.mascot_ver(d), 1700000000000)
 
 
 if __name__ == '__main__':
