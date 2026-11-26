@@ -23,6 +23,8 @@
 
 **最简单：安装版**（v0.9.6 起）。在 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) 下载 `Danmist-Setup-vX.Y.Z.exe`，双击就装好（不用管理员，装在 `%LOCALAPPDATA%\Programs\Danmist`），开始菜单和桌面都会有「雾幕」。第一次打开会问直播间号。以后有新版本在软件里点「下载更新」就行；不要了在「设置 → 应用」里卸载（会问要不要连存档一起删）。Windows 可能提示「已保护你的电脑」，点「更多信息 → 仍要运行」（安装包没有花钱买签名）。
 
+**国内下载慢**：可以从百度网盘下载，安装包、免安装包和说明都在里面：https://pan.baidu.com/s/1Ag5Ykctgn8S5OyVNB30jSg?pwd=xn55 （提取码 xn55）
+
 **免安装版**：
 1. 打开 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest)，下载 `Danmist-vX.Y.Z-windows-x64.zip`（自带 Python，不用另外安装）。
 2. 解压到一个固定的文件夹（不要直接在压缩包里双击运行），比如 `D:\雾幕\`。
@@ -280,6 +282,8 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 ## Getting started (Windows)
 
 **Easiest: the installer** (from v0.9.6). Download `Danmist-Setup-vX.Y.Z.exe` from [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and double-click it. No admin rights needed; it installs to `%LOCALAPPDATA%\Programs\Danmist` and adds 雾幕 to the Start menu and desktop. The first launch asks for your room id. Later updates are one click inside the app; uninstall from Settings → Apps (it asks whether to delete your archives too). Windows SmartScreen may warn about an unknown publisher (the installer isn't code-signed): click "More info → Run anyway".
+
+**Slow downloads in mainland China**: the same files are on Baidu Netdisk: https://pan.baidu.com/s/1Ag5Ykctgn8S5OyVNB30jSg?pwd=xn55 (code xn55)
 
 **Portable zip**:
 1. Go to [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and download `Danmist-vX.Y.Z-windows-x64.zip`. Python is bundled; nothing else to install.
