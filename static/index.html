@@ -185,8 +185,12 @@
         <div class="opt r"><span>语速</span><div class="ctl"><input type="range" min="0.6" max="2" step="0.05" data-k="tts.rate" data-u="倍"></div><button class="rs" title="恢复默认">↺</button></div>
         <div class="opt r"><span>音调</span><div class="ctl"><input type="range" min="0.5" max="1.6" step="0.05" data-k="tts.pitch"></div><button class="rs" title="恢复默认">↺</button></div>
       </fieldset>
+      <fieldset id="outbox"><legend>声音从哪出</legend>
+        <div class="opt"><select id="outdev" style="flex:1;min-width:0"><option value="">跟系统默认一样</option></select><button class="btn sm" id="outdevask" title="浏览器要允许一次麦克风才告诉设备名字，只读名字，不录音">列出设备</button></div>
+        <div class="note" id="outdevtip">AI 朗读、提示音、这页放的歌从这里选的设备出，比如只进耳机、不进直播。浏览器自带的朗读声音换不了，跟系统默认走。只记在这台电脑上。</div>
+      </fieldset>
       <fieldset class="admin-only" id="aibox"><legend>AI 音色（GPT-SoVITS）</legend>
-        <div class="opt"><input type="text" id="aiurl" maxlength="200" placeholder="地址，比如 http://127.0.0.1:9880（空着就不用）" style="flex:1;min-width:0"><select id="aiapi" title="接口"><option value="api_v2">GPT-SoVITS api_v2</option><option value="folder">说话服务（folder）</option></select></div>
+        <div class="opt"><input type="text" id="aiurl" maxlength="200" placeholder="地址，比如 http://127.0.0.1:9880（空着就不用）" style="flex:1;min-width:0"><select id="aiapi" title="接口" style="flex:none;width:auto"><option value="api_v2">GPT-SoVITS api_v2</option><option value="folder">说话服务（folder）</option></select></div>
         <div class="chips"><button class="btn sm" id="aisave">保存并测试</button><span class="mtip" id="aitip"></span></div>
         <div class="note">要先在电脑上开好 GPT-SoVITS（怎么开见 README「AI 音色」）。音色列表（参考音频、模型）还是写在 config.json 的 ai_voice.voices 里。</div>
       </fieldset>
@@ -435,7 +439,7 @@
       <h2 class="ptitle">直播间</h2>
       <fieldset><legend>连哪个直播间</legend>
         <div class="note" id="roomnow"></div>
-        <div class="opt"><select id="roomplat"><option value="bili">B 站</option><option value="douyu">斗鱼</option><option value="huya">虎牙</option><option value="douyin">抖音</option></select><input type="text" id="roomnum" inputmode="numeric" maxlength="20" placeholder="房间号" style="flex:1;min-width:0"><button class="btn sm go" id="roomsave">保存并重启</button></div>
+        <div class="opt"><select id="roomplat"><option value="bili">B 站</option><option value="douyu">斗鱼</option><option value="huya">虎牙</option><option value="douyin">抖音</option></select><input type="text" id="roomnum" maxlength="200" placeholder="房间号，或者粘贴直播间网址" style="flex:1;min-width:0"><button class="btn sm go" id="roomsave">保存并重启</button></div>
         <div class="note">B 站填直播间网址 live.bilibili.com/ 后面那串数字；斗鱼、虎牙填房间号；抖音填 live.douyin.com/ 后面的数字。保存后雾幕会重启，几秒后自己连回来。以前的存档都还在，换回来就接着用。</div>
         <div class="note">同时在别的平台开播？那边的弹幕在「设置 → 弹幕 → 其他平台」里加，这里只管主直播间。</div>
       </fieldset>

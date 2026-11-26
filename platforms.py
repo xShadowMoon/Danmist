@@ -364,9 +364,21 @@ DY_JS = r"""(() => {
     setTimeout(prices, 8000);
     setInterval(prices, 600000);
     send({ k: 'ready', url: location.href, title: document.title });
+    // 每 10 秒报一次「还好不好」（2026-11-26）：弹出滑块验证、聊天区找不到了（抖音改版）都告诉雾幕，平台那行会亮黄字
+    const shown = e => { if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 40 && r.height > 40 && getComputedStyle(e).visibility !== 'hidden'; };
+    let born = Date.now();
+    setInterval(() => {
+      const verify = [...document.querySelectorAll('#captcha_container, .captcha_verify_container, [class*="captcha"], iframe[src*="verify"], iframe[src*="captcha"]')].some(shown);
+      const chat = document.querySelector('.webcast-chatroom___item, [class*="webcast-chatroom___list"], [class*="webcast-chatroom___items"]');
+      send({ k: 'health', s: verify ? 'verify' : chat ? 'ok' : (Date.now() - born > 30000 ? 'nodom' : 'wait') });
+    }, 10000);
   };
   document.readyState === 'loading' ? addEventListener('DOMContentLoaded', start) : start();
 })();"""
+
+
+# 抖音直播视频流的地址（拉流域名都是 pull-xxx.douyincdn.com 这种，后缀 flv / m3u8 / ts）
+VIDEO_URLS = ['*pull-*.douyincdn.com/*', '*pull-*.douyinliving.com/*', '*.flv?*', '*.flv', '*.m3u8*', '*.ts?*']
 
 
 def find_browser():
@@ -402,6 +414,7 @@ class Douyin(Source):
         self.window = None
         self.shown = False
         self.prices = {}
+        self.warn = False  # 要人去看一眼（验证、页面改版）：平台那行亮黄字
 
     def profile(self):
         return os.path.join(self.profile_root or '.', 'douyin-browser')
@@ -455,7 +468,7 @@ class Douyin(Source):
             os.remove(port_file)
         except OSError:
             pass
-        args = [exe, '--remote-debugging-port=0', '--remote-allow-origins=http://127.0.0.1', f'--user-data-dir={self.profile()}',
+        args = [exe, '--remote-debugging-port=0', '--remote-debugging-address=127.0.0.1', '--remote-allow-origins=http://127.0.0.1', f'--user-data-dir={self.profile()}',
                 '--no-first-run', '--no-default-browser-check', '--new-window', '--mute-audio',
                 f"--window-position={self.OFF['left']},{self.OFF['top']}", f"--window-size={self.OFF['width']},{self.OFF['height']}",
                 # 窗口在屏幕外也要照常刷新，不然页面不往下走
@@ -487,6 +500,12 @@ class Douyin(Source):
                 await self.call('Runtime.enable')
                 await self.call('Page.enable')
                 await self.call('Runtime.addBinding', {'name': '__danmist'})
+                # 只要弹幕，不要视频（2026-11-26）：直播视频流不让它下，省 CPU、显卡和网速；聊天走的是另一条连接，不受影响
+                try:
+                    await self.call('Network.enable')
+                    await self.call('Network.setBlockedURLs', {'urls': VIDEO_URLS})
+                except Exception as e:
+                    self.log.info('抖音视频没拦住（不影响弹幕）：%s', e)
                 await self.call('Page.addScriptToEvaluateOnNewDocument', {'source': DY_JS})
                 await self.call('Runtime.evaluate', {'expression': DY_JS})
                 try:
@@ -504,7 +523,7 @@ class Douyin(Source):
                         r = await self.call('Runtime.evaluate', {'expression': 'location.href', 'returnByValue': True})
                         href = str(((r.get('result') or {}).get('value')) or '')
                         if f'live.douyin.com/{self.room}' not in href:
-                            self.state = '页面被跳走了（可能要登录或过验证）：点「显示窗口」看看'
+                            self.state, self.warn = '页面被跳走了（可能要登录或过验证）：点「显示窗口」看看', True
                 reader.result()
             except asyncio.CancelledError:
                 # 在设置里关掉 / 删掉这个直播间：只关自己这一页（同一个浏览器里可能还开着别的抖音直播间，2026-11-26）；
@@ -550,6 +569,14 @@ class Douyin(Source):
         name = str(d.get('name') or '')[:40]
         if k == 'ready':
             self.state = '已连接' if f'live.douyin.com/{self.room}' in str(d.get('url', '')) else '页面不对：点「显示窗口」看看'
+        elif k == 'health':
+            s = d.get('s')
+            if s == 'verify':
+                self.state, self.warn = '抖音要验证：点「显示窗口」过一下验证', True
+            elif s == 'nodom':
+                self.state, self.warn = '页面上找不到聊天区（可能没在直播或者抖音改版了）：点「显示窗口」看看', True
+            elif s == 'ok' and self.warn:
+                self.state, self.warn = '已连接', False
         elif k == 'prices' and isinstance(d.get('p'), dict):
             self.prices = {str(a)[:20]: int(b) for a, b in d['p'].items() if isinstance(b, (int, float))}
         elif not name:
@@ -606,7 +633,8 @@ class Platforms:
         out = []
         for r in self.rooms:
             src = self.sources.get((r['plat'], r['room']))
-            out.append({**r, 'label': PLATS[r['plat']][0], 'state': src.state if (src and r['on']) else '没开'})
+            out.append({**r, 'label': PLATS[r['plat']][0], 'state': src.state if (src and r['on']) else '没开',
+                        'warn': bool(src and r['on'] and getattr(src, 'warn', False))})
         # 抖音要在这台电脑上开浏览器：只有 Windows、装了 Edge / Chrome 才给选
         return {'rooms': out, 'douyin': os.name == 'nt' and bool(find_browser())}
 

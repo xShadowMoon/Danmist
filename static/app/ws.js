@@ -136,7 +136,11 @@ function connect() {
       if (reqTab === 'list') soon(renderReqs, 'mq');
       musicSync();
     } else if (type === 'platforms') {  // 其他平台的直播间和连接状态
+      // 抖音要验证 / 页面改版收不到了：弹一句提醒（2026-11-26），同一个房间亮着黄字时只提醒一次
+      const was = new Set((S.platforms?.rooms || []).filter(r => r.warn).map(r => r.plat + r.room));
+      const bad = (data?.rooms || []).find(r => r.warn && !was.has(r.plat + r.room));
       S.platforms = data; drawPlats();
+      if (bad) note(`${bad.label || bad.plat} ${bad.room}：${bad.state}（设置 → 弹幕 → 其他平台）`, false);
     } else if (type === 'music_rules') {
       S.music_rules = data; drawMusicSet();
     } else if (type === 'result') {
@@ -144,7 +148,7 @@ function connect() {
       if (String(data.cmd).startsWith('profile_')) { profileResult(data); return; }
       if (String(data.cmd).startsWith('admin_link_')) { linkResult(data); return; }
       if (data.cmd === 'lan_set') { note(data.msg, data.ok); if (!data.ok) drawLinks(); return; }
-      if (data.cmd === 'room_set') { const t = $('sc-tip') || $('roomnow'); if (t) t.textContent = data.msg; note(data.msg, data.ok); return; }
+      if (data.cmd === 'room_set') { roomResult(data); return; }
       if (['update_download', 'update_restart', 'open_mode', 'make_shortcut'].includes(data.cmd)) { note(data.msg, data.ok); if (!data.ok && data.cmd === 'update_download') { updPct = -1; drawUpd(); } return; }
       if (['music_qr', 'music_poll', 'music_logout', 'music_cookie'].includes(data.cmd)) { musicLoginResult(data); return; }
       if (data.cmd === 'mute_list' || data.cmd === 'unmute') { muteResult(data); return; }

@@ -154,6 +154,12 @@ def make_shortcut():
         return False
     pyw = os.path.join(os.path.dirname(python_exe()), 'pythonw.exe')
     icon = os.path.join(APP, 'static', 'art', 'icon.ico')
+    try:  # 换过看板娘就用换的（2026-11-26）
+        mine = sorted(n for n in os.listdir(os.path.join(APP, 'data', 'mascot')) if n.startswith('mascot-') and n.endswith('.ico'))
+        if mine:
+            icon = os.path.join(APP, 'data', 'mascot', mine[-1])
+    except OSError:
+        pass
     ps = ("$s=(New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop')+'\\雾幕.lnk');"
           f"$s.TargetPath='{pyw}';$s.Arguments='\"{os.path.join(APP, 'desktop.py')}\"';$s.WorkingDirectory='{APP}';"
           f"$s.IconLocation='{icon}';$s.Description='雾幕';$s.Save()")

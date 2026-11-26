@@ -318,21 +318,52 @@ function drawRoomSet() {
     card.id = 'setupcard';
     card.innerHTML = `<div class="sc-box"><h2>欢迎用${esc(BRAND_NAME())}</h2><p>先告诉我连哪个直播间</p>
       <div class="sc-row"><select id="sc-plat">${Object.entries(PLAT_NAME).filter(([k]) => k !== 'douyin' || S.platforms?.douyin).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select>
-      <input id="sc-room" inputmode="numeric" maxlength="20" placeholder="房间号"><button class="btn go" id="sc-go">开始</button></div>
-      <small>B 站填直播间网址 live.bilibili.com/ 后面那串数字。填错了也没关系，以后在「设置 → 直播间」里能改。</small><div class="sc-tip" id="sc-tip"></div></div>`;
+      <input id="sc-room" maxlength="200" placeholder="房间号，或者粘贴直播间网址"><button class="btn go" id="sc-go">开始</button></div>
+      <small>B 站填直播间网址 live.bilibili.com/ 后面那串数字（不是 UID），直接把网址粘进来也行。填错了也没关系，以后在「设置 → 直播间」里能改。</small><div class="sc-tip" id="sc-tip"></div></div>`;
     document.body.append(card);
   }
   if (!S.setup && card) card.remove();
 }
-function sendRoom(plat, room, tipEl) {
-  room = String(room || '').replace(/\D/g, '');
-  if (!room) { tipEl.textContent = '房间号只能填数字'; return; }
-  tipEl.textContent = '正在保存…';
-  window._ws?.send(JSON.stringify({ cmd: 'room_set', plat, room: Number(room) }));
+// 粘整段直播间网址也行（2026-11-26）：live.bilibili.com/373317?xx、douyu.com/9999、live.douyin.com/123 都认，顺便把平台选对
+const ROOM_HOSTS = [['bilibili.com', 'bili'], ['douyu.com', 'douyu'], ['huya.com', 'huya'], ['douyin.com', 'douyin']];
+function parseRoom(text, selEl) {
+  text = String(text || '').trim();
+  const host = ROOM_HOSTS.find(([h]) => text.includes(h));
+  if (host && selEl && [...selEl.options].some(o => o.value === host[1])) selEl.value = host[1];
+  const m = text.match(/\/(\d+)(?:[/?#]|$)/);
+  return m ? m[1] : text.replace(/\D/g, '');
+}
+let roomAsk = null;  // B 站先问一下是谁的直播间，确认了再换
+function sendRoom(sel, input, tipEl, sure = false) {
+  const room = sure && roomAsk ? String(roomAsk.room) : parseRoom(input.value, sel);
+  if (!room) { tipEl.textContent = '房间号只能填数字（也可以直接粘贴直播间网址）'; return; }
+  if (!sure) input.value = room;
+  roomTip = tipEl;
+  tipEl.textContent = sure ? '正在保存…' : '正在查这个直播间…';
+  window._ws?.send(JSON.stringify({ cmd: 'room_set', plat: sel.value, room: Number(room), sure: sure || sel.value !== 'bili' }));
+}
+let roomTip = null;
+function roomResult(d) {
+  const t = roomTip || $('sc-tip') || $('roomnow');
+  if (d.ask) {
+    roomAsk = d.ask;
+    if (t) t.innerHTML = `是 <b>${esc(d.ask.uname || '（没查到名字）')}</b> 的直播间 ${esc(d.ask.room)}${d.ask.title ? `「${esc(d.ask.title)}」` : ''}，连这个？ <button class="btn sm go" data-roomsure>对，就是它</button>`;
+    return;
+  }
+  roomAsk = null;
+  if (t) t.textContent = d.msg;
+  note(d.msg, d.ok);
 }
 document.addEventListener('click', e => {
-  if (e.target.closest('#roomsave')) sendRoom($('roomplat').value, $('roomnum').value, $('roomnow'));
-  if (e.target.closest('#sc-go')) sendRoom($('sc-plat').value, $('sc-room').value, $('sc-tip'));
+  const card = !!e.target.closest('#setupcard');
+  if (e.target.closest('[data-roomsure]')) { card ? sendRoom($('sc-plat'), $('sc-room'), $('sc-tip'), true) : sendRoom($('roomplat'), $('roomnum'), $('roomnow'), true); return; }
+  if (e.target.closest('#roomsave')) sendRoom($('roomplat'), $('roomnum'), $('roomnow'));
+  if (e.target.closest('#sc-go')) sendRoom($('sc-plat'), $('sc-room'), $('sc-tip'));
   if (e.target.closest('[data-st="room"]')) drawRoomSet();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'sc-room') sendRoom($('sc-plat').value, $('sc-room').value, $('sc-tip')); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'sc-room') sendRoom($('sc-plat'), $('sc-room'), $('sc-tip'));
+  if (e.key === 'Enter' && e.target.id === 'roomnum') sendRoom($('roomplat'), $('roomnum'), $('roomnow'));
+});
+// 换了平台或者改了号：之前问到的那个不算了
+document.addEventListener('input', e => { if (['sc-room', 'roomnum', 'sc-plat', 'roomplat'].includes(e.target.id)) roomAsk = null; });

@@ -134,6 +134,7 @@ const ttsNext = it => { if (tts.cur !== it) return; dropItem(it); tts.cur = null
 function playAi(it, url) {
   it.started = true;
   const a = new Audio(url);
+  sinkTo(a);
   a.volume = Math.min(1, Math.max(0, cfg.tts.volume));
   tts.audio = a; tts.startedAt = Date.now();
   a.onended = () => ttsNext(it);
@@ -269,7 +270,7 @@ let dingOff;
 function ding(notes = [880, 1318.5], vol = 0.6) {
   if (!activated()) return;  // 浏览器规定点过页面才能出声
   try {
-    actx ??= new AudioContext();
+    if (!actx) { actx = new AudioContext(); if (outDev && typeof actx.setSinkId === 'function') actx.setSinkId(outDev).catch(() => {}); }
     if (actx.state === 'suspended') actx.resume();
     const peak = Math.max(0.01, Math.min(1, Number(vol) || 0.6)) * 0.3;
     notes.forEach((f, i) => {
@@ -290,7 +291,7 @@ async function drawAiBox() {
   try {
     const j = await (await fetch('api/tts/voices', { cache: 'no-store' })).json();
     if (document.activeElement !== $('aiurl')) $('aiurl').value = j.url || '';
-    $('aiapi').value = j.api || 'api_v2';
+    $('aiapi').value = j.url ? (j.api || 'api_v2') : 'api_v2';  // 没设过的默认 GPT-SoVITS
     $('aitip').textContent = !j.url ? '没开' : j.online ? `连着，${(j.voices || []).length} 个音色` : '连不上';
   } catch {}
 }
@@ -303,4 +304,42 @@ document.addEventListener('click', async e => {
     $('aitip').textContent = j.msg || (j.ok ? '好了' : '没成功');
     if (typeof loadVoices === 'function') loadVoices();
   } catch { $('aitip').textContent = '没保存上'; }
+});
+
+// 声音从哪出（2026-11-26，Gemini 反馈）：AI 朗读、提示音、页面放歌可以单独走耳机或者虚拟声卡，不进直播的桌面音频。
+// 浏览器自带的朗读声音（不是 AI 音色的）浏览器不让换设备，只能跟系统默认走。选的设备只记在这台电脑的这个浏览器里
+let outDev = '';
+try { outDev = localStorage.getItem('xw-outdev') || ''; } catch {}
+function sinkTo(el) {
+  if (!el || typeof el.setSinkId !== 'function') return;
+  el.setSinkId(outDev).catch(() => {});  // 设备拔掉了就还是从默认的出
+}
+async function listOutDevs(ask) {
+  const sel = $('outdev');
+  if (!sel || !navigator.mediaDevices?.enumerateDevices) return;
+  try {
+    // 不给一次麦克风权限，浏览器不告诉设备名字；只为读名字，拿到马上关，不录音
+    if (ask) { const s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(t => t.stop()); }
+    const list = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audiooutput' && d.deviceId && d.deviceId !== 'default');
+    sel.innerHTML = '<option value="">跟系统默认一样</option>' + list.map(d => `<option value="${esc(d.deviceId)}">${esc(d.label || '没名字的设备')}</option>`).join('');
+    if (outDev && !list.some(d => d.deviceId === outDev)) sel.insertAdjacentHTML('beforeend', `<option value="${esc(outDev)}">之前选的设备（现在没接上）</option>`);
+    sel.value = outDev;
+    $('outdevask').hidden = list.some(d => d.label);
+  } catch { $('outdevtip').textContent = '没拿到设备列表（要允许一次麦克风才能看到名字）'; }
+}
+function applyOutDev() {
+  sinkTo(tts.audio);
+  if (typeof mplayer !== 'undefined' && mplayer) sinkTo(mplayer.audio);
+  if (actx && typeof actx.setSinkId === 'function') actx.setSinkId(outDev).catch(() => {});
+}
+document.addEventListener('change', e => {
+  if (e.target.id !== 'outdev') return;
+  outDev = e.target.value;
+  try { outDev ? localStorage.setItem('xw-outdev', outDev) : localStorage.removeItem('xw-outdev'); } catch {}
+  applyOutDev();
+  sound('dm', true);
+});
+document.addEventListener('click', e => {
+  if (e.target.closest('#outdevask')) listOutDevs(true);
+  if (e.target.closest('[data-st="tts"], #setbtn')) listOutDevs(false);
 });

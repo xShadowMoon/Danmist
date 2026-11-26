@@ -45,6 +45,7 @@ from breaker import Breaker
 from music import MusicService
 import platforms
 from bus import Bus
+import shortcut_icon
 from views import (VIEWER_ROOM, VIEWER_ENTER, VIEWER_GUARD, VIEWER_USER, VIEWER_REQ, VIEWER_GUARDLIST, VIEWER_DM, VIEWER_SC,  # noqa: F401
                    VIEWER_GIFT, VIEWER_SONG, public_view, pick, viewer_gift, viewer_snapshot, viewer_view, obs_view)
 import tags as tag_store
@@ -1901,12 +1902,23 @@ def mascot_ver(folder):
     return max(times, default=0)
 
 
-def clean_img_cache(days=30):
+def clean_img_cache(days=30, cap=500 * 1024 * 1024):
+    """30 天没人看的删掉；剩下的加起来超过 500MB 就从最久没看的开始删（2026-11-26 Gemini 反馈：总量封顶）"""
     try:
         old = time.time() - days * 86400
+        keep = []
         for path in retention.iter_plain_files(Path(IMG_CACHE), re.compile(r'[0-9a-f]{40}\.webp')):
-            if path.stat().st_mtime < old:
+            st = path.stat()
+            if st.st_mtime < old:
                 retention.remove_data_file(path, '图片缓存超过保留期')
+            else:
+                keep.append((st.st_mtime, st.st_size, path))
+        total = sum(x[1] for x in keep)
+        for _, size, path in sorted(keep, key=lambda x: x[0]):
+            if total <= cap:
+                break
+            retention.remove_data_file(path, '图片缓存超过总量上限')
+            total -= size
     except OSError:
         pass
 
@@ -2414,6 +2426,15 @@ def demo_history(history):
         history.save(st.summary('下播', st.live_start + random.randint(5400, 10800)))
 
 
+# 2026-11-26（Gemini 反馈）：除了 Cloudflare 隧道，Nginx、Caddy、frp、ngrok 这类转发进来的请求 TCP 来源也是 127.0.0.1，
+# 带了任何一个转发头都不算「在这台电脑上直接打开」，要用管理链接
+PROXY_HEADERS = ('CF-Connecting-IP', 'Cf-Ray', 'X-Forwarded-For', 'X-Real-IP', 'Forwarded', 'Via', 'X-Forwarded-Host')
+
+
+def via_proxy(headers):
+    return any(h in headers for h in PROXY_HEADERS)
+
+
 def is_admin(request, admin_key, port):
     """在电脑上直接打开的（不是从 Cloudflare 隧道进来的），或者带了管理密钥的，才能清零、删历史。"""
     k = request.query.get('admin', '') or request.cookies.get('xwadmin', '')
@@ -2422,7 +2443,7 @@ def is_admin(request, admin_key, port):
             return True
     elif admin_key and hmac.compare_digest(k.encode('utf-8'), admin_key.encode('utf-8')):
         return True
-    tunneled = 'CF-Connecting-IP' in request.headers or 'Cf-Ray' in request.headers
+    tunneled = via_proxy(request.headers)
     local_hosts = {f'127.0.0.1:{port}', f'localhost:{port}', f'[::1]:{port}'}
     origin = request.headers.get('Origin', '')
     return (not tunneled and request.remote in ('127.0.0.1', '::1')
@@ -3186,8 +3207,8 @@ async def main():
                 else:
                     try:
                         if cmd == 'room_set':  # 换主直播间（2026-11-26）
-                            ok, msg = await set_main_room(c.get('plat'), int(c.get('room')))
-                            await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': msg}})
+                            ok, msg, ask = await set_main_room(c.get('plat'), int(c.get('room')), c.get('sure') is True)
+                            await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': msg, 'ask': ask}})
                             continue
                         if cmd in ('tags_set', 'tag_user'):  # 身份标签（2026-11-26）
                             try:
@@ -3986,6 +4007,12 @@ async def main():
         v = mascot_ver(mascot_dir)
         if request.query.get('last') == '1':  # 5 张都传完才让各个网页刷新图标，不然会先拿到没换完的旧图
             hub.emit('mascot', v)
+            if not args.demo:  # 桌面和开始菜单的快捷方式图标也换掉（2026-11-26）
+                try:
+                    ico = shortcut_icon.write_ico(mascot_dir, MASCOT_SIZES, v)
+                    asyncio.get_event_loop().create_task(asyncio.to_thread(shortcut_icon.update_shortcuts, DIR, ico))
+                except (OSError, ValueError) as e:
+                    log.info('快捷方式图标没换成：%s', e)
         return web.json_response({'ok': True, 'v': v})
 
     async def mascot_reset(request):
@@ -3999,6 +4026,9 @@ async def main():
             except FileNotFoundError:
                 pass
         hub.emit('mascot', 0)
+        if not args.demo:
+            shortcut_icon.remove_old(mascot_dir)
+            asyncio.get_event_loop().create_task(asyncio.to_thread(shortcut_icon.update_shortcuts, DIR, os.path.join(DIR, 'static', 'art', 'icon.ico')))
         return web.json_response({'ok': True, 'v': 0})
 
     # 歌切合集（可选，config.json 的 gequ_dir）：别的程序生成的 index.html 和 songs.json，这里只读出来公开，
@@ -4079,7 +4109,7 @@ async def main():
         return web.json_response({'ok': True})
 
     def local_request(request):
-        return request.remote in ('127.0.0.1', '::1') and 'CF-Connecting-IP' not in request.headers
+        return request.remote in ('127.0.0.1', '::1') and not via_proxy(request.headers)
 
     async def lyrics_now(request):
         """OBS 歌词源（2026-11-26）：歌单里「正在唱」的那首和它在曲库里的歌词。歌词本来就是要上屏的，不用管理身份"""
@@ -4091,33 +4121,43 @@ async def main():
         return web.json_response({'name': name, 'artist': row.get('artist', ''), 'lyrics': str(row.get('lyrics') or '')[:20000]},
                                  headers={'Cache-Control': 'no-store'})
 
-    async def set_main_room(plat, room):
-        """设置 → 直播间 / 第一次打开的卡片：存进 config.json，然后重启连过去（2026-11-26）"""
+    async def set_main_room(plat, room, sure=True):
+        """设置 → 直播间 / 第一次打开的卡片：存进 config.json，然后重启连过去（2026-11-26）。
+        B 站第一次（sure=False）先只回主播名和直播间标题让人确认，免得把 UID 当成房间号填进去"""
         if args.demo:
-            return False, '演示模式不能换直播间'
+            return False, '演示模式不能换直播间', None
         if room_locked:
-            return False, '这份是用命令行 --room 打开的，直播间要在启动命令里改'
+            return False, '这份是用命令行 --room 打开的，直播间要在启动命令里改', None
         if plat == 'bili':
             try:  # 先去 B 站问一下有没有这个直播间，短号换成真房间号
-                async with bare.get(f'https://api.live.bilibili.com/room/v1/Room/room_init?id={room}', timeout=aiohttp.ClientTimeout(total=10)) as r:
+                async with bare.get(f'https://api.live.bilibili.com/room/v1/Room/get_info?room_id={room}', timeout=aiohttp.ClientTimeout(total=10)) as r:
                     j = await r.json(content_type=None)
-                if j.get('code') != 0 or not (j.get('data') or {}).get('room_id'):
-                    return False, '没找到这个 B 站直播间，看看号对不对（直播间网址 live.bilibili.com/ 后面那串数字）'
-                room = int(j['data']['room_id'])
+                d = j.get('data') or {}
+                if j.get('code') != 0 or not d.get('room_id'):
+                    return False, '没找到这个 B 站直播间，看看号对不对（直播间网址 live.bilibili.com/ 后面那串数字，不是 UID）', None
+                room = int(d['room_id'])
+                if not sure:
+                    uname = ''
+                    try:
+                        async with bare.get(f"https://api.live.bilibili.com/live_user/v1/Master/info?uid={int(d.get('uid') or 0)}", timeout=aiohttp.ClientTimeout(total=10)) as r:
+                            uname = str((((await r.json(content_type=None)).get('data') or {}).get('info') or {}).get('uname') or '')[:40]
+                    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, TypeError):
+                        pass
+                    return False, '', {'plat': plat, 'room': room, 'uname': uname, 'title': str(d.get('title') or '')[:60]}
             except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, TypeError):
-                return False, '问 B 站的时候没连上，过一会再试'
+                return False, '问 B 站的时候没连上，过一会再试', None
         conf = load_config(args.config)
         conf.update(room=room, room_plat=plat)
         write_json(args.config, conf)
         name = platforms.PLATS.get(plat, ('B 站',))[0] if plat != 'bili' else 'B 站'
         log.info('换主直播间：%s %s', name, room)
         if not (launcher or MANAGED_RESTART):
-            return True, f'已保存（{name} {room}）：把雾幕关掉再打开就连过去'
+            return True, f'已保存（{name} {room}）：把雾幕关掉再打开就连过去', None
         hub.state.dirty = True
         hub.state.save()
         hub.dmlog.flush()
         asyncio.get_event_loop().call_later(1.0, lambda: os._exit(3))  # 退出码 3：桌面版、start.bat、守护都会马上重开
-        return True, f'正在重启，连到 {name} {room}，几秒后页面自己连回来'
+        return True, f'正在重启，连到 {name} {room}，几秒后页面自己连回来', None
 
     async def music_url(request):
         """放歌页来要「现在这首」的播放地址（2026-11-25）。只给正在放的那首，不能拿它去下别的歌"""

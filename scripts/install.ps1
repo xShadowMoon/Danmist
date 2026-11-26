@@ -27,11 +27,14 @@ try {
   # 快捷方式：开始菜单 + 桌面，双击就是软件窗口
   $pyw = Join-Path $dir 'python\pythonw.exe'
   $icon = Join-Path $dir 'static\art\icon.ico'
+  # 换过看板娘的话，升级以后快捷方式还用换的那个图标（2026-11-26）
+  $mine = Get-ChildItem (Join-Path $dir 'data\mascot') -Filter 'mascot-*.ico' -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -Last 1
+  $lnkIcon = if ($mine) { $mine.FullName } else { $icon }
   $sh = New-Object -ComObject WScript.Shell
   foreach ($lnk in @((Join-Path ([Environment]::GetFolderPath('Programs')) '雾幕.lnk'), (Join-Path ([Environment]::GetFolderPath('Desktop')) '雾幕.lnk'))) {
     $s = $sh.CreateShortcut($lnk)
     $s.TargetPath = $pyw; $s.Arguments = '"' + (Join-Path $dir 'desktop.py') + '"'; $s.WorkingDirectory = $dir
-    $s.IconLocation = $icon; $s.Description = '雾幕 Danmist'; $s.Save()
+    $s.IconLocation = $lnkIcon; $s.Description = '雾幕 Danmist'; $s.Save()
   }
   New-Item -ItemType Directory -Force (Join-Path $dir 'data') | Out-Null
   Set-Content (Join-Path $dir 'data\shortcut-made') -Value 'installer' -Encoding ascii

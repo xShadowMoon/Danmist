@@ -43,7 +43,7 @@ function musicTick() {
 setInterval(musicTick, 1000);
 function musicSync() {
   if (!S.music) return;
-  if (!mplayer && typeof MusicPlayer === 'function') { mplayer = new MusicPlayer(); mplayer.blocked = () => note('浏览器不让自动出声：点一下页面再开「这页出声」', false); }
+  if (!mplayer && typeof MusicPlayer === 'function') { mplayer = new MusicPlayer(); if (typeof sinkTo === 'function') sinkTo(mplayer.audio); mplayer.blocked = () => note('浏览器不让自动出声：点一下页面再开「这页出声」', false); }
   if (mplayer) { mplayer.on = !!cfg.musicHere && !!S.admin; mplayer.update(S.music); }
 }
 document.addEventListener('click', e => {
@@ -124,7 +124,7 @@ function drawPlats() {
   const dy = $('platsel').querySelector('option[value="douyin"]');
   if (P.douyin && !dy) $('platsel').insertAdjacentHTML('beforeend', '<option value="douyin">抖音</option>');
   if (!P.douyin && dy) dy.remove();
-  $('platlist').innerHTML = (P.rooms || []).map((r, i) => `<div class="lkrow"><div>${platTag(r.plat)} <b>${esc(r.room)}</b><small>${esc(r.state || '')}</small></div>${r.plat === 'douyin' ? `<button class="btn sm" data-plshow="${i}" title="把抖音那个浏览器窗口拿出来：登录（不登录名字会打码）、过验证">显示窗口</button><button class="btn sm" data-plhide="${i}">藏起来</button>` : ''}<label class="chip"><input type="checkbox" data-plon="${i}"${r.on ? ' checked' : ''}><span>收</span></label><button class="btn sm" data-pldel="${i}">删掉</button></div>`).join('')
+  $('platlist').innerHTML = (P.rooms || []).map((r, i) => `<div class="lkrow"><div>${platTag(r.plat)} <b>${esc(r.room)}</b><small${r.warn ? ' class="plwarn"' : ''}>${esc(r.state || '')}</small></div>${r.plat === 'douyin' ? `<button class="btn sm" data-plshow="${i}" title="把抖音那个浏览器窗口拿出来：登录（不登录名字会打码）、过验证">显示窗口</button><button class="btn sm" data-plhide="${i}">藏起来</button>` : ''}<label class="chip"><input type="checkbox" data-plon="${i}"${r.on ? ' checked' : ''}><span>收</span></label><button class="btn sm" data-pldel="${i}">删掉</button></div>`).join('')
     || '<div class="empty" style="padding:8px">还没加。同时在别的平台开播时，把那边的房间号加进来</div>';
 }
 function sendPlats(rooms) { window._ws?.send(JSON.stringify({ cmd: 'plat_set', rooms: rooms.map(r => ({ plat: r.plat, room: r.room, on: r.on })) })); }
