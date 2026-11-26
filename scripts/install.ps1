@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
-function Say($text, $icon = 'Information') { [System.Windows.Forms.MessageBox]::Show($text, '雾幕', 'OK', $icon) | Out-Null }
+function Say($text, $icon = 'Information') { if ($Quiet) { Write-Output $text } else { [System.Windows.Forms.MessageBox]::Show($text, '雾幕', 'OK', $icon) | Out-Null } }
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $version = (Get-Content (Join-Path $here 'version.txt') -ErrorAction SilentlyContinue | Select-Object -First 1)
@@ -41,7 +41,7 @@ $path = Add (New-Object System.Windows.Forms.TextBox) 20 44 390 26
 $path.Text = $default
 $browse = Add (New-Object System.Windows.Forms.Button) 418 42 82 28
 $browse.Text = '选文件夹…'
-$tip = Add (New-Object System.Windows.Forms.Label) 20 76 480 44
+$tip = Add (New-Object System.Windows.Forms.Label) 20 76 480 62
 $tip.ForeColor = [System.Drawing.Color]::DimGray
 if ($old) {
   $path.ReadOnly = $true; $browse.Enabled = $false
@@ -49,18 +49,18 @@ if ($old) {
 } else {
   $tip.Text = "不用管理员权限。别选 C:\Program Files（那里要管理员才能写）。选了别的文件夹会在里面建一个 Danmist 文件夹。直播存档、设置也存在这里面的 data 文件夹。"
 }
-$cDesk = Add (New-Object System.Windows.Forms.CheckBox) 20 130 480 26
+$cDesk = Add (New-Object System.Windows.Forms.CheckBox) 20 146 480 26
 $cDesk.Text = '在桌面上建「雾幕」快捷方式'
 $cDesk.Checked = (-not $old) -or (Test-Path -LiteralPath $deskLnk)
-$cMenu = Add (New-Object System.Windows.Forms.CheckBox) 20 158 480 26
+$cMenu = Add (New-Object System.Windows.Forms.CheckBox) 20 174 480 26
 $cMenu.Text = '在开始菜单里建「雾幕」'
 $cMenu.Checked = (-not $old) -or (Test-Path -LiteralPath $menuLnk)
-$cRun = Add (New-Object System.Windows.Forms.CheckBox) 20 186 480 26
+$cRun = Add (New-Object System.Windows.Forms.CheckBox) 20 202 480 26
 $cRun.Text = '装好以后马上打开雾幕'
 $cRun.Checked = $true
-$ok = Add (New-Object System.Windows.Forms.Button) 300 248 100 32
+$ok = Add (New-Object System.Windows.Forms.Button) 300 252 100 32
 $ok.Text = if ($old) { '升级' } else { '安装' }
-$cancel = Add (New-Object System.Windows.Forms.Button) 408 248 92 32
+$cancel = Add (New-Object System.Windows.Forms.Button) 408 252 92 32
 $cancel.Text = '取消'
 $f.AcceptButton = $ok; $f.CancelButton = $cancel
 $ok.DialogResult = 'OK'; $cancel.DialogResult = 'Cancel'

@@ -21,7 +21,7 @@
 
 ## 怎么用（Windows）
 
-**最简单：安装版**（v0.9.6 起）。在 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) 下载 `Danmist-Setup-vX.Y.Z.exe`，双击就装好（不用管理员，装在 `%LOCALAPPDATA%\Programs\Danmist`），开始菜单和桌面都会有「雾幕」。第一次打开在软件里选平台（B 站 / 斗鱼 / 虎牙 / 抖音）、填直播间号，以后在「设置 → 直播间」里随时能换。以后有新版本在软件里点「下载更新」就行；不要了在「设置 → 应用」里卸载（会问要不要连存档一起删）。Windows 可能提示「已保护你的电脑」，点「更多信息 → 仍要运行」（安装包没有花钱买签名）。
+**最简单：安装版**（v0.9.6 起）。在 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) 下载 `Danmist-Setup-vX.Y.Z.exe`，双击后先选装到哪个文件夹（默认 `%LOCALAPPDATA%\Programs\Danmist`，不用管理员）、要不要建桌面和开始菜单的快捷方式，点「安装」就好。直播存档和设置在安装文件夹里的 `data`，「设置 → 更多 → 软件」里能直接打开。第一次打开在软件里选平台（B 站 / 斗鱼 / 虎牙 / 抖音）、填直播间号，以后在「设置 → 直播间」里随时能换。以后有新版本在软件里点「下载更新」就行；不要了在「设置 → 应用」里卸载（会问要不要连存档一起删）。Windows 可能提示「已保护你的电脑」，点「更多信息 → 仍要运行」（安装包没有花钱买签名）。
 
 **国内下载慢**：可以从百度网盘下载，安装包、免安装包和说明都在里面：https://pan.baidu.com/s/1Ag5Ykctgn8S5OyVNB30jSg?pwd=xn55 （提取码 xn55）
 
@@ -48,7 +48,7 @@
 
 **从老版本（v0.9.0–v0.9.4）更新**：这些版本还不能在软件里更新，手动覆盖一次（按下面 1–4 步），以后就能在软件里点「下载更新」了。
 
-**从免安装版搬到安装版**：装好安装版后先关掉它，把老文件夹里的 `config.json` 和整个 `data` 文件夹拷进 `%LOCALAPPDATA%\Programs\Danmist`（在资源管理器地址栏粘这串就能打开），覆盖，再从开始菜单打开「雾幕」，直播间号和存档就都接上了。
+**从免安装版搬到安装版**：装好安装版后先关掉它，把老文件夹里的 `config.json` 和整个 `data` 文件夹拷进安装文件夹（「设置 → 更多 → 软件」里点「打开」），覆盖，再从开始菜单打开「雾幕」，直播间号和存档就都接上了。
 
 v0.9.4 及以前，或者想手动更新，按下面做：
 
@@ -158,28 +158,11 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 **需要**：NVIDIA 显卡（显存 6 GB 以上比较稳）和 GPT-SoVITS（官方整合包或源码都行）。没有显卡也能跑，只是很慢，不适合直播时用。
 
 1. **训练**：打开 GPT-SoVITS 的 WebUI，准备几分钟去掉背景音乐的干净人声，按 WebUI 的步骤切分、转写、训练，得到一个 GPT 模型（`.ckpt`）和一个 SoVITS 模型（`.pth`）。再挑一段 3 到 10 秒、说话清楚的录音当参考音频，记下它说的是什么。也可以直接用别人分享的模型（注意授权）。
-2. **开服务**：在 GPT-SoVITS 文件夹里用它自带的 Python 运行 `api_v2.py -a 127.0.0.1 -p 9880`，看到监听 9880 就好了。
-3. **写配置**：在 `config.json` 里加上（路径换成你自己的，Windows 路径里的反斜杠要写成 `/` 或者两个反斜杠）：
+2. **开服务**：在 GPT-SoVITS 文件夹里用它自带的 Python 运行 `api_v2.py -a 127.0.0.1 -p 9880`（整合包是 `runtime\python.exe api_v2.py`），看到监听 9880 就好了。
+3. **在雾幕里设置**：设置 → 朗读 → AI 音色，地址填 `http://127.0.0.1:9880`，点「保存并测试」。下面「音色」里点「加一个音色」：起个名字，点「选…」选参考音频、填它说的话；训练过模型的再选 GPT（`.ckpt`）和 SoVITS（`.pth`）模型文件。点「保存音色」。可以加好几个，切换音色时会自动换模型。
+4. 在「设置 → 朗读 → 声音」里选「AI 音色」下面的声音。
 
-   ```json
-   "ai_voice": {
-     "url": "http://127.0.0.1:9880",
-     "api": "api_v2",
-     "voices": [
-       {
-         "name": "我的声音",
-         "ref_audio": "D:/GPT-SoVITS/参考音频/我.wav",
-         "ref_text": "参考音频里说的那句话",
-         "ref_lang": "zh",
-         "gpt": "D:/GPT-SoVITS/GPT_weights_v2Pro/我的声音-e15.ckpt",
-         "sovits": "D:/GPT-SoVITS/SoVITS_weights_v2Pro/我的声音_e8_s200.pth"
-       }
-     ]
-   }
-   ```
-
-   可以写好几个音色，切换音色时会自动换模型。每个音色还能加 `"speed": 1.1`（语速）、`"text_lang"`（念的语言，默认 `zh`）、`top_k`、`top_p`、`temperature`。`ref_lang` 是参考音频的语言：`zh`、`ja`、`en`、`ko`、`yue`。
-4. **重启雾幕**，在「设置 → 朗读 → 声音」里选「AI 音色」下面的声音。
+（以前写在 `config.json` 的 `ai_voice.voices` 照样认，设置里改了会写回那里。每个音色还能在 config.json 里加 `"speed"`、`"text_lang"`、`top_k`、`top_p`、`temperature`。）
 
 **说明**
 
@@ -285,7 +268,7 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 
 ## Getting started (Windows)
 
-**Easiest: the installer** (from v0.9.6). Download `Danmist-Setup-vX.Y.Z.exe` from [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and double-click it. No admin rights needed; it installs to `%LOCALAPPDATA%\Programs\Danmist` and adds 雾幕 to the Start menu and desktop. On first launch pick the platform (Bilibili / Douyu / Huya / Douyin) and enter your room id in the app; change it any time under Settings → Room. Later updates are one click inside the app; uninstall from Settings → Apps (it asks whether to delete your archives too). Windows SmartScreen may warn about an unknown publisher (the installer isn't code-signed): click "More info → Run anyway".
+**Easiest: the installer** (from v0.9.6). Download `Danmist-Setup-vX.Y.Z.exe` from [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and double-click it. Choose the install folder (default `%LOCALAPPDATA%\Programs\Danmist`, no admin rights needed) and whether to add desktop and Start menu shortcuts. Archives and settings live in the `data` folder inside it; Settings → More → App opens it. On first launch pick the platform (Bilibili / Douyu / Huya / Douyin) and enter your room id in the app; change it any time under Settings → Room. Later updates are one click inside the app; uninstall from Settings → Apps (it asks whether to delete your archives too). Windows SmartScreen may warn about an unknown publisher (the installer isn't code-signed): click "More info → Run anyway".
 
 **Slow downloads in mainland China**: the same files are on Baidu Netdisk: https://pan.baidu.com/s/1Ag5Ykctgn8S5OyVNB30jSg?pwd=xn55 (code xn55)
 
@@ -314,7 +297,7 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 
 **From older versions (v0.9.0–v0.9.4)**: these can't update themselves yet. Update by hand once (steps 1–4 below); after that, use **download update** inside the app.
 
-**Moving from the portable zip to the installer**: install, close the app, copy `config.json` and the whole `data` folder from your old folder into `%LOCALAPPDATA%\Programs\Danmist` (paste that into the Explorer address bar), then start 雾幕 from the Start menu. Your room and archives carry over.
+**Moving from the portable zip to the installer**: install, close the app, copy `config.json` and the whole `data` folder from your old folder into the install folder (Settings → More → App → Open), then start 雾幕 from the Start menu. Your room and archives carry over.
 
 Up to v0.9.4, or to update by hand:
 
@@ -425,27 +408,10 @@ Besides the browser's voices, text-to-speech can use a voice trained with [GPT-S
 
 1. **Train**: in the GPT-SoVITS WebUI, take a few minutes of clean speech without music and follow the WebUI steps (slice, transcribe, train) to get a GPT model (`.ckpt`) and a SoVITS model (`.pth`). Pick a clear 3–10 second clip as the reference audio and note what it says. Shared models work too (mind their licence).
 2. **Start the server**: in the GPT-SoVITS folder, run `api_v2.py -a 127.0.0.1 -p 9880` with its Python.
-3. **Configure**: add this to `config.json` (use your own paths; write Windows paths with `/` or double backslashes):
+3. **Set it up in the app**: Settings → Text-to-speech → AI voices, enter `http://127.0.0.1:9880` and click "Save and test". Under "Voices" click "Add a voice": give it a name, click "Pick…" to choose the reference clip and type what it says; if you trained models, also pick the GPT (`.ckpt`) and SoVITS (`.pth`) files. Click "Save voices". You can add several; models are switched automatically.
+4. Pick the voice under "AI voices" in Settings → Text-to-speech → Voice.
 
-   ```json
-   "ai_voice": {
-     "url": "http://127.0.0.1:9880",
-     "api": "api_v2",
-     "voices": [
-       {
-         "name": "My voice",
-         "ref_audio": "D:/GPT-SoVITS/ref/me.wav",
-         "ref_text": "What the reference clip says",
-         "ref_lang": "zh",
-         "gpt": "D:/GPT-SoVITS/GPT_weights_v2Pro/me-e15.ckpt",
-         "sovits": "D:/GPT-SoVITS/SoVITS_weights_v2Pro/me_e8_s200.pth"
-       }
-     ]
-   }
-   ```
-
-   You can list several voices; models are switched automatically. Each voice can also set `"speed"`, `"text_lang"` (language to speak, default `zh`), `top_k`, `top_p` and `temperature`. `ref_lang` is the reference clip's language: `zh`, `ja`, `en`, `ko` or `yue`.
-4. **Restart the board** and pick the voice under "AI voices" in Settings → Text-to-speech → Voice.
+(Voices written in `config.json` under `ai_voice.voices` still work; the settings page writes back there. Each voice can also set `"speed"`, `"text_lang"`, `top_k`, `top_p` and `temperature` in config.json.)
 
 **Notes**
 

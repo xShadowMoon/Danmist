@@ -5,6 +5,47 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.14 · 2026-11-26
+
+### 桌面版 · Desktop app
+
+- 安装时可以选装到哪个文件夹（默认还是不用管理员的 `%LOCALAPPDATA%\Programs\Danmist`），选要不要建桌面、开始菜单快捷方式，装完要不要马上打开。升级时还装在原来的地方。
+  The installer lets you choose the install folder (default `%LOCALAPPDATA%\Programs\Danmist`, no admin), whether to create desktop / Start menu shortcuts, and whether to launch afterwards. Upgrades stay in place.
+- 设置 → 更多 → 软件：显示程序和存档在哪个文件夹，点「打开」直接打开。
+  Settings → More → App shows where the program and your data live, with Open buttons.
+- 雾幕的窗口（和抖音用的隐藏窗口）不再带上你 Edge 里装的扩展：以前 Edge 会把电脑上的账号和扩展同步进来，每次打开雾幕扩展就弹出来。
+  The app window (and the hidden Douyin window) no longer loads your Edge extensions; Edge used to sync your account and extensions into it, so they popped up on every launch.
+- 桌面版不再提示「装到桌面」（那是网页版用的）；界面里不再让你去看 README、改 config.json、双击 start.bat。
+  The desktop app no longer offers "install to desktop" (a web-version thing), and the UI no longer sends you to the README or config.json.
+
+### 账号 · Accounts
+
+- 新的「设置 → 账号」：可以登好几个 B 站号，选哪个连直播间（观众名字不打码）、哪个发弹幕，随时换、随时退出。没登录时显示「游客」（以前写「默认账号」）。发送框左边的头像点进来就是这一页。
+  New Settings → Accounts: log in several Bilibili accounts, pick which one connects to the room (unmasked names) and which one sends danmaku, switch or log out any time. Shows "Guest" when not logged in.
+
+### 直播间 · Live room
+
+- 「设置 → 直播间」：房间号框太窄填不进去的问题修好了；多了「切换直播间」名单（看、删、加，能粘网址），「同时收其他平台的弹幕」也挪到这里。
+  Settings → Room: the room box is usable again; it now also holds the "switch room" list and "other platforms".
+- 切换直播间的按钮从弹幕栏挪到顶栏。主播名字不用再自己写，会自动去 B 站查。
+  The switch-room button moved to the top bar, and the streamer name is fetched from Bilibili automatically.
+- 普通链接、管理链接这些给别人用的东西都归到「设置 → 链接」，「普通链接也能切直播间」的开关也在那里。
+  Sharing links and the "public link can switch rooms" toggle are grouped under Settings → Links.
+
+### 其他 · Other
+
+- 身份标签：B 站自带的身份（总督、提督、舰长、房管等）名字固定，只改标签上显示的字和颜色；自己的标签能删了（以前删除按钮是看不见的）；改了自动保存；列出手动标成机器人的号。
+  Identity tags: built-in roles keep their names (edit only the label text and color); custom tags can be deleted again; changes save automatically; manually marked bots are listed.
+- AI 音色：音色在「设置 → 朗读 → AI 音色」里加，点「选…」用 Windows 的选文件窗口选参考音频和模型文件。
+  AI voices are added in Settings → TTS → AI voices, with a native file picker for the reference clip and model files.
+
+### 怎么更新 · How to update
+
+顶栏点「下载更新」→「重启生效」，或者下载新的安装包直接装（存档、设置都保留）。
+Click **download update** → **restart**, or run the new installer (your data is kept).
+
+---
+
 ## v0.9.13 · 2026-11-26
 
 ### 直播间 · Live room
