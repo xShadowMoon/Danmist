@@ -167,31 +167,28 @@ class RetentionTests(unittest.TestCase):
         self.assertEqual(len(self.hub.dmlog.items), 1)
         self.assertGreater(self.hub.rotate_after, time.monotonic())
 
-    def test_history_moves_only_verified_old_archives_and_protects_current(self):
+    def test_history_stays_queryable_even_with_old_export_thresholds(self):
         old = self.now - 400 * retention.DAY
         sid = '20200101-1234'
-        row = {'id':sid,'start':old,'end':old + 100}
-        self.history.save({'id':sid,'brief':row})
-        self.history.save({'id':self.state.archive_id,'brief':{'id':self.state.archive_id,'start':old,'end':old + 100}})
+        row = {'id': sid, 'start': old, 'end': old + 100}
+        self.history.save({'id': sid, 'brief': row})
+        self.history.save({'id': self.state.archive_id, 'brief': {'id': self.state.archive_id, 'start': old, 'end': old + 100}})
         summary = Path(self.history.dir) / f'{sid}.json'
         raw = summary.read_bytes()
         self.loop.run_until_complete(server.maintain_data(self.hub))
-        self.assertIsNone(self.history.get(sid))
+        self.assertIsNotNone(self.history.get(sid))
         self.assertIsNotNone(self.history.get(self.state.archive_id))
-        self.assertEqual([r['id'] for r in self.history.list()], [self.state.archive_id])
-        archive, = (self.root / '备份' / '历史冷存档').glob('*.zip')
-        with zipfile.ZipFile(archive) as f:
-            self.assertEqual(f.read(summary.name), raw)
-            self.assertEqual(json.loads(f.read('index.json')), [row])
-            self.assertIsNone(f.testzip())
+        self.assertEqual({r['id'] for r in self.history.list()}, {sid, self.state.archive_id})
+        self.assertEqual(summary.read_bytes(), raw)
+        self.assertFalse((self.root / '备份' / '历史冷存档').exists())
 
-    def test_backup_failure_retains_source_and_history_index(self):
+    def test_maintenance_does_not_call_legacy_export_or_remove_index(self):
         end = self.now - 400 * retention.DAY
         sid = '20200101-1234'
-        row = {'id':sid,'start':end-100,'end':end}
-        self.history.save({'id':sid,'brief':row})
-        with patch.object(retention.zipfile.ZipFile, 'testzip', return_value='bad'):
-            with self.assertRaises(OSError):
-                self.loop.run_until_complete(server.maintain_data(self.hub))
+        row = {'id': sid, 'start': end - 100, 'end': end}
+        self.history.save({'id': sid, 'brief': row})
+        with patch.object(retention, 'export_history', side_effect=AssertionError('不能迁走历史')) as export:
+            self.loop.run_until_complete(server.maintain_data(self.hub))
+            export.assert_not_called()
         self.assertIsNotNone(self.history.get(sid))
         self.assertEqual(self.history.list(), [row])

@@ -156,7 +156,7 @@ def viewer_gift(g):
 def viewer_snapshot(snap):
     def rows(k, keys):
         return [pick(x, keys) for x in snap.get(k) or [] if isinstance(x, dict)]
-    return {'room_id': snap.get('room_id'), 'room': pick(snap.get('room') or {}, VIEWER_ROOM), 'session_start': snap.get('session_start') or 0,
+    return {'room_id': snap.get('room_id'), 'room': pick(snap.get('room') or {}, VIEWER_ROOM), 'session_start': snap.get('session_start') or 0, 'live_from': snap.get('live_from') or 0,
             'flow': {'gift': 0, 'sc': 0, 'guard': 0}, 'dm': rows('dm', VIEWER_DM),
             'gifts': [viewer_gift(g) for g in snap.get('gifts') or []], 'scs': rows('scs', VIEWER_SC),
             'songs': rows('songs', VIEWER_SONG), 'enters': rows('enters', VIEWER_ENTER), 'guards': rows('guards', VIEWER_GUARD),
@@ -597,7 +597,7 @@ class History:
 class State:
     """本场数据。新的一场开播时自动清零，也可以在网页上手动清零；写到 data/房间号.json，重启不丢。"""
     KEYS = ('session_start', 'flow', 'dm', 'enters', 'gifts', 'scs', 'guards', 'users', 'gift_stats', 'stats',
-            'meta', 'live_start', 'was_live', 'summarized', 'last_activity', 'reqs', 'settled_at', 'songs', 'archive_id', 'dm_segmented', 'archive_pending', 'settled_dm_count', 'outages', 'sc_read')
+            'meta', 'live_start', 'was_live', 'summarized', 'last_activity', 'reqs', 'settled_at', 'songs', 'archive_id', 'dm_segmented', 'archive_pending', 'settled_dm_count', 'outages', 'sc_read', 'live_merged')
 
     def __init__(self, room_id):
         self.room_id = room_id
@@ -631,6 +631,7 @@ class State:
         self.dm_segmented = True
         self.archive_pending = None
         self.settled_dm_count = None
+        self.live_merged = []   # 断流 5 分钟内重开时 B 站给的新开播时间，算同一场（2026-11-23）
         self.outages = []  # 本场可能漏收消息的时段，最多 200 段
         self.flow = {'gift': 0.0, 'sc': 0.0, 'guard': 0.0}  # 流水，单位元
         self.dm = []      # 最近弹幕
@@ -717,6 +718,7 @@ class State:
         # 送过东西的人全带上，送礼榜才完整
         spenders = [u for u in self.users.values() if u['spend'] and u['uid'] not in ids]
         return {'room_id': self.room_id, 'room': self.room, 'session_start': self.session_start,
+                'live_from': self.live_start if self.live_merged else 0,  # 断流重开合并过：已播时长从第一次开播算
                 'archive_id': self.archive_id, 'outages': self.outages, 'flow': self.flow, 'dm': self.dm[-200:], 'enters': self.enters[-100:],
                 'gifts': self.gifts[-300:], 'scs': self.scs, 'sc_read': list(self.sc_read), 'guards': self.guards,
                 'users': recent + spenders, 'user_count': len(self.users), 'bot_uids': self.bot_uids,
@@ -1120,6 +1122,41 @@ class Hub:
             self.settle(reason, end, retry=True)
         except OSError as e:
             log.warning('下播存档将在下次重试：%s', e)
+
+    def can_resume(self, start):
+        """断流后又开播（B 站给了新的开播时间）：离下播不到 5 分钟就算同一场（2026-11-23 用户要求）。
+        下播时照常先存一份历史防丢；接回来以后，最后下播再用同一个场次编号覆盖那份存档。"""
+        s = self.state
+        if not (s.was_live and s.live_start and start > s.live_start):
+            return False
+        if s.archive_pending:
+            ref = s.archive_pending.get('end', 0)
+        elif s.summarized:
+            ref = s.settled_at
+        else:
+            # 断得太短，PREPARING 和每分钟的查询都没看到下播：按上次查到「在播」的时间算（只在程序一直开着时有）
+            ref = getattr(self, 'live_seen_at', 0)
+        return bool(ref) and start - ref < SAME_SESSION_SEC
+
+    def resume_session(self, start):
+        s = self.state
+        gap_from = s.settled_at or (s.archive_pending or {}).get('end', 0)
+        s.archive_pending = None
+        s.summarized = False
+        s.settled_at = 0
+        s.settled_dm_count = None
+        if gap_from:
+            # 断流那几分钟送的礼物、上舰本来标着「下播」，现在算回这一场
+            for key in ('gifts', 'guards'):
+                for x in getattr(s, key):
+                    if x.get('source') == '下播' and x.get('t', 0) >= gap_from - 5:
+                        x.pop('source', None)
+        s.live_merged = (list(s.live_merged or []) + [start])[-20:]
+        s.dirty = True
+        log.info('断流后又开播（隔了约 %d 秒），算同一场，接着统计：%s', max(0, start - (gap_from or start)), s.archive_id)
+        snap = s.snapshot()
+        snap['songs'] = self.songs_view()
+        self.emit('snapshot', snap)
 
     def save_offline(self):
         s = self.state
@@ -2048,13 +2085,20 @@ async def poll_room(hub, session, room_id):
             live = 1 if d.get('live_status') == 1 else 0
             start = live_ts(d.get('live_time', ''))
             s, prev = hub.state, hub.state.room.get('live')
-            if live and start and (s.summarized or s.archive_pending or
+            merged = bool(live and start and start in (s.live_merged or []))
+            if live and start and not merged and s.live_start and s.live_start != start and hub.can_resume(start):
+                # 断流 5 分钟内又开播：不清零，接着算同一场（2026-11-23）
+                hub.resume_session(start)
+                merged = True
+            if live and start and not merged and (s.summarized or s.archive_pending or
                     (s.live_start and s.live_start != start) or s.session_start < start - 60):
                 # 本场数据是这场开播之前就有的（上一场的，或者程序关着的时候换了一场）：先存历史再清零
                 log.info('新的一场（%s 开播），本场数据清零', d.get('live_time'))
                 hub.new_session('自动结算')
-            if live and start:
+            if live and start and not merged:
                 s.live_start = start
+            if live:
+                hub.live_seen_at = time.time()
             hub.room_update(title=d.get('title', ''), live=live, area=d.get('area_name', ''), area_id=d.get('area_id', 0),
                             live_time=d.get('live_time', ''), cover=d.get('user_cover', ''), uid=ruid,
                             room_real=d.get('room_id', room_id))
@@ -2291,6 +2335,7 @@ class Alerts:
                          lambda m: f'✅ {BRAND["name"]}存档写入恢复（中断约 {m} 分钟）。')
 
 
+SAME_SESSION_SEC = 300  # 断流后这么多秒内又开播算同一场（跟 QQ 机器人一样 5 分钟，2026-11-23）
 SONGBOOK_MAX = 10000  # 歌本 / 曲库最多记多少首（跟曲库导入的上限一致）
 # 主页面拆成了 index.html + static/app/ 下的样式和几段脚本（2026-11-13）
 APP_FILES = ('app/main.css', 'app/icons.js', 'app/core.js', 'app/render.js', 'app/people.js', 'app/voice.js', 'app/songs.js', 'app/news.js', 'app/ws.js', 'app/ui.js')

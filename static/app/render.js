@@ -681,6 +681,7 @@ function tick() {
     const t = Date.parse(S.room.live_time.replace(' ', 'T') + '+08:00') / 1000;
     if (t) start = t;
   }
+  if (S.live_from && S.live_from < start) start = S.live_from;  // 断流 5 分钟内重开算同一场，从第一次开播算
   $('dur').textContent = dur(Date.now() / 1000 - start);
 }
 setInterval(tick, 10000);

@@ -267,6 +267,18 @@ def validate_command(c, clean_rules):
     elif cmd == 'open_mode':
         if c.get('mode') not in ('app', 'web'):
             raise InputError('打开方式只能是软件窗口或浏览器')
+    elif cmd == 'plat_set':  # 其他平台的直播间名单（2026-11-26 起在这里先查一遍，以前到了后台才查）
+        from platforms import clean_rooms
+        try:
+            clean_rooms(c.get('rooms'))
+        except ValueError as e:
+            raise InputError(str(e))
+    elif cmd == 'music_rules':
+        from music import clean_rules as music_rules, DEFAULTS as music_defaults
+        try:
+            music_rules(c, music_defaults)
+        except ValueError as e:
+            raise InputError(str(e))
     elif cmd == 'lan_set':
         boolean(c.get('on'), '手机打开')
     elif cmd in ('music_ok', 'music_del', 'music_top'):
@@ -698,6 +710,10 @@ def state_data(saved, defaults):
                 out[key] = mapping(value, lambda k, r: {'num': number(r['num'], '数量'), 'yuan': number(r['yuan'], '金额')})
             elif key == 'outages':
                 out[key] = clean_rows(value, outage_row, 200)
+            elif key == 'live_merged':  # 断流 5 分钟内重开算同一场（2026-11-23）
+                if not isinstance(value, list):
+                    raise InputError('合并开播时间不是列表')
+                out[key] = [number(x, key, 0, MAX_TIME) for x in value][-20:]
         except (ValueError, TypeError, AttributeError, KeyError):
             out[key] = copy.deepcopy(defaults[key])
             logging.getLogger('xiaowu').warning('旧数据字段 %s 无效，使用默认值', key)
