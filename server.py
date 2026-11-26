@@ -65,6 +65,7 @@ PACK = ''
 BRAND = {'name': '雾幕', 'short': '主播'}
 HOST_PATH = '/host'
 DISCORD_WEBHOOK_FILE = ''  # 可选：从别的程序的 JSON 配置里读 discord_webhook（config.json 的 discord_webhook_file），改了那边这里跟着变
+ALERT_PORT = 0  # 只有这个端口的那份发掉线提醒（config.json 的 alert_port；同一个文件夹里另开的测试直播间不发）
 LOGIN_READONLY = False  # 登录文件是别的程序的（比如机器人的），只读不写（config.json 的 login_readonly）
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 GUARD_NAMES = {1: '总督', 2: '提督', 3: '舰长'}
@@ -2333,7 +2334,7 @@ def page_vers():
 
 
 def brand_view():
-    return {'name': BRAND['name'], 'short': BRAND['short'], 'host': HOST_PATH, 'pack': bool(PACK)}
+    return {'name': BRAND['name'], 'short': BRAND['short'], 'medal': BRAND.get('medal', '粉丝团'), 'host': HOST_PATH, 'pack': bool(PACK)}
 
 
 def render_page(name):
@@ -2876,7 +2877,7 @@ async def list_offline(request, state, hub, links, port):
 
 def apply_pack_config(cfg):
     """config.json 里包、品牌和几个可选项（2026-11-26）"""
-    global PACK, BRAND, HOST_PATH, GEQU_DIR, DISCORD_WEBHOOK_FILE, LOGIN_READONLY
+    global PACK, BRAND, HOST_PATH, GEQU_DIR, DISCORD_WEBHOOK_FILE, LOGIN_READONLY, ALERT_PORT
     def here(p):
         p = str(p or '')
         return p if not p or os.path.isabs(p) else os.path.join(DIR, p)
@@ -2884,7 +2885,7 @@ def apply_pack_config(cfg):
     if PACK and not os.path.isdir(PACK):
         raise SystemExit(f'config.json 的 pack 文件夹不存在：{PACK}')
     b = cfg.get('brand') if isinstance(cfg.get('brand'), dict) else {}
-    BRAND = {'name': str(b.get('name') or '雾幕')[:20], 'short': str(b.get('short') or '主播')[:12]}
+    BRAND = {'name': str(b.get('name') or '雾幕')[:20], 'short': str(b.get('short') or '主播')[:12], 'medal': str(b.get('medal') or '粉丝团')[:8]}
     hp = str(cfg.get('host_path') or '/host')
     if not re.fullmatch(r'/[a-z0-9-]{1,30}', hp) or hp in ('/obs', '/ws', '/img', '/static', '/api', '/art'):
         raise SystemExit('config.json 的 host_path 只能是 / 开头的小写字母、数字、横线')
@@ -2892,6 +2893,7 @@ def apply_pack_config(cfg):
     GEQU_DIR = here(cfg.get('gequ_dir'))
     DISCORD_WEBHOOK_FILE = here(cfg.get('discord_webhook_file'))
     LOGIN_READONLY = cfg.get('login_readonly') is True
+    ALERT_PORT = int(cfg.get('alert_port') or 0)
 
 
 def load_config(path):
@@ -4420,7 +4422,7 @@ async def main():
         while True:
             try:
                 await health.run(state.room, bare, args.public_url, alerts.send,
-                                 enabled=not args.no_alert and args.port == 8373)
+                                 enabled=not args.no_alert and args.port == (ALERT_PORT or 8373))
             except Exception:
                 log.warning('每日体检未完成，将稍后重试')
             await asyncio.sleep(30)
@@ -4583,7 +4585,7 @@ async def main():
         tasks.append(asyncio.create_task(load_emots()))
         tasks.append(asyncio.create_task(daily_backup(hub)))
         tasks.append(asyncio.create_task(watch_health()))
-        if not args.no_alert and (DISCORD_WEBHOOK or DISCORD_WEBHOOK_FILE):  # 填了 Discord 地址才发掉线提醒
+        if not args.no_alert and (DISCORD_WEBHOOK or DISCORD_WEBHOOK_FILE) and (not ALERT_PORT or args.port == ALERT_PORT):  # 填了 Discord 地址才发掉线提醒
             tasks.append(asyncio.create_task(watch_alerts()))
 
     for task in tasks:

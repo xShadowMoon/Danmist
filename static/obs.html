@@ -686,6 +686,7 @@ function emoText(d) {
   const s = esc(d.text);
   return s.includes('[') ? s.replace(/\[[^\[\]\s]{1,12}\]/g, k => map[k] ? `<img class="emo" src="img?u=${encodeURIComponent(map[k])}" alt="${k}" title="${k}">` : k) : s;
 }
+const SA = () => window.BRAND?.short || '主播', SM = () => window.BRAND?.medal || '粉丝团';  // 示例里怎么称呼主播、粉丝牌叫什么（2026-11-26）
 function showDm(d, quiet) {
   if (d.kind) return;  // 禁言提示只在雾幕里显示，不上直播画面
   if (!opt.bot && botUids.includes(d.uid)) return;
@@ -822,31 +823,31 @@ function demo() {
   realRoom = 1000001;
   if (str('demo', '0') === 'static') {
     setTimeout(() => {
-      const people = [['雾里看花',0,8,'主播晚上好～今天唱什么呀',12],['路过的舰长',3,21,'来了来了，今晚也陪你听歌。',24],['紫色提督',2,25,'这首歌的氛围好温柔。',33],['橙色总督',1,30,'把今天的好心情都留在这里。',46]];
-      people.forEach(([name,guard,medal_level,text,wealth],i)=>showDm({uid:8000+i,name,guard,medal:'粉丝团',medal_level,medal_room:1000001,text,face:'',wealth},true));
-      showGift({id:'sample-gift',uid:8004,name:'主播的猫',face:'',gift:'情书',num:2,yuan:104,guard:3});
-      showSc({uid:8005,name:'冬天的鱼',face:'',price:50,text:'主播辛苦啦，今天的歌超好听～',guard:0});
+      const people = [['雾里看花',0,8,`${SA()}晚上好～今天唱什么呀`,12],['路过的舰长',3,21,'来了来了，今晚也陪你听歌。',24],['紫色提督',2,25,'这首歌的氛围好温柔。',33],['橙色总督',1,30,'把今天的好心情都留在这里。',46]];
+      people.forEach(([name,guard,medal_level,text,wealth],i)=>showDm({uid:8000+i,name,guard,medal:SM(),medal_level,medal_room:1000001,text,face:'',wealth},true));
+      showGift({id:'sample-gift',uid:8004,name:`${SA()}的猫`,face:'',gift:'情书',num:2,yuan:104,guard:3});
+      showSc({uid:8005,name:'冬天的鱼',face:'',price:50,text:`${SA()}辛苦啦，今天的歌超好听～`,guard:0});
     }, 400);
     return;
   }
 
-  const names = ['雾里看花', '冬天的鱼', '主播的猫', '晚安主播', '雪糕不化', '今天也想听歌', '路过的舰长', '紫色提督', '橙色总督'];
-  const texts = ['主播晚上好～', '这首好好听！', '哈哈哈哈哈', '唱晴天吗', '来了来了', '主播今天好可爱', '打卡', '想听稻香', '好听好听好听', '下一首唱什么呀'];
+  const names = ['雾里看花', '冬天的鱼', `${SA()}的猫`, `晚安${SA()}`, '雪糕不化', '今天也想听歌', '路过的舰长', '紫色提督', '橙色总督'];
+  const texts = [`${SA()}晚上好～`, '这首好好听！', '哈哈哈哈哈', '唱晴天吗', '来了来了', `${SA()}今天好可爱`, '打卡', '想听稻香', '好听好听好听', '下一首唱什么呀'];
   const pick = a => a[Math.floor(Math.random() * a.length)];
   let i = 0;
   const user = () => { const k = Math.floor(Math.random() * names.length); return { uid: 1000 + k, name: names[k], g: k === 6 ? 3 : k === 7 ? 2 : k === 8 ? 1 : 0, lv: 4 + k * 3, w: k % 3 ? 6 + k * 5 : 0 }; };
   const step = () => {
     i++;
     const u = user(), r = Math.random(), t = Math.floor(Date.now() / 1000);
-    if (r < 0.66) handle('dm', { t, uid: u.uid, name: u.name, face: '', text: pick(texts), medal: u.uid % 4 ? '粉丝团' : '别家', medal_level: u.lv, medal_room: u.uid % 4 ? 1000001 : 1, guard: u.g, wealth: u.w, emoticon: '' });
+    if (r < 0.66) handle('dm', { t, uid: u.uid, name: u.name, face: '', text: pick(texts), medal: u.uid % 4 ? SM() : '别家', medal_level: u.lv, medal_room: u.uid % 4 ? 1000001 : 1, guard: u.g, wealth: u.w, emoticon: '' });
     else if (r < 0.86) { const g = pick([['小花花', 0.1], ['打call', 0.5], ['这个好诶', 1], ['情书', 52]]), n = 1 + Math.floor(Math.random() * 5); handle('gift', { item: { id: 'd' + i, uid: u.uid, name: u.name, face: '', gift: g[0], num: n, yuan: g[1] * n, img: '', guard: u.g, blind: '' } }); }
-    else if (r < 0.93) handle('sc', { item: { id: i, uid: u.uid, name: u.name, face: '', price: pick([30, 50, 100]), text: '主播辛苦啦，今天的歌超好听，早点休息哦～', guard: u.g } });
+    else if (r < 0.93) handle('sc', { item: { id: i, uid: u.uid, name: u.name, face: '', price: pick([30, 50, 100]), text: `${SA()}辛苦啦，今天的歌超好听，早点休息哦～`, guard: u.g } });
     else if (r < 0.97) handle('enter', { uid: u.uid, name: u.name, face: '', kind: 'enter', guard: u.g || 3 });
     else { const lv = pick([3, 3, 2, 1]); handle('guard', { item: { uid: u.uid, name: u.name, level: lv, level_name: GN[lv], num: 1, unit: '月', yuan: 198 } }); }
     setTimeout(step, 700 + Math.random() * 1100);
   };
   // 先等一下图片探测完再开始，免得第一批用不上自己画的图
-  setTimeout(() => { for (let k = 0; k < 5; k++) { const u = user(); handle('dm', { uid: u.uid, name: u.name, face: '', text: pick(texts), medal: '粉丝团', medal_level: u.lv, medal_room: 1000001, guard: u.g, wealth: u.w, emoticon: '' }); } step(); }, 400);
+  setTimeout(() => { for (let k = 0; k < 5; k++) { const u = user(); handle('dm', { uid: u.uid, name: u.name, face: '', text: pick(texts), medal: SM(), medal_level: u.lv, medal_room: 1000001, guard: u.g, wealth: u.w, emoticon: '' }); } step(); }, 400);
 }
 
 // ---------- 连接（断了自动重连） ----------

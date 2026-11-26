@@ -224,7 +224,7 @@ document.querySelectorAll('[data-k]').forEach(el => {
 });
 // 进场动画预览：改了样式或时长就播一遍示例弹幕
 function playAnim() {
-  const d = { t: Date.now() / 1000 | 0, uid: 0, name: '主播的猫', face: '', text: '主播晚上好～', medal: '粉丝团', medal_level: 15, guard: 3, emoticon: '' };
+  const d = { t: Date.now() / 1000 | 0, uid: 0, name: (window.BRAND?.short || '主播') + '的猫', face: '', text: (window.BRAND?.short || '主播') + '晚上好～', medal: window.BRAND?.medal || '粉丝团', medal_level: 15, guard: 3, emoticon: '' };
   $('animprevlist').innerHTML = dmHtml(d);
 }
 $('animprev').onclick = playAnim;

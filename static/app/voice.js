@@ -193,8 +193,8 @@ const dmText = d => fill(cfg.tts.readName ? cfg.tts.tpl.dm : '{text}', { name: s
 const giftText = it => fill(cfg.tts.tpl.gift, { name: shortName(it.name), num: it.num, gift: it.blind ? `${it.blind}爆出的${it.gift}` : it.gift }) + (cfg.tts.readPrice && it.yuan != null ? `，${Math.round(it.yuan * 100) / 100}元` : '');
 const guardText = g => fill(cfg.tts.tpl.guard, { name: shortName(g.name), level: g.level_name, num: g.num });
 const SAMPLE = {
-  dm: () => dmText({ name: '冬天的鱼', text: '主播晚上好～今天唱什么呀' }),
-  sc: () => scText({ name: '雾里看花', price: 50, text: '主播辛苦啦，今天的歌超好听，早点休息哦' }),
+  dm: () => dmText({ name: '冬天的鱼', text: ANCHOR() + '晚上好～今天唱什么呀' }),
+  sc: () => scText({ name: '雾里看花', price: 50, text: `${ANCHOR()}辛苦啦，今天的歌超好听，早点休息哦` }),
   gift: () => giftText({ name: '雪糕不化', num: 5, gift: '小花花', yuan: 0.5 }),
   guard: () => guardText({ name: '路过的舰长', level_name: '舰长', num: 1 }),
   enter: () => fill(cfg.tts.tpl.enter, { name: '晚安主播' }),

@@ -659,15 +659,16 @@ $('fixed').onchange = update;
 // ---------- 「发一条试试」 ----------
 let n = 0;
 const send = (type, data) => $('pv').contentWindow?.postMessage({ type, data }, location.origin);
-const dm = (name, text, guard, lv, wealth = 0) => send('dm', { uid: 9000 + (++n), name, face: '', text, medal: '粉丝团', medal_level: lv, medal_room: 1000001, guard, wealth, emoticon: '' });
+const SA = () => window.BRAND?.short || '主播', SM = () => window.BRAND?.medal || '粉丝团';  // 示例里怎么称呼主播、粉丝牌叫什么（2026-11-26）
+const dm = (name, text, guard, lv, wealth = 0) => send('dm', { uid: 9000 + (++n), name, face: '', text, medal: SM(), medal_level: lv, medal_room: 1000001, guard, wealth, emoticon: '' });
 const T = {
-  dm: () => dm('雾里看花', '主播晚上好～今天唱什么呀', 0, 8, 12),
+  dm: () => dm('雾里看花', `${SA()}晚上好～今天唱什么呀`, 0, 8, 12),
   g3: () => dm('路过的舰长', '来了来了，打卡', 3, 21, 24),
   g2: () => dm('紫色提督', '主播今天好可爱', 2, 25, 33),
   g1: () => dm('橙色总督', '主播冲鸭！', 1, 30, 46),
   gift: () => send('gift', { item: { id: 't' + (++n), uid: 1, name: '雪糕不化', face: '', gift: '小花花', num: 10, yuan: 1, img: '', guard: 0, blind: '' } }),
-  big: () => send('gift', { item: { id: 't' + (++n), uid: 2, name: '主播的猫', face: '', gift: '情书', num: 2, yuan: 104, img: '', guard: 3, blind: '' } }),
-  sc: () => send('sc', { item: { id: ++n, uid: 3, name: '冬天的鱼', face: '', price: 50, text: '主播辛苦啦，今天的歌超好听，早点休息哦～', guard: 0 } }),
+  big: () => send('gift', { item: { id: 't' + (++n), uid: 2, name: `${SA()}的猫`, face: '', gift: '情书', num: 2, yuan: 104, img: '', guard: 3, blind: '' } }),
+  sc: () => send('sc', { item: { id: ++n, uid: 3, name: '冬天的鱼', face: '', price: 50, text: `${SA()}辛苦啦，今天的歌超好听，早点休息哦～`, guard: 0 } }),
   buy3: () => send('guard', { item: { uid: 4, name: '路过的舰长', level: 3, level_name: '舰长', num: 1, unit: '月', yuan: 198 } }),
   buy2: () => send('guard', { item: { uid: 5, name: '紫色提督', level: 2, level_name: '提督', num: 1, unit: '月', yuan: 1998 } }),
   buy1: () => send('guard', { item: { uid: 6, name: '橙色总督', level: 1, level_name: '总督', num: 1, unit: '月', yuan: 19998 } }),
