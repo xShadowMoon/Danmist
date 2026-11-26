@@ -23,19 +23,60 @@ function newsDialog(tab) {
   if (tab === 'news' && latest) { try { localStorage.setItem('xw-news-seen', latest.v); } catch {} $('newsbtn').classList.remove('dot'); }
   $('guide').classList.add('open'); $('mask').classList.add('show');
 }
+let guideMeta = null;
+fetch('/static/guide/meta.json').then(r => r.ok ? r.json() : null).then(j => { guideMeta = j; }).catch(() => {});
+// 截图是用默认主题色拍的：用户换了主题色，就把图转一下色相（只转色相，深浅不动）
+function hueOf(c) {
+  const m = String(c).match(/#([0-9a-f]{6})/i), rgb = m ? [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16) / 255) : (String(c).match(/[\d.]+/g) || []).slice(0, 3).map(x => x / 255);
+  if (rgb.length < 3) return null;
+  const [r, g, b] = rgb, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  if (d < 0.08) return null;  // 灰色没有色相
+  const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (h * 60 + 360) % 360;
+}
+function guideFilter(theme) {
+  const now = hueOf(getComputedStyle(document.documentElement).getPropertyValue('--mist-d').trim()), was = hueOf(guideMeta?.accent?.[theme]);
+  if (now == null || was == null) return '';
+  const d = Math.round(((now - was + 540) % 360) - 180);
+  return Math.abs(d) < 10 ? '' : `hue-rotate(${d}deg)`;
+}
+function drawCards(rail, body) {
+  rail.style.display = 'none';
+  const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', f = guideFilter(theme);
+  const q = $('gsearch').value.trim().toLowerCase();
+  const cards = NEWS.cards.filter(c => !q || `${c.n} ${c.d}`.toLowerCase().includes(q));
+  const more = q ? NEWS.features.flatMap(g => g.items.filter(x => `${x.n} ${x.at} ${g.name}`.toLowerCase().includes(q))).slice(0, 30) : [];
+  body.innerHTML = (cards.length ? `<div class="gcards">${cards.map(c => `<button class="gcard" data-go="${esc(c.go)}" data-n="${esc(c.n)}" title="点一下带你过去">
+      <span class="gimg"><img src="/static/guide/${esc(c.id)}-${theme}.webp" alt="" loading="lazy"${f ? ` style="filter:${f}"` : ''} onerror="this.parentNode.classList.add('none')"></span>
+      <b>${esc(c.n)}</b><small>${esc(c.d)}</small></button>`).join('')}</div>` : '')
+    + (more.length ? `<div class="ghead gmore"><h3>${icon('search')} 相关设置</h3></div><div class="ggrid">${more.map(x => `<button class="gtile${x.go ? '' : ' nogo'}" data-go="${esc(x.go || '')}" data-n="${esc(x.n)}"><span><b>${esc(x.n)}</b></span></button>`).join('')}</div>` : '')
+    + (!cards.length && !more.length ? '<div class="gnone">没找到</div>' : '');
+  body.scrollTop = 0;
+  body.querySelectorAll('[data-go]').forEach(t => { if (t.dataset.go) t.onclick = () => goTo(t.dataset.go, t.dataset.n); });
+}
 function drawGuide() {
   const rail = $('grail'), body = $('gbody'), latestV = NEWS.news[0]?.v;
   if (guideTab === 'news') {
     rail.style.display = 'none';
     // 2026-11-19 减字：每次更新只显示一行标题，点开才看细节；最新那条默认展开；一次只列最近 12 次
-    const list = NEWS.news.slice(0, newsMore ? 200 : 12);
+    const list = NEWS.news.slice(0, newsMore ? 200 : 8);  // 2026-11-26 再减字：默认只列最近 8 次，每次最多先露 3 条
     body.innerHTML = `<div class="nlist">${list.map((n, i) => `<details class="nrel"${i === 0 ? ' open' : ''}><summary><b>${esc(n.title || '更新')}</b><small>${esc(String(n.v).slice(5).replace(/^(\d+)\.(\d+).*$/, '$1/$2'))}</small></summary>${n.items.map(x => {
       const m = String(x).match(/^(\S{1,3})\s+(.*)$/s);  // 开头的图标单独放一格
       return `<div class="nline"><i>${m ? esc(m[1]) : '•'}</i><span>${esc(m ? m[2] : x)}</span></div>`;
-    }).join('')}</details>`).join('')}${!newsMore && NEWS.news.length > 12 ? '<button class="btn sm nmore" id="nmore">更早的</button>' : ''}</div>`;
+    }).join("")}</details>`).join('')}${!newsMore && NEWS.news.length > 8 ? '<button class="btn sm nmore" id="nmore">更早的</button>' : ''}</div>`;
+    body.querySelectorAll('.nrel').forEach(d => {  // 一次更新超过 3 条的，后面的先收起来
+      const ls = d.querySelectorAll('.nline');
+      if (ls.length <= 3) return;
+      ls.forEach((l, i) => { if (i >= 3) l.hidden = true; });
+      const b = document.createElement('button'); b.className = 'btn sm nmore'; b.textContent = `还有 ${ls.length - 3} 条`;
+      b.onclick = () => { ls.forEach(l => { l.hidden = false; }); b.remove(); };
+      d.append(b);
+    });
     if ($('nmore')) $('nmore').onclick = () => { newsMore = true; drawGuide(); };
     return;
   }
+  // 2026-11-26 用户：字太多。有 cards 就显示卡片：一张截图（跟着深浅色、主题色）+ 一句话，点了直接带过去；搜索时下面再列相关的小设置
+  if (NEWS.cards?.length) return drawCards(rail, body);
   rail.style.display = '';
   // 一次只看一类（左边点哪类右边就只显示哪类）；搜索时跨所有分类找
   const q = $('gsearch').value.trim().toLowerCase();

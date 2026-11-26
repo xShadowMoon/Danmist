@@ -871,6 +871,16 @@ body.fdrag iframe { pointer-events: none; }
 #guide .grail button em { position: absolute; right: 10px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: #e5708a; }
 #guide .grail { width: 150px; padding: 12px 10px; gap: 4px; }
 #guide .gbody { flex: 1; min-width: 0; overflow-y: auto; padding: 18px 24px 26px; }
+/* 功能卡片（2026-11-26）：一张截图 + 一句话 */
+#guide .gcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+#guide .gcard { display: flex; flex-direction: column; gap: 2px; padding: 0 0 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); cursor: pointer; overflow: hidden; text-align: left; transition: transform .15s, box-shadow .15s, border-color .15s; }
+#guide .gcard:hover { transform: translateY(-2px); border-color: var(--mist); box-shadow: 0 6px 18px rgba(0,0,0,.14); }
+#guide .gcard .gimg { display: block; aspect-ratio: 4 / 3; background: var(--input); border-bottom: 1px solid var(--line); margin-bottom: 8px; overflow: hidden; }
+#guide .gcard .gimg img { width: 100%; height: 100%; object-fit: cover; object-position: left top; display: block; }
+#guide .gcard .gimg.none img { display: none; }
+#guide .gcard b { padding: 0 12px; font-size: 14.5px; }
+#guide .gcard small { padding: 0 12px; font-size: 12.5px; color: var(--ink3); }
+#guide .gmore { margin-top: 22px; }
 #guide .ghead { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 #guide .ghead i { font-style: normal; width: 40px; height: 40px; border-radius: 13px; background: var(--chip); display: grid; place-items: center; font-size: 20px; }
 #guide .ghead h3 { margin: 0; font-size: 18px; }
@@ -1486,3 +1496,13 @@ body.touring #spot { transition: opacity .3s, left .2s, top .2s, width .2s, heig
 /* 设置 → 账号（2026-11-26）：头像和名字排一行 */
 [data-sp="acct"] .lkrow > div:first-child { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 [data-sp="acct"] .lkrow > div:first-child small { flex-basis: 100%; margin-left: 36px; margin-top: -4px; }
+/* SC 深色模式（2026-11-26 用户：上半截太亮）：整张卡片用同一个深色，上半截稍微再深一点，字都是白的 */
+[data-theme="dark"] .sc .h { background-color: color-mix(in srgb, var(--scd) 78%, #000) !important; color: #fff !important; }
+[data-theme="dark"] .sc .h .n { color: #fff; }
+[data-theme="dark"] .sc .h .left, [data-theme="dark"] .sc .h .tm { color: rgba(255,255,255,.7); }
+[data-theme="dark"] .sc .h .rd { border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.12); color: rgba(255,255,255,.85); }
+[data-theme="dark"] .sc .h .rdtag { background: rgba(255,255,255,.9); color: var(--scd); }
+[data-theme="dark"] .sc .h .av { border-color: rgba(255,255,255,.5); }
+[data-theme="dark"] .sc .bar { background: rgba(255,255,255,.12); }
+[data-theme="dark"] .sc .bar i { background: rgba(255,255,255,.75); opacity: 1; }
+[data-theme="dark"] .sc { box-shadow: 0 3px 10px rgba(0,0,0,.25); }
