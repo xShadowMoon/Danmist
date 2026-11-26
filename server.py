@@ -2364,7 +2364,7 @@ SAME_SESSION_SEC = 300  # 断流后这么多秒内又开播算同一场（跟 QQ
 SONGBOOK_MAX = 10000  # 歌本 / 曲库最多记多少首（跟曲库导入的上限一致）
 # 主页面拆成了 index.html + static/app/ 下的样式和几段脚本（2026-11-13）
 APP_FILES = ('app/main.css', 'app/icons.js', 'app/core.js', 'app/render.js', 'app/people.js', 'app/voice.js', 'app/songs.js', 'app/news.js', 'app/ws.js', 'app/ui.js')
-PAGES = ('index.html', 'obs.html', 'obs-songs.html', 'obs-setup.html', 'workbench.js', 'workbench.css') + APP_FILES
+PAGES = ('index.html', 'obs.html', 'obs-songs.html', 'obs-setup.html', 'obs-lyrics.html', 'workbench.js', 'workbench.css') + APP_FILES
 
 
 def static_path(rel):
@@ -2384,7 +2384,7 @@ def pack_file(rel):
     return p if os.path.isfile(p) else ''
 
 
-EXT_PAGES = ('index', 'obs', 'obs-setup', 'obs-songs', 'obs-music')
+EXT_PAGES = ('index', 'obs', 'obs-setup', 'obs-songs', 'obs-music', 'obs-lyrics')
 
 
 def page_vers():
@@ -4475,6 +4475,16 @@ async def main():
     def local_request(request):
         return request.remote in ('127.0.0.1', '::1') and 'CF-Connecting-IP' not in request.headers
 
+    async def lyrics_now(request):
+        """OBS 歌词源（2026-11-26）：歌单里「正在唱」的那首和它在曲库里的歌词。歌词本来就是要上屏的，不用管理身份"""
+        cur = next((x for x in hub.state.songs if x.get('now')), None)
+        if not cur:
+            return web.json_response({}, headers={'Cache-Control': 'no-store'})
+        name = cur.get('name', '')
+        row = hub.songbook.get(name) or next((v for k, v in hub.songbook.items() if k.casefold() == name.casefold()), None) or {}
+        return web.json_response({'name': name, 'artist': row.get('artist', ''), 'lyrics': str(row.get('lyrics') or '')[:20000]},
+                                 headers={'Cache-Control': 'no-store'})
+
     async def music_url(request):
         """放歌页来要「现在这首」的播放地址（2026-11-25）。只给正在放的那首，不能拿它去下别的歌"""
         it = hub.music.current()
@@ -4821,6 +4831,8 @@ async def main():
     app.router.add_post('/api/tts/config', tts_config)
     app.router.add_get('/api/music/url', music_url)
     app.router.add_get('/obs-music', page('obs-music'))
+    app.router.add_get('/obs-lyrics', page('obs-lyrics'))  # OBS 歌词源（2026-11-26）
+    app.router.add_get('/api/lyrics/now', lyrics_now)
     if GEQU_DIR:
         app.router.add_get('/gequ.html', gequ)
         app.router.add_get('/gequ.json', gequ)

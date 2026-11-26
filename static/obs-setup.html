@@ -193,7 +193,7 @@ h4.cap { margin: 10px 0 8px; font-size: 12px; font-weight: 700; color: var(--mis
 </head>
 <body>
 <aside id="panel">
-  <header><h1><i class="ic" data-ic="video"></i> OBS</h1><div class="modes" id="modes"><button data-mode="dm" class="on"><i class="ic" data-ic="p-dm"></i> 弹幕</button><button data-mode="songs"><i class="ic" data-ic="music"></i> 歌单</button></div><button id="ohelp" title="怎么用"><i class="ic" data-ic="help"></i></button></header>
+  <header><h1><i class="ic" data-ic="video"></i> OBS</h1><div class="modes" id="modes"><button data-mode="dm" class="on"><i class="ic" data-ic="p-dm"></i> 弹幕</button><button data-mode="songs"><i class="ic" data-ic="music"></i> 歌单</button><button data-mode="lyrics"><i class="ic" data-ic="lyrics"></i> 歌词</button></div><button id="ohelp" title="怎么用"><i class="ic" data-ic="help"></i></button></header>
   <div id="pwrap"><nav id="pnav"></nav><div id="fields"></div></div>
   <div id="out">
     <input id="url" readonly title="OBS 浏览器源用的网址">
@@ -331,9 +331,21 @@ SF.push(...(SX.songFields || []));
 SF.find(f => f.k === 'style').opts.push(...(SX.songStyles || []));
 for (const f of [...F, ...SF]) if (f.k === 'pal') { f.opts = f.opts.map(([k, n]) => [k, SX.palLabel?.[k] || n]); }
 // 两种 OBS 页面：弹幕（/obs）和歌单（/obs-songs），各有各的设置，分开存
-const MODES = { dm: { F, key: 'xw-obs', page: 'obs', tab: 'look' }, songs: { F: SF, key: 'xw-obs-songs', page: 'obs-songs', tab: 'songs' } };
+// 歌词（2026-11-26）：歌单里「正在唱」的那首，曲库里填了歌词就上屏，按时间轴或者几秒一行往下滚
+const LF = [
+  { k: 'size', tab: 'lyrics', label: '🔠 字号', type: 'range', min: 14, max: 60, step: 1, def: 26, unit: 'px' },
+  { k: 'lines', tab: 'lyrics', label: '📏 显示几行', type: 'range', min: 1, max: 12, step: 1, def: 5, unit: '行' },
+  { k: 'speed', tab: 'lyrics', label: '⏩ 滚动', type: 'range', min: 0, max: 15, step: 0.5, def: 4, unit: '秒/行', zero: '不滚动', tip: '没有时间轴的歌词按这个速度往下滚，从标「正在唱」那一刻开始；带 [00:12.30] 时间轴的按时间走' },
+  { k: 'align', tab: 'lyrics', label: '↔ 对齐', type: 'select', def: 'center', opts: [['center', '居中'], ['left', '靠左'], ['right', '靠右']] },
+  { k: 'now_color', tab: 'lyrics', label: '🎨 当前这句', type: 'color', def: '', tip: '不改就是金色' },
+  { k: 'title', tab: 'lyrics', label: '🎵 显示歌名', type: 'check', def: true },
+  { k: 'w', tab: 'lyrics', label: '📐 宽', type: 'num', min: 150, max: 1920, step: 10, def: 600, unit: 'px', local: true, tip: 'OBS 浏览器源的宽度' },
+  { k: 'h', tab: 'lyrics', label: '📐 高', type: 'num', min: 100, max: 1080, step: 10, def: 300, unit: 'px', local: true, tip: 'OBS 浏览器源的高度' },
+];
+const MODES = { dm: { F, key: 'xw-obs', page: 'obs', tab: 'look' }, songs: { F: SF, key: 'xw-obs-songs', page: 'obs-songs', tab: 'songs' },
+  lyrics: { F: LF, key: 'xw-obs-lyrics', page: 'obs-lyrics', tab: 'look' } };
 let mode = 'dm';
-try { if (localStorage.getItem('xw-obs-mode') === 'songs') mode = 'songs'; } catch {}
+try { const sm = localStorage.getItem('xw-obs-mode'); if (sm === 'songs' || sm === 'lyrics') mode = sm; } catch {}
 let fields, cfg;
 function loadMode() {
   F = fields = MODES[mode].F;
@@ -373,7 +385,7 @@ function setMode(m) {
   mode = m;
   try { localStorage.setItem('xw-obs-mode', m); } catch {}
   loadMode();
-  document.body.classList.toggle('songs', m === 'songs');
+  document.body.classList.toggle('songs', m !== 'dm');  // 歌单、歌词都不要弹幕那套预览按钮
   $('modes').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.mode === m));
   draw(); update();
 }
@@ -395,6 +407,9 @@ const PAGES = {
     ['color', 'palette', '颜色', 'COLOR'],
     ['show', 'eye', '显示', [['显示什么', [...(SX.showExtra || []), 'head', 'count', 'num', 'light']], ['标题和底板', ['head_text', 'bg']]]],
     ['pos', 'grid', '位置', [['位置', ['align', 'pos']]]],
+  ],
+  lyrics: [
+    ['look', 'lyrics', '歌词', [['常用', ['size', 'lines', 'speed', 'align', 'now_color', 'title']]]],
   ],
 };
 let curPg = 'look';
@@ -451,7 +466,7 @@ function renderPage(id, groups) {
   const out = [];
   if (id === 'look') {
     if (mode === 'dm') out.push(`<fieldset><legend>选样式</legend><div class="pick">${Object.entries(LOOKS).map(([k, [ic, name]]) => `<button data-look="${k}"${lookNow() === k ? ' class="on"' : ''}><i>${lab(ic + ' ').trim()}</i>${name}</button>`).join('')}</div><small class="hint" title="OBS 浏览器源要在「页面权限」里给「读取用户信息」才能读到场景名">OBS 场景名里写 [${LOOKS[lookNow()][1]}] 之类，切场景自动换样式</small></fieldset>`);
-    else out.push(`<fieldset><legend>选样式</legend><div class="pick">${Object.entries(SONG_LOOKS).map(([k, [ic, name]]) => `<button data-seg="style" data-val="${k}"${cfg.style === k ? ' class="on"' : ''}><i>${icon(ic)}</i>${name}</button>`).join('')}</div></fieldset>`);
+    else if (mode === 'songs') out.push(`<fieldset><legend>选样式</legend><div class="pick">${Object.entries(SONG_LOOKS).map(([k, [ic, name]]) => `<button data-seg="style" data-val="${k}"${cfg.style === k ? ' class="on"' : ''}><i>${icon(ic)}</i>${name}</button>`).join('')}</div></fieldset>`);
   }
   if (groups === 'COLOR') return pageKeys(groups).length ? `<fieldset><legend>名字和弹幕的颜色</legend>${colorTable()}</fieldset>` : null;
   for (const [legend, keys] of groups) {
@@ -698,7 +713,7 @@ applyBar();
 
 if (window !== window.top) document.querySelector('#panel > header').style.display = 'none';  // 嵌在雾幕里时外面已经有标题了
 $('modes').onclick = e => { const b = e.target.closest('[data-mode]'); if (b && b.dataset.mode !== mode) setMode(b.dataset.mode); };
-if (new URLSearchParams(location.search).get('mode') === 'songs') mode = 'songs';  // 从雾幕的歌单直接点过来
+if (['songs', 'lyrics'].includes(new URLSearchParams(location.search).get('mode'))) mode = new URLSearchParams(location.search).get('mode');  // 从雾幕的歌单直接点过来
 setMode(mode);
 // 「直播间」能选哪些：跟雾幕的切房名单一样（2026-11-21）
 fetch('api/xrooms').then(r => r.json()).then(j => {

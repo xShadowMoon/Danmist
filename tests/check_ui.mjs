@@ -47,7 +47,7 @@ try {
   // ---------- 1. 每个页面 ----------
   await send('Page.navigate', { url: base + '/' }); await sleep(2500);
   await ev(`(async () => { const j = await (await fetch('/static/news.json')).json().catch(() => ({})); for (const k of ['xw-tour','xw-obs-tour','xw-pwa-asked']) localStorage.setItem(k, '1'); localStorage.setItem('xw-news-seen', (j.news && j.news[0] && j.news[0].v) || '9'); })()`);
-  for (const p of process.env.UI_SKIP_PAGES ? [] : ['/', '/host', '/obs', '/obs?style=luna&demo=1', '/obs?style=bubble&demo=1', '/obs-setup', '/obs-songs?demo=1', '/obs-songs?style=vinyl&demo=1', '/obs-music']) {
+  for (const p of process.env.UI_SKIP_PAGES ? [] : ['/', '/host', '/obs', '/obs?style=luna&demo=1', '/obs?style=bubble&demo=1', '/obs-setup', '/obs-songs?demo=1', '/obs-songs?style=vinyl&demo=1', '/obs-music', '/obs-lyrics?demo=1', '/obs-setup?mode=lyrics']) {
     probs = [];
     await send('Page.navigate', { url: base + p }); await sleep(3500);
     ok(!probs.length, `页面 ${p}${probs.length ? '：' + [...new Set(probs)].join('；') : ''}`);

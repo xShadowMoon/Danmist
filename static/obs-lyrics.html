@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="/art/icon-32.png" sizes="32x32"><link rel="icon" href="/art/icon-64.png" sizes="64x64">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>雾幕 · OBS 歌词</title>
+<link rel="stylesheet" href="static/fonts/fonts.css">
+<style>
+/* OBS 歌词源（2026-11-26）：歌单里标「正在唱」的那首，曲库里填过歌词就上屏。
+   歌词带 [01:23.45] 时间轴的按时间走（从标「正在唱」那一刻算）；没有时间轴的按「几秒一行」往下滚，speed=0 就不滚 */
+:root { --size: 26px; --lines: 5; --ink: #ffffff; --now: #ffd47a; --align: center; }
+html, body { margin: 0; height: 100%; background: transparent !important; overflow: hidden; }
+body { font: 600 var(--size)/1.6 var(--font, "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif); color: var(--ink); text-align: var(--align); }
+#box { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; box-sizing: border-box; }
+.ttl { font-size: .66em; opacity: .9; margin-bottom: .3em; paint-order: stroke fill; -webkit-text-stroke: .12em rgba(18, 18, 40, .85); text-shadow: 0 2px 4px rgba(0, 0, 0, .45); }
+.ttl:empty { display: none; }
+.win { position: relative; height: calc(var(--lines) * 1.6em); overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); }
+.lines { position: absolute; left: 0; right: 0; top: 0; transition: transform .6s ease; }
+.l { height: 1.6em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .5; transition: opacity .4s, color .4s;
+  paint-order: stroke fill; -webkit-text-stroke: .12em rgba(18, 18, 40, .85); text-shadow: 0 2px 4px rgba(0, 0, 0, .45); }
+.l.on { opacity: 1; color: var(--now); }
+.empty { font-size: .6em; opacity: .6; }
+.noscroll .l { opacity: .95; }
+</style>
+</head>
+<body>
+<div id="box"><div class="ttl" id="ttl"></div><div class="win"><div class="lines" id="lines"></div></div></div>
+<script>
+const P = new URLSearchParams(location.search);
+const str = (k, d) => P.has(k) ? P.get(k) : d;
+const num = (k, d) => { const v = Number(P.get(k)); return P.has(k) && Number.isFinite(v) ? v : d; };
+const opt = {
+  size: Math.max(12, Math.min(80, num('size', 26))), lines: Math.max(1, Math.min(15, num('lines', 5))), speed: Math.max(0, Math.min(60, num('speed', 4))),
+  align: ['left', 'right'].includes(str('align', '')) ? str('align', '') : 'center', now: str('now_color', '') || '', title: str('title', '1') !== '0',
+  demo: ['1', 'static'].includes(str('demo', '0')),
+};
+const R = document.documentElement.style;
+R.setProperty('--size', opt.size + 'px'); R.setProperty('--lines', opt.lines); R.setProperty('--align', opt.align);
+{ const v = opt.now.replace(/^#/, ''); if (/^[0-9a-f]{6}$/i.test(v)) R.setProperty('--now', '#' + v); }  // now_color=ffd47a（设置页存的不带 #）
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = id => document.getElementById(id);
+let song = '', rows = [], timed = false, since = 0, shown = -1;
+// 一行一句；带 [mm:ss.xx] 的记下时间（一行好几个时间的算好几句）
+function parse(text) {
+  const out = [];
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const times = [...raw.matchAll(/\[(\d{1,2}):(\d{1,2}(?:\.\d{1,3})?)\]/g)].map(m => Number(m[1]) * 60 + Number(m[2]));
+    const line = raw.replace(/\[[^\]]*\]/g, '').trim();
+    if (!line && !times.length) continue;
+    if (times.length) times.forEach(t => out.push({ t, s: line })); else out.push({ t: null, s: line });
+  }
+  timed = out.length > 0 && out.every(x => x.t != null);
+  if (timed) out.sort((a, b) => a.t - b.t);
+  return out.filter(x => x.s);
+}
+function draw() {
+  $('ttl').textContent = opt.title ? song : '';
+  $('lines').innerHTML = rows.length ? rows.map(r => `<div class="l">${esc(r.s)}</div>`).join('') : (song ? '<div class="l empty">曲库里还没有这首的歌词</div>' : '');
+  document.body.classList.toggle('noscroll', !timed && !opt.speed);
+  shown = -1; tick();
+}
+function tick() {
+  if (!rows.length) return;
+  const el = (Date.now() - since) / 1000;
+  let i = 0;
+  if (timed) { for (let k = 0; k < rows.length; k++) if (rows[k].t <= el) i = k; }
+  else if (opt.speed > 0) i = Math.min(rows.length - 1, Math.floor(el / opt.speed));
+  else return;  // 不滚：从头摆着
+  if (i === shown) return;
+  shown = i;
+  const kids = $('lines').children;
+  for (let k = 0; k < kids.length; k++) kids[k].classList.toggle('on', k === i);
+  const mid = Math.floor((opt.lines - 1) / 2);
+  $('lines').style.transform = `translateY(calc(${-Math.max(0, i - mid)} * 1.6em))`;
+}
+function setSong(name, lyrics) {
+  if (name === song && rows.length) return;
+  song = name || ''; rows = parse(lyrics); since = Date.now(); draw();
+}
+async function poll() {
+  try {
+    const j = await (await fetch('api/lyrics/now', { cache: 'no-store' })).json();
+    setSong(j.name || '', j.lyrics || '');
+  } catch {}
+}
+if (opt.demo) setSong('晴天（示例）', '故事的小黄花\n从出生那年就飘着\n童年的荡秋千\n随记忆一直晃到现在\nRe So So Si Do Si La\nSo La Si Si Si Si La Si La So\n吹着前奏望着天空\n我想起花瓣试着掉落');
+else { poll(); setInterval(poll, 3000); }
+setInterval(tick, 250);
+</script>
+</body>
+</html>
