@@ -23,6 +23,10 @@ REPO = 'xShadowMoon/Danmist'  # 2026-11-25 仓库从 bili-danmaku-board 改名�
 REPOS = ('xshadowmoon/bili-danmaku-board', 'xshadowmoon/danmist')  # 下载地址认这两个名字（比的时候不分大小写）
 LATEST_API = f'https://api.github.com/repos/{REPO}/releases/latest'
 RELEASES_PAGE = f'https://github.com/{REPO}/releases/latest'
+# 国内从 GitHub 下载常常超时（2026-11-26）：直连不行就依次换这些公共加速再试。文件一律按 GitHub 接口给的 sha256 核对，
+# 加速站改过的文件装不上。全都不行就提示去百度网盘下安装包
+MIRRORS = ('', 'https://ghfast.top/', 'https://gh-proxy.com/')
+NETDISK = 'https://pan.baidu.com/s/1Ag5Ykctgn8S5OyVNB30jSg?pwd=xn55'
 FIRST_DELAY = 20          # 启动后等一会儿再查，先让直播间连上
 INTERVAL = 24 * 3600      # 之后每天查一次
 RESTART_CODE = 75         # 服务用这个退出码告诉启动器：换上新版本再开
@@ -68,6 +72,9 @@ async def fetch_latest(session, url=LATEST_API):
             continue
         if u.endswith('-windows-x64.zip'):
             info['zip'], info['size'] = u, int(a.get('size') or 0)
+            dg = str(a.get('digest') or '')
+            if re.fullmatch(r'sha256:[0-9a-f]{64}', dg):
+                info['digest'] = dg[7:]  # GitHub 自己算的校验码（2026-11-26 起优先用它，加速站下的也按它核对）
         elif u.endswith('-windows-x64.zip.sha256'):
             info['sha'] = u
     return info
@@ -108,34 +115,32 @@ def staged(app_dir):
 
 async def download(session, info, app_dir, progress=None):
     """下载新版压缩包，对 sha256，解压到 data/update/v版本/。成功返回版本号，失败抛 ValueError（中文原因）"""
-    if not info or not info.get('zip') or not info.get('sha'):
+    if not info or not info.get('zip') or not (info.get('sha') or info.get('digest')):
         raise ValueError('这个版本没有 Windows 压缩包，去 GitHub 手动下载')
     d = update_dir(app_dir)
     os.makedirs(d, exist_ok=True)
     zpath = os.path.join(d, 'new.zip')
-    async with session.get(info['sha'], timeout=aiohttp.ClientTimeout(total=30)) as r:
-        if r.status != 200:
-            raise ValueError(f'校验文件下载失败（{r.status}）')
-        want = ((await r.text()).split() or [''])[0].strip().lower()
+    want = info.get('digest') or ''
+    if not want:  # 旧的发布没有 GitHub 校验码：下 .sha256 文件（这个只从 GitHub 直接下，不走加速站）
+        async with session.get(info['sha'], timeout=aiohttp.ClientTimeout(total=30)) as r:
+            if r.status != 200:
+                raise ValueError(f'校验文件下载失败（{r.status}）')
+            want = ((await r.text()).split() or [''])[0].strip().lower()
     if not re.fullmatch(r'[0-9a-f]{64}', want):
         raise ValueError('校验文件格式不对')
-    h, got, total = hashlib.sha256(), 0, int(info.get('size') or 0)
-    async with session.get(info['zip'], timeout=aiohttp.ClientTimeout(total=1800, sock_read=60)) as r:
-        if r.status != 200:
-            raise ValueError(f'压缩包下载失败（{r.status}）')
-        total = int(r.headers.get('Content-Length') or total or 0)
-        with open(zpath, 'wb') as f:
-            async for chunk in r.content.iter_chunked(256 * 1024):
-                f.write(chunk)
-                h.update(chunk)
-                got += len(chunk)
-                if got > 300 * 1024 * 1024:
-                    raise ValueError('压缩包太大了，不对劲')
-                if progress and total:
-                    progress(min(99, got * 100 // total))
-    if h.hexdigest() != want:
-        os.remove(zpath)
-        raise ValueError('下载的文件校验不对（可能没下完），再点一次')
+    mirrors = MIRRORS if info.get('digest') else ('',)
+    why = []
+    for m in mirrors:
+        try:
+            await _fetch(session, m + info['zip'], zpath, want, int(info.get('size') or 0), progress)
+            if m:
+                log.info('GitHub 直接下载不行，用加速站 %s 下好了', m)
+            break
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError, ValueError) as e:
+            why.append(f"{m or 'GitHub'}：{e or type(e).__name__}")
+            log.info('更新下载失败（%s）：%s', m or 'GitHub', e)
+    else:
+        raise ValueError('GitHub 和国内加速都没下载成功（' + '；'.join(why)[:200] + f'）。可以去百度网盘下载新版安装包，直接装一遍就是升级：{NETDISK}')
     folder = os.path.join(d, 'v' + info['v'])
     shutil.rmtree(folder, ignore_errors=True)
     with zipfile.ZipFile(zpath) as z:
@@ -154,6 +159,27 @@ async def download(session, info, app_dir, progress=None):
     if progress:
         progress(100)
     return info['v']
+
+
+async def _fetch(session, url, zpath, want, size, progress):
+    """下载一个压缩包到 zpath，边下边算 sha256，对不上就删掉报错"""
+    h, got, total = hashlib.sha256(), 0, size
+    async with session.get(url, timeout=aiohttp.ClientTimeout(total=1800, sock_connect=15, sock_read=60)) as r:
+        if r.status != 200:
+            raise ValueError(f'压缩包下载失败（{r.status}）')
+        total = int(r.headers.get('Content-Length') or total or 0)
+        with open(zpath, 'wb') as f:
+            async for chunk in r.content.iter_chunked(256 * 1024):
+                f.write(chunk)
+                h.update(chunk)
+                got += len(chunk)
+                if got > 300 * 1024 * 1024:
+                    raise ValueError('压缩包太大了，不对劲')
+                if progress and total:
+                    progress(min(99, got * 100 // total))
+    if h.hexdigest() != want:
+        os.remove(zpath)
+        raise ValueError('下载的文件校验不对（没下完或者被改过）')
 
 
 def apply(app_dir, say=print, later=()):
