@@ -26,6 +26,12 @@ RELEASES_PAGE = f'https://github.com/{REPO}/releases/latest'
 # 国内从 GitHub 下载常常超时（2026-11-26）：直连不行就依次换这些公共加速再试。文件一律按 GitHub 接口给的 sha256 核对，
 # 加速站改过的文件装不上。全都不行就提示去百度网盘下安装包
 MIRRORS = ('', 'https://ghfast.top/', 'https://gh-proxy.com/')
+MIRROR_NAMES = {'': 'GitHub', 'https://ghfast.top/': '国内加速 1', 'https://gh-proxy.com/': '国内加速 2'}
+# 查新版本：GitHub 接口连不上时走这个（2026-11-26）。只用来提示「有新版本」——经它拿到的信息不带校验码，
+# 下载时还要直接从 GitHub 拿到校验码才下，免得加速站给一个假的新版本
+API_MIRROR = 'https://gh-proxy.com/'
+PROBE_BYTES = 512 * 1024   # 下载前每个地址先试下这么多，按速度排先后
+SLOW_BPS = 100 * 1024      # 下了 15 秒平均还不到这个速度，换下一个地址（最后一个就慢慢下完）
 NETDISK = 'https://pan.baidu.com/s/1Ag5Ykctgn8S5OyVNB30jSg?pwd=xn55'
 FIRST_DELAY = 20          # 启动后等一会儿再查，先让直播间连上
 INTERVAL = 24 * 3600      # 之后每天查一次
@@ -45,8 +51,9 @@ def is_newer(tag, current=VERSION):
     return bool(latest and now and latest > now)
 
 
-async def fetch_latest(session, url=LATEST_API):
-    """返回 {'v', 'url' 发布页, 'name' 标题, 'zip'/'sha'/'size' Windows 压缩包}；查不到返回 None。"""
+async def fetch_latest(session, url=LATEST_API, mirror=True):
+    """返回 {'v', 'url' 发布页, 'name' 标题, 'zip'/'sha'/'size' Windows 压缩包}；查不到返回 None。
+    GitHub 连不上时再经国内加速问一次（mirror=False 不问），这样拿到的带 'via': 'mirror'，没有校验码"""
     try:
         async with session.get(url, headers={'Accept': 'application/vnd.github+json'},
                                timeout=aiohttp.ClientTimeout(total=15)) as resp:
@@ -54,6 +61,14 @@ async def fetch_latest(session, url=LATEST_API):
                 return None
             data = await resp.json(content_type=None)
     except Exception as e:  # 断网、超时、GitHub 限流都不算错，明天再查
+        if mirror and url == LATEST_API:
+            info = await fetch_latest(session, API_MIRROR + url, mirror=False)
+            if info:
+                log.info('GitHub 连不上（%s），经国内加速查到最新版本 %s', type(e).__name__, info['v'])
+                info.pop('digest', None)
+                info.pop('sha', None)
+                info['via'] = 'mirror'
+                return info
         log.info('检查新版本没成功（%s），明天再试', type(e).__name__)
         return None
     if not isinstance(data, dict) or data.get('draft') or data.get('prerelease'):
@@ -115,6 +130,8 @@ def staged(app_dir):
 
 async def download(session, info, app_dir, progress=None):
     """下载新版压缩包，对 sha256，解压到 data/update/v版本/。成功返回版本号，失败抛 ValueError（中文原因）"""
+    if info and info.get('via') == 'mirror':
+        raise ValueError(f'连不上 GitHub，没法核对新版本的文件，为了安全这里不下载。可以去百度网盘下载新版安装包，直接装一遍就是升级：{NETDISK}')
     if not info or not info.get('zip') or not (info.get('sha') or info.get('digest')):
         raise ValueError('这个版本没有 Windows 压缩包，去 GitHub 手动下载')
     d = update_dir(app_dir)
@@ -128,13 +145,19 @@ async def download(session, info, app_dir, progress=None):
             want = ((await r.text()).split() or [''])[0].strip().lower()
     if not re.fullmatch(r'[0-9a-f]{64}', want):
         raise ValueError('校验文件格式不对')
-    mirrors = MIRRORS if info.get('digest') else ('',)
+    mirrors = list(MIRRORS if info.get('digest') else ('',))
+    if len(mirrors) > 1:  # 先每个地址试下一小段，快的排前面（2026-11-26：国内常常是 GitHub 能连上但很慢）
+        speeds = await asyncio.gather(*(_probe(session, m + info['zip']) for m in mirrors))
+        mirrors = [m for _, m in sorted(zip(speeds, mirrors), key=lambda x: -x[0])]
+        log.info('更新下载地址测速：%s', '，'.join(f'{MIRROR_NAMES.get(m, m)} {s // 1024} KB/s' for s, m in zip(speeds, list(MIRRORS))))
     why = []
-    for m in mirrors:
+    for i, m in enumerate(mirrors):
+        name = MIRROR_NAMES.get(m, m)
         try:
-            await _fetch(session, m + info['zip'], zpath, want, int(info.get('size') or 0), progress)
+            await _fetch(session, m + info['zip'], zpath, want, int(info.get('size') or 0),
+                         (lambda p, n=name: progress(p, n)) if progress else None, give_up_slow=i < len(mirrors) - 1)
             if m:
-                log.info('GitHub 直接下载不行，用加速站 %s 下好了', m)
+                log.info('用 %s 下好了更新', name)
             break
         except (aiohttp.ClientError, asyncio.TimeoutError, OSError, ValueError) as e:
             why.append(f"{m or 'GitHub'}：{e or type(e).__name__}")
@@ -157,13 +180,37 @@ async def download(session, info, app_dir, progress=None):
     with open(os.path.join(d, 'ready.txt'), 'w', encoding='utf-8') as f:
         f.write(info['v'] + '\n' + root + '\n')
     if progress:
-        progress(100)
+        progress(100, "")
     return info['v']
 
 
-async def _fetch(session, url, zpath, want, size, progress):
-    """下载一个压缩包到 zpath，边下边算 sha256，对不上就删掉报错"""
+class TooSlow(ValueError):
+    pass
+
+
+async def _probe(session, url):
+    """试着下一小段，回每秒多少字节；连不上、出错回 0"""
+    loop = asyncio.get_event_loop()
+    t0, got = loop.time(), 0
+    try:
+        async with session.get(url, headers={'Range': f'bytes=0-{PROBE_BYTES - 1}'},
+                               timeout=aiohttp.ClientTimeout(total=10, sock_connect=6)) as r:
+            if r.status not in (200, 206):
+                return 0
+            async for chunk in r.content.iter_chunked(64 * 1024):
+                got += len(chunk)
+                if got >= PROBE_BYTES:
+                    break
+    except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
+        pass
+    return int(got / max(loop.time() - t0, 0.05)) if got >= 64 * 1024 else 0
+
+
+async def _fetch(session, url, zpath, want, size, progress, give_up_slow=False):
+    """下载一个压缩包到 zpath，边下边算 sha256，对不上就删掉报错。
+    give_up_slow：下了 15 秒还太慢就放弃（后面还有别的地址可以换）"""
     h, got, total = hashlib.sha256(), 0, size
+    t0 = asyncio.get_event_loop().time()
     async with session.get(url, timeout=aiohttp.ClientTimeout(total=1800, sock_connect=15, sock_read=60)) as r:
         if r.status != 200:
             raise ValueError(f'压缩包下载失败（{r.status}）')
@@ -177,6 +224,9 @@ async def _fetch(session, url, zpath, want, size, progress):
                     raise ValueError('压缩包太大了，不对劲')
                 if progress and total:
                     progress(min(99, got * 100 // total))
+                spent = asyncio.get_event_loop().time() - t0
+                if give_up_slow and spent > 15 and got / spent < SLOW_BPS and (not total or got < total * 0.8):
+                    raise TooSlow(f'太慢了（{int(got / spent / 1024)} KB/s），换一个地址')
     if h.hexdigest() != want:
         os.remove(zpath)
         raise ValueError('下载的文件校验不对（没下完或者被改过）')

@@ -168,7 +168,7 @@ function connect() {
     } else if (type === 'update') {  // GitHub 上出了新版本
       S.update = data; drawUpd();
     } else if (type === 'update_progress') {  // 桌面版：下载更新的进度（-1 = 失败）
-      updPct = data.pct; drawUpd();
+      updPct = data.pct; updSrc = data.src || ''; drawUpd();
     } else if (type === 'tags') {  // 改了身份标签 / 给谁加了标签（2026-11-26）
       S.tags = data.tags; S.bot_uids = data.bot_uids || [];
       applyTags(); drawTagSet(); renderDm(); renderUsers?.();

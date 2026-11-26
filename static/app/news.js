@@ -161,7 +161,7 @@ $('verbar').onclick = () => location.reload();
 // 只给管理身份看（主播专属链接、普通链接都不显示）。
 const updSkipped = () => { try { return localStorage.getItem('xw-upd-skip') || ''; } catch { return ''; } };
 // 桌面版（2026-11-25）：在运行雾幕的这台电脑上，可以直接「下载更新」→「重启生效」，不用自己解压覆盖
-let updPct = null;
+let updPct = null, updSrc = '';
 function drawUpd() {
   const u = S.update, bar = $('updbar'), D = S.desktop;
   const ready = D?.staged && (!u || D.staged === u.v);
@@ -177,7 +177,7 @@ function drawUpd() {
   if (!act) { act = document.createElement('button'); act.id = 'updact'; act.className = 'updact'; a.after(act); }
   act.hidden = !D;  // 不是这台电脑（远程链接）就只给链接
   if (ready) { act.textContent = '重启生效'; act.disabled = false; act.dataset.cmd = 'update_restart'; }
-  else if (updPct != null && updPct >= 0 && updPct < 100) { act.textContent = `下载中 ${updPct}%`; act.disabled = true; }
+  else if (updPct != null && updPct >= 0 && updPct < 100) { act.textContent = updSrc ? `下载中 ${updPct}%（${updSrc}）` : `正在找最快的下载地址…`; act.disabled = true; act.title = '先试 GitHub 和两个国内加速站，哪个快用哪个；下载的文件都按 GitHub 给的校验码核对'; }
   else { act.textContent = updPct === -1 ? '重新下载' : '下载更新'; act.disabled = false; act.dataset.cmd = 'update_download'; }
 }
 document.addEventListener('click', e => {

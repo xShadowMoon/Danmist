@@ -3032,6 +3032,8 @@ async def main():
         cmd = c['cmd']
         if cmd == 'update_download':
             info = new_release[0] or await updates.fetch_latest(bare)
+            if info and info.get('via') == 'mirror':  # 之前是经加速站查到的：下载前再直接问一次 GitHub 拿校验码
+                info = await updates.fetch_latest(bare, mirror=False) or info
             if not info or not updates.is_newer(info['v']):
                 return False, '现在已经是最新版'
             if upd_busy[0]:
@@ -3039,10 +3041,13 @@ async def main():
             upd_busy[0] = True
             last = [-1]
 
-            def prog(p):
-                if p - last[0] >= 5 or p == 100:
+            src = ['']
+
+            def prog(p, name=''):
+                if p - last[0] >= 5 or p == 100 or (name and name != src[0]) or p < last[0]:
                     last[0] = p
-                    hub.emit_admin('update_progress', {'v': info['v'], 'pct': p})
+                    src[0] = name or src[0]
+                    hub.emit_admin('update_progress', {'v': info['v'], 'pct': p, 'src': src[0]})  # src：正在从哪下（GitHub / 国内加速）
             try:
                 v = await updates.download(bare, info, DIR, prog)
             except (aiohttp.ClientError, asyncio.TimeoutError, OSError, ValueError) as e:

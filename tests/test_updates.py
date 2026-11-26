@@ -105,3 +105,59 @@ class ApplyTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class MirrorTests(unittest.TestCase):
+    """2026-11-26：GitHub 连不上时经国内加速查版本（只提示，不下载）；下载前按速度排地址"""
+
+    def test_version_check_falls_back_to_mirror_without_digest(self):
+        async def run():
+            async def handler(request):
+                return web.json_response({'tag_name': 'v9.9.9', 'assets': [{
+                    'browser_download_url': f'https://github.com/{updates.REPO}/releases/download/v9.9.9/Danmist-v9.9.9-windows-x64.zip',
+                    'size': 10, 'digest': 'sha256:' + '0' * 64}]})
+            app = web.Application()
+            app.router.add_get('/{tail:.*}', handler)
+            runner = web.AppRunner(app)
+            await runner.setup()
+            site = web.TCPSite(runner, '127.0.0.1', 0)
+            await site.start()
+            port = site._server.sockets[0].getsockname()[1]
+            old = updates.LATEST_API, updates.API_MIRROR
+            updates.LATEST_API, updates.API_MIRROR = 'http://127.0.0.1:9/latest', f'http://127.0.0.1:{port}/p/'
+            try:
+                async with aiohttp.ClientSession() as session:
+                    info = await updates.fetch_latest(session, updates.LATEST_API)
+                    direct = await updates.fetch_latest(session, updates.LATEST_API, mirror=False)
+                    with self.assertRaises(ValueError) as e:
+                        await updates.download(session, info, '.', None)
+                    return info, direct, str(e.exception)
+            finally:
+                updates.LATEST_API, updates.API_MIRROR = old
+                await runner.cleanup()
+        info, direct, err = asyncio.run(run())
+        self.assertEqual(info['v'], '9.9.9')
+        self.assertEqual(info['via'], 'mirror')
+        self.assertNotIn('digest', info)
+        self.assertIsNone(direct)
+        self.assertIn('百度网盘', err)
+
+    def test_probe_measures_speed_and_zero_when_down(self):
+        async def run():
+            async def handler(request):
+                return web.Response(body=b'x' * (600 * 1024))
+            app = web.Application()
+            app.router.add_get('/f', handler)
+            runner = web.AppRunner(app)
+            await runner.setup()
+            site = web.TCPSite(runner, '127.0.0.1', 0)
+            await site.start()
+            port = site._server.sockets[0].getsockname()[1]
+            try:
+                async with aiohttp.ClientSession() as session:
+                    return await updates._probe(session, f'http://127.0.0.1:{port}/f'), await updates._probe(session, 'http://127.0.0.1:9/f')
+            finally:
+                await runner.cleanup()
+        fast, down = asyncio.run(run())
+        self.assertGreater(fast, 0)
+        self.assertEqual(down, 0)
