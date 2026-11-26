@@ -68,6 +68,7 @@ BRAND = {'name': '雾幕', 'short': '主播'}
 HOST_PATH = '/host'
 DISCORD_WEBHOOK_FILE = ''  # 可选：从别的程序的 JSON 配置里读 discord_webhook（config.json 的 discord_webhook_file），改了那边这里跟着变
 ALERT_PORT = 0  # 只有这个端口的那份发掉线提醒（config.json 的 alert_port；同一个文件夹里另开的测试直播间不发）
+MANAGED_RESTART = False  # 有别的程序（比如守护脚本）看着，退出了会自己重开（config.json 的 managed_restart，2026-11-26）
 LOGIN_READONLY = False  # 登录文件是别的程序的（比如机器人的），只读不写（config.json 的 login_readonly）
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 GUARD_NAMES = {1: '总督', 2: '提督', 3: '舰长'}
@@ -2422,17 +2423,28 @@ def render_page(name):
     return html.replace('</head>', ''.join(tags) + '</head>', 1)
 
 
-def backup_data(keep=14):
-    """把 data 文件夹打成一个压缩包放到「备份/数据/」，一天一份，留最近 keep 份。今天的已经有了就不做。"""
-    out_dir = os.path.join(DIR, '备份', '数据')
-    out = os.path.join(out_dir, time.strftime('data-%Y%m%d.zip'))
-    if os.path.exists(out):
+BACKUP_SKIP = ('imgcache', 'douyin-browser', 'update', 'mascot-tmp')  # 缓存和临时的，不用备份、恢复时也不动
+BACKUP_NAME = re.compile(r'data-\d{8}(?:-\d{6}-[\w-]{1,12})?\.zip')
+
+
+def backup_dir():
+    return os.path.join(DIR, '备份', '数据')
+
+
+def backup_data(keep=14, tag=''):
+    """把 data 文件夹打成一个压缩包放到「备份/数据/」。不带 tag 是每天自动的那份（一天一份，留最近 keep 份，今天的已经有了就不做）；
+    带 tag（手动 / 更新前 / 恢复前，2026-11-26）每次都做一份，这种留最近 10 份。"""
+    out_dir = backup_dir()
+    out = os.path.join(out_dir, time.strftime(f'data-%Y%m%d-%H%M%S-{tag}.zip' if tag else 'data-%Y%m%d.zip'))
+    if os.path.exists(out) and not tag:
         return None
     os.makedirs(out_dir, exist_ok=True)
     src = os.path.join(DIR, 'data')
     tmp = out + '.tmp'
     with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as z:
-        for root, _, files in os.walk(src):
+        for root, dirs, files in os.walk(src):
+            if root == src:
+                dirs[:] = [d for d in dirs if d not in BACKUP_SKIP]
             for n in files:
                 if n.endswith('.tmp'):
                     continue
@@ -2445,7 +2457,62 @@ def backup_data(keep=14):
     old = sorted(n for n in os.listdir(out_dir) if re.match(r'^data-\d{8}\.zip$', n))
     for n in old[:-keep]:
         os.remove(os.path.join(out_dir, n))
+    tagged = sorted(n for n in os.listdir(out_dir) if re.match(r'^data-\d{8}-\d{6}-.+\.zip$', n))
+    for n in tagged[:-10]:
+        os.remove(os.path.join(out_dir, n))
     return out
+
+
+def list_backups():
+    d = backup_dir()
+    try:
+        names = [n for n in os.listdir(d) if BACKUP_NAME.fullmatch(n)]
+    except OSError:
+        return []
+    rows = []
+    for n in names:
+        try:
+            st = os.stat(os.path.join(d, n))
+            rows.append({'name': n, 'size': st.st_size, 't': int(st.st_mtime)})
+        except OSError:
+            pass
+    return sorted(rows, key=lambda r: -r['t'])
+
+
+RESTORE_FILE = 'restore-pending.json'
+
+
+def apply_pending_restore():
+    """启动时：页面上点过「从这份恢复」，先把现在的 data 再备份一份（恢复前），再把那份解压回来（2026-11-26）"""
+    data = os.path.join(DIR, 'data')
+    flag = os.path.join(data, RESTORE_FILE)
+    if not os.path.exists(flag):
+        return None
+    try:
+        with open(flag, encoding='utf-8') as f:
+            name = str(json.load(f).get('name', ''))
+        os.remove(flag)
+        src = os.path.join(backup_dir(), name)
+        if not BACKUP_NAME.fullmatch(name) or not os.path.isfile(src):
+            raise ValueError(f'找不到备份 {name}')
+        with zipfile.ZipFile(src) as z:
+            if z.testzip() is not None:
+                raise ValueError(f'备份 {name} 坏了')
+            for info in z.infolist():
+                p = os.path.normpath(info.filename)
+                if p.startswith('..') or os.path.isabs(p):
+                    raise ValueError(f'备份 {name} 里有不对的路径')
+            backup_data(tag='恢复前')
+            for n in os.listdir(data):
+                if n in BACKUP_SKIP:
+                    continue
+                p = os.path.join(data, n)
+                shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
+            z.extractall(data)
+        return name
+    except (OSError, ValueError, zipfile.BadZipFile) as e:
+        logging.getLogger('danmaku').warning('恢复数据没成功：%s', e)
+        return False
 
 
 async def maintain_data(hub):
@@ -2946,7 +3013,7 @@ async def list_offline(request, state, hub, links, port):
 
 def apply_pack_config(cfg):
     """config.json 里包、品牌和几个可选项（2026-11-26）"""
-    global PACK, BRAND, HOST_PATH, GEQU_DIR, DISCORD_WEBHOOK_FILE, LOGIN_READONLY, ALERT_PORT
+    global PACK, BRAND, HOST_PATH, GEQU_DIR, DISCORD_WEBHOOK_FILE, LOGIN_READONLY, ALERT_PORT, MANAGED_RESTART
     def here(p):
         p = str(p or '')
         return p if not p or os.path.isabs(p) else os.path.join(DIR, p)
@@ -2963,6 +3030,7 @@ def apply_pack_config(cfg):
     DISCORD_WEBHOOK_FILE = here(cfg.get('discord_webhook_file'))
     LOGIN_READONLY = cfg.get('login_readonly') is True
     ALERT_PORT = int(cfg.get('alert_port') or 0)
+    MANAGED_RESTART = cfg.get('managed_restart') is True
 
 
 SECRET_WORDS = ('webhook', 'key', 'cookie', 'token', 'password', 'secret', 'sessdata')
@@ -3029,6 +3097,7 @@ async def main():
         ap.error('要告诉我连哪个直播间：加 --room 房间号，或者在 config.json 里写 "room"')
     LOGIN_FILE, DISCORD_WEBHOOK, BOT_SAY_URL = args.login_file, args.discord_webhook, args.bot_say_url
     apply_pack_config(cfg)
+    restored = apply_pending_restore() if not args.demo else None  # 页面上点了「从这份恢复」：先换好 data 再往下读
     if not os.path.isabs(LOGIN_FILE):
         LOGIN_FILE = os.path.join(DIR, LOGIN_FILE)
     for name in ('public_max', 'public_ip_max', 'public_connect_rate', 'public_http_rate', 'gequ_http_rate', 'obs_max', 'obs_ip_max'):
@@ -3309,6 +3378,10 @@ async def main():
             finally:
                 upd_busy[0] = False
             hub.emit_admin('desktop', desktop_info())
+            try:  # 换新版之前先备份一份 data（2026-11-26）
+                await asyncio.get_event_loop().run_in_executor(None, lambda: backup_data(tag='更新前'))
+            except OSError as e:
+                log.warning('更新前备份没成功：%s', e)
             return True, f'v{v} 下载好了，点「重启生效」换上'
         if cmd == 'update_restart':
             v, _ = updates.staged(DIR)
@@ -4355,6 +4428,52 @@ async def main():
         return web.Response(text='\n'.join(lines) + '\n', content_type='text/plain', charset='utf-8',
                             headers={'Content-Disposition': f'attachment; filename="{name}"', 'Cache-Control': 'no-store'})
 
+    async def backups_list(request):
+        """一键备份 / 恢复（2026-11-26）：列出 备份/数据 里的备份。只给管理身份"""
+        if not is_admin(request, links, args.port):
+            raise web.HTTPForbidden()
+        return web.json_response({'items': list_backups(), 'dir': backup_dir(), 'local': local_request(request)}, headers={'Cache-Control': 'no-store'})
+
+    async def backup_now(request):
+        if not is_admin(request, links, args.port):
+            raise web.HTTPForbidden()
+        if args.demo:
+            return web.json_response({'ok': False, 'msg': '演示模式不备份'})
+        hub.state.save()
+        hub.dmlog.flush()
+        out = await asyncio.get_event_loop().run_in_executor(None, lambda: backup_data(tag='手动'))
+        return web.json_response({'ok': True, 'msg': f'备份好了：{os.path.basename(out)}', 'items': list_backups()})
+
+    async def backup_restore(request):
+        if not is_admin(request, links, args.port):
+            raise web.HTTPForbidden()
+        name = validation.validate_http('backup_restore', request.query, request.match_info)['name']
+        if args.demo:
+            return web.json_response({'ok': False, 'msg': '演示模式不恢复'})
+        if not os.path.isfile(os.path.join(backup_dir(), name)):
+            return web.json_response({'ok': False, 'msg': '找不到这份备份'})
+        write_json(os.path.join(DIR, 'data', RESTORE_FILE), {'name': name, 't': int(time.time())})
+        log.info('点了「从这份恢复」：%s，重启时换上', name)
+        if not (launcher or MANAGED_RESTART):
+            return web.json_response({'ok': True, 'msg': '准备好了：把雾幕关掉再打开就会换成这份（换之前会先把现在的再备份一份）'})
+        hub.state.dirty = True
+        hub.state.save()
+        hub.dmlog.flush()
+        asyncio.get_event_loop().call_later(1.0, lambda: os._exit(3))  # 退出码 3：桌面版、start.bat、守护都会马上重开
+        return web.json_response({'ok': True, 'msg': '正在重启换成这份，几秒后页面自己连回来（现在的也先备份了一份）'})
+
+    async def backup_open(request):
+        """在这台电脑上打开备份文件夹（只在本机打开的页面能用）"""
+        if not is_admin(request, links, args.port) or not local_request(request):
+            raise web.HTTPForbidden()
+        os.makedirs(backup_dir(), exist_ok=True)
+        if hasattr(os, 'startfile'):
+            os.startfile(backup_dir())
+        return web.json_response({'ok': True})
+
+    def local_request(request):
+        return request.remote in ('127.0.0.1', '::1') and 'CF-Connecting-IP' not in request.headers
+
     async def music_url(request):
         """放歌页来要「现在这首」的播放地址（2026-11-25）。只给正在放的那首，不能拿它去下别的歌"""
         it = hub.music.current()
@@ -4598,6 +4717,8 @@ async def main():
     # AI 音色（可选）：config.json 的 "ai_voice"，接本机的 GPT-SoVITS（见 README「AI 音色」）。
     # 只给管理身份用（不然谁都能借这个声音说任意的话）。网页拿到 wav 自己播；服务没开、太忙就退回浏览器语音
     ai_voice = AIVoice(cfg.get('ai_voice'))
+    if restored:
+        log.info('已经换成备份 %s（换之前的在 备份/数据 里，名字带「恢复前」）', restored)
     if ai_voice.enabled:
         log.info('AI 音色：%s（%s）', ai_voice.url, ai_voice.api)
 
@@ -4643,6 +4764,10 @@ async def main():
     app.router.add_post('/api/launcher/quit', launcher_quit)
     app.router.add_post('/api/mascot', mascot_put)
     app.router.add_get('/api/diag', diag)
+    app.router.add_get('/api/backups', backups_list)
+    app.router.add_post('/api/backup', backup_now)
+    app.router.add_post('/api/backup/restore', backup_restore)
+    app.router.add_post('/api/backup/open', backup_open)
     app.router.add_post('/api/mascot/reset', mascot_reset)
     app.router.add_get('/api/history', hist_list)
     app.router.add_get('/api/offline', offline_list)

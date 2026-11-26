@@ -278,3 +278,28 @@ function drawConn() {
   $('netbar').classList.toggle('on', down);  // B 站那头断了也在顶上走一条细线
 }
 // 机器人号登录失效：只给管理身份看提示（能处理的人）
+// 一键备份 / 恢复（2026-11-26）：设置 → 更多 → 备份
+async function drawBackups(rows) {
+  const box = $('baklist');
+  if (!box || !S.admin) return;
+  let local = true;
+  if (!rows) { try { const j = await (await fetch('api/backups', { cache: 'no-store' })).json(); rows = j.items; local = j.local; } catch { rows = []; } }
+  $('bakopen').hidden = !local;
+  const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  box.innerHTML = rows.length ? rows.slice(0, 20).map(r => `<div class="lkrow"><div><b>${esc(fmtMd(r.t))}</b><small>${esc((r.name.match(/-\d{6}-(.+)\.zip$/) || [, '每天自动'])[1])} · ${kb(r.size)}</small></div><button class="btn sm" data-bakr="${esc(r.name)}">从这份恢复</button></div>`).join('')
+    : '<div class="empty" style="padding:8px">还没有备份</div>';
+}
+document.addEventListener('click', async e => {
+  if (e.target.closest('[data-st="more"]')) drawBackups();
+  const tip = $('baktip');
+  if (e.target.closest('#baknow')) {
+    tip.textContent = '正在备份…';
+    try { const j = await (await fetch('api/backup', { method: 'POST' })).json(); tip.textContent = j.msg; if (j.items) drawBackups(j.items); } catch { tip.textContent = '没备份成功'; }
+  }
+  if (e.target.closest('#bakopen')) { try { await fetch('api/backup/open', { method: 'POST' }); } catch {} }
+  const r = e.target.closest('[data-bakr]');
+  if (r) {
+    if (!r.classList.contains('sure')) { r.classList.add('sure', 'danger'); r.textContent = '确定恢复？'; setTimeout(() => { r.classList.remove('sure', 'danger'); r.textContent = '从这份恢复'; }, 4000); return; }
+    try { const j = await (await fetch('api/backup/restore?' + new URLSearchParams({ name: r.dataset.bakr }), { method: 'POST' })).json(); note(j.msg, j.ok); } catch { note('没恢复成功', false); }
+  }
+});

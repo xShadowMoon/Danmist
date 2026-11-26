@@ -424,6 +424,11 @@ def validate_http(kind, query, match):
         sid = match.get('sid')
         if not isinstance(sid, str) or not SID.fullmatch(sid):
             raise InputError('场次编号格式不对')
+    if kind == 'backup_restore':  # 从哪份备份恢复（2026-11-26）
+        name = query.get('name', '')
+        if not re.fullmatch(r'data-\d{8}(?:-\d{6}-[\w-]{1,12})?\.zip', name or ''):
+            raise InputError('备份名字不对')
+        return {'name': name}
     if kind == 'mascot_put':  # 看板娘图标（2026-11-26）
         size = query_integer(query.get('size'), '图标尺寸', 32, 512)
         if size not in (32, 64, 192, 256, 512):

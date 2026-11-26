@@ -432,6 +432,11 @@
         <div class="about"><img id="mascotpv" src="/art/icon-256.png" alt=""><div><b id="mascotname">默认：雾冬Hanaki</b><span>换成你自己的图，软件里的图标、窗口和任务栏的图标都会跟着换。正方形的图最好，不是正方形会从中间裁。桌面快捷方式的图标换不了。</span></div></div>
         <div class="chips"><label class="btn sm" id="mascotpick"><i class="ic" data-ic="upload"></i> 换成我的图<input type="file" id="mascotfile" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label><button class="btn sm" id="mascotreset" hidden>换回默认</button><span class="mtip" id="mascottip"></span></div>
       </fieldset>
+      <fieldset class="admin-only" id="bakbox"><legend>备份</legend>
+        <div class="note">每天自动备份一份（留 14 份），更新前也会自动备份。恢复会先把现在的再备份一份，然后重启换成那一份。</div>
+        <div class="chips"><button class="btn sm" id="baknow"><i class="ic" data-ic="save"></i> 立即备份</button><button class="btn sm" id="bakopen" title="在这台电脑上打开备份文件夹"><i class="ic" data-ic="download"></i> 打开备份文件夹</button><span class="mtip" id="baktip"></span></div>
+        <div id="baklist"></div>
+      </fieldset>
       <fieldset><legend>关于</legend>
         <div class="about"><img src="/static/art/icon-64.png" alt=""><div><b>雾幕 Danmist</b><small id="aboutver"></small><span>看板娘 <a href="https://live.bilibili.com/373317" target="_blank" rel="noopener">雾冬Hanaki</a> · <a href="https://github.com/xShadowMoon/Danmist" target="_blank" rel="noopener">GitHub</a></span></div></div>
         <div class="chips admin-only"><a class="btn sm" href="api/diag" download title="版本、系统、设置（密钥会藏掉）和最近的日志，反馈问题时把这个文件发过来"><i class="ic" data-ic="download"></i> 导出诊断信息</a></div>
