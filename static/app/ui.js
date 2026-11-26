@@ -550,3 +550,32 @@ setInterval(drawStart, 5000);  // 登录、开朗读这些在别处做完也能�
     lg.append(q);
   }
 })();
+
+/* ---------- 软件窗口更像软件（2026-11-26）：右键出自己的菜单、关掉浏览器那些快捷键（打印、保存、看源码、新窗口…） ---------- */
+if (APPWIN) {
+  document.documentElement.classList.add('appwin');
+  const BLOCK = new Set(['p', 's', 'u', 'o', 'n', 't', 'h', 'j', 'd', 'g']);
+  addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && BLOCK.has(e.key.toLowerCase())) { e.preventDefault(); }
+    if (e.key === 'F3' || e.key === 'F7' || (e.key === 'F5' && e.shiftKey)) e.preventDefault();
+  }, true);
+  let cm = null;
+  const close = () => { if (cm) { cm.remove(); cm = null; } };
+  addEventListener('contextmenu', e => {
+    if (e.target.closest('input, textarea, [contenteditable="true"]')) return;  // 输入框里照旧（要粘贴）
+    e.preventDefault(); close();
+    const sel = String(getSelection() || '').trim();
+    const items = [];
+    if (sel) items.push(['复制', () => navigator.clipboard?.writeText(sel).then(() => note('已复制'))]);
+    items.push(['刷新', () => location.reload()]);
+    items.push(['设置', () => openSettings()]);
+    cm = document.createElement('div');
+    cm.className = 'ctxmenu';
+    cm.innerHTML = items.map(([n], i) => `<button data-i="${i}">${esc(n)}</button>`).join('');
+    cm.onclick = ev => { const b = ev.target.closest('[data-i]'); if (b) { items[+b.dataset.i][1](); close(); } };
+    document.body.append(cm);
+    const w = cm.offsetWidth, h = cm.offsetHeight;
+    Object.assign(cm.style, { left: Math.min(e.clientX, innerWidth - w - 6) + 'px', top: Math.min(e.clientY, innerHeight - h - 6) + 'px' });
+  });
+  addEventListener('click', close); addEventListener('blur', close); addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+}

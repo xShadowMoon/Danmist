@@ -687,7 +687,7 @@ ${$('flowdetail').textContent}`;  // 明细不占地方，鼠标停上去看
   if (S.room.live && S.room.pop_rank) ranks.push(`人气榜 ${S.room.pop_rank}`);
   if (S.room.live && S.room.area_rank) ranks.push(`${String(S.room.area_rank_name || '小时榜').replace(/小时榜$/, '')}小时榜 ${S.room.area_rank}`);
   rp.hidden = !ranks.length; setText(rp, ranks.join(' · '));
-  const t = (S.room.live ? '🔴 直播中 · ' : '') + BRAND_NAME();
+  const t = APPWIN ? BRAND_NAME() : (S.room.live ? '🔴 直播中 · ' : '') + BRAND_NAME();  // 软件窗口的标题栏只写软件名（2026-11-26）
   if (document.title !== t) document.title = t;
 }
 // 数据条右边的小曲线（2026-11-26）：最近 60 分钟，每分钟一个点（后台记的，只有管理身份有）

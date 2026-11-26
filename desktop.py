@@ -114,6 +114,7 @@ def open_window(url):
         webbrowser.open(url)
         return None
     prof = os.path.join(APP, 'data', 'desktop-browser')
+    url += ('&' if '?' in url else '?') + 'app=1'  # 网页知道自己是在软件窗口里：右键菜单、快捷键按软件的来（2026-11-26）
     # 不装扩展、不登录同步（2026-11-26）：Edge 会自己把电脑上的微软账号登进这个窗口，再把你平时装的扩展同步过来，
     # 每次打开雾幕那些扩展就弹欢迎页、弹窗。雾幕的窗口用不到扩展，全关掉
     return subprocess.Popen([b, f'--app={url}', f'--user-data-dir={prof}', '--no-first-run', '--no-default-browser-check',

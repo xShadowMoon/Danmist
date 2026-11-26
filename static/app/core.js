@@ -252,6 +252,7 @@ $('tplreset').onclick = () => { cfg.tts.tpl = { ...DEF_TPL }; saveCfg(); fillSet
 
 /* ---------- 深色 / 浅色 ---------- */
 const darkMQ = matchMedia('(prefers-color-scheme: dark)');
+const APPWIN = new URLSearchParams(location.search).get('app') === '1';  // 桌面版的软件窗口里打开的（desktop.py 加的 ?app=1）
 // 配色方案：名字、两个色点（浅色主色、深色主色）；OBS 设置页也有同样几套
 // 品牌（2026-11-26，小雾版和开源版合成一份）：后台在网页里放了 window.BRAND = { name 软件名, short 怎么称呼主播, host 主播专属链接地址, pack 有没有私有包 }
 const BRAND_NAME = () => window.BRAND?.name || '雾幕', ANCHOR = () => window.BRAND?.short || '主播';
