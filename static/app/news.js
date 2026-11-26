@@ -303,3 +303,36 @@ document.addEventListener('click', async e => {
     try { const j = await (await fetch('api/backup/restore?' + new URLSearchParams({ name: r.dataset.bakr }), { method: 'POST' })).json(); note(j.msg, j.ok); } catch { note('没恢复成功', false); }
   }
 });
+// 直播间（2026-11-26）：第一次打开在这里选平台、填房间号；以后在 设置 → 直播间 里换
+const PLAT_NAME = { bili: 'B 站', douyu: '斗鱼', huya: '虎牙', douyin: '抖音' };
+function drawRoomSet() {
+  if (!$('roomnow')) return;
+  const p = S.main_plat || 'bili', r = S.room?.room_real || S.room_id || '';
+  $('roomnow').textContent = S.setup ? '还没设置直播间' : `现在连的是：${PLAT_NAME[p] || p} ${r}` + (S.room_locked ? '（用启动命令指定的，这里改不了）' : '');
+  if (document.activeElement !== $('roomnum')) { $('roomplat').value = p; $('roomnum').value = S.setup ? '' : r; }
+  $('roomsave').disabled = !!S.room_locked;
+  // 第一次打开：整页盖一张卡片，填好才往下用
+  let card = $('setupcard');
+  if (S.setup && S.admin && !card) {
+    card = document.createElement('div');
+    card.id = 'setupcard';
+    card.innerHTML = `<div class="sc-box"><h2>欢迎用${esc(BRAND_NAME())}</h2><p>先告诉我连哪个直播间</p>
+      <div class="sc-row"><select id="sc-plat">${Object.entries(PLAT_NAME).filter(([k]) => k !== 'douyin' || S.platforms?.douyin).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select>
+      <input id="sc-room" inputmode="numeric" maxlength="20" placeholder="房间号"><button class="btn go" id="sc-go">开始</button></div>
+      <small>B 站填直播间网址 live.bilibili.com/ 后面那串数字。填错了也没关系，以后在「设置 → 直播间」里能改。</small><div class="sc-tip" id="sc-tip"></div></div>`;
+    document.body.append(card);
+  }
+  if (!S.setup && card) card.remove();
+}
+function sendRoom(plat, room, tipEl) {
+  room = String(room || '').replace(/\D/g, '');
+  if (!room) { tipEl.textContent = '房间号只能填数字'; return; }
+  tipEl.textContent = '正在保存…';
+  window._ws?.send(JSON.stringify({ cmd: 'room_set', plat, room: Number(room) }));
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('#roomsave')) sendRoom($('roomplat').value, $('roomnum').value, $('roomnow'));
+  if (e.target.closest('#sc-go')) sendRoom($('sc-plat').value, $('sc-room').value, $('sc-tip'));
+  if (e.target.closest('[data-st="room"]')) drawRoomSet();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'sc-room') sendRoom($('sc-plat').value, $('sc-room').value, $('sc-tip')); });

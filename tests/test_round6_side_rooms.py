@@ -204,7 +204,7 @@ class SideWebsocketTests(RoundSixTest):
             'lan_set': {'on': True}, 'open_mode': {'mode': 'app'}, 'music_cookie': {'src': '163', 'cookie': 'MUSIC_U=x'},
             'music_del': {'id': 'm'}, 'music_logout': {'src': '163'}, 'music_ok': {'id': 'm'}, 'music_poll': {'src': '163', 'key': 'k'},
             'music_qr': {'src': '163'}, 'music_top': {'id': 'm'}, 'plat_set': {'rooms': []}, 'plat_show': {'plat': 'douyin', 'room': '1', 'show': True},
-            'tags_set': {'builtin': {}, 'custom': []}, 'tag_user': {'uid': 7, 'tags': []},
+            'tags_set': {'builtin': {}, 'custom': []}, 'tag_user': {'uid': 7, 'tags': []}, 'room_set': {'plat': 'bili', 'room': 1},
         }
         before = copy.deepcopy(self.state.snapshot())
         for cmd in valid.COMMAND_FIELDS:

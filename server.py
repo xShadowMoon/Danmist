@@ -2667,7 +2667,8 @@ async def main():
     pre.add_argument('--config', default=os.path.join(DIR, 'config.json'))
     cfg = load_config(pre.parse_known_args()[0].config)
     ap = argparse.ArgumentParser(parents=[pre])
-    ap.add_argument('--room', type=int, default=int(cfg.get('room') or 0), help='直播间号（必填，或者写在 config.json）')
+    ap.add_argument('--room', type=int, default=int(cfg.get('room') or 0), help='直播间号（也可以写在 config.json，或者打开网页在「设置 → 直播间」里选）')
+    ap.add_argument('--plat', default=str(cfg.get('room_plat') or 'bili'), choices=('bili', 'douyu', 'huya', 'douyin'), help='直播间是哪个平台（默认 B 站）')
     ap.add_argument('--anchor-name', default=str(cfg.get('anchor_name') or ''), help='主播名字，显示在切换直播间菜单里')
     ap.add_argument('--port', type=int, default=int(cfg.get('port') or 8373))
     cfg_lan = cfg.get('lan') is True
@@ -2691,8 +2692,9 @@ async def main():
     ap.add_argument('--update-url', default='', help=argparse.SUPPRESS)  # 测试用：换一个地址模拟「有新版本」
     ap.add_argument('--version', action='version', version=f'bili-danmaku-board {updates.VERSION}')
     args = ap.parse_args()
-    if not args.demo and not args.room:
-        ap.error('要告诉我连哪个直播间：加 --room 房间号，或者在 config.json 里写 "room"')
+    # 2026-11-26：没设置直播间也能打开，网页上选平台、填房间号（以前第一次打开要在黑窗口里问，填错了找不到地方改）
+    setup_mode = not args.demo and not args.room
+    room_locked = '--room' in sys.argv[1:]  # 命令行指定的直播间，网页上改不了
     LOGIN_FILE, DISCORD_WEBHOOK, BOT_SAY_URL = args.login_file, args.discord_webhook, args.bot_say_url
     apply_pack_config(cfg)
     restored = apply_pending_restore() if not args.demo else None  # 页面上点了「从这份恢复」：先换好 data 再往下读
@@ -3110,6 +3112,9 @@ async def main():
             snap['guardlist'] = viewer_view('guardlist', h.guardlist) if viewer else h.guardlist  # 舰长名单 B 站上本来就公开（不带到期时间）
             snap['ver'] = page_vers()
             snap['app_version'] = updates.VERSION
+            snap['setup'] = setup_mode  # 还没设置直播间（2026-11-26）
+            snap['main_plat'] = args.plat
+            snap['room_locked'] = room_locked
             snap['mascot'] = mascot_ver(mascot_dir)  # 换过看板娘时网页拿它刷新图标
             if admin:
                 snap['update'] = new_release[0]  # GitHub 上有新版本时：{'v', 'url', 'name'}，没有就是 None
@@ -3180,6 +3185,10 @@ async def main():
                         await ws.send_json({'type': 'result', 'data': {'cmd': 'reset', 'ok': False, 'msg': '存档失败，本场未清零，请查看自检'}})
                 else:
                     try:
+                        if cmd == 'room_set':  # 换主直播间（2026-11-26）
+                            ok, msg = await set_main_room(c.get('plat'), int(c.get('room')))
+                            await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': msg}})
+                            continue
                         if cmd in ('tags_set', 'tag_user'):  # 身份标签（2026-11-26）
                             try:
                                 if cmd == 'tags_set':
@@ -4082,6 +4091,34 @@ async def main():
         return web.json_response({'name': name, 'artist': row.get('artist', ''), 'lyrics': str(row.get('lyrics') or '')[:20000]},
                                  headers={'Cache-Control': 'no-store'})
 
+    async def set_main_room(plat, room):
+        """设置 → 直播间 / 第一次打开的卡片：存进 config.json，然后重启连过去（2026-11-26）"""
+        if args.demo:
+            return False, '演示模式不能换直播间'
+        if room_locked:
+            return False, '这份是用命令行 --room 打开的，直播间要在启动命令里改'
+        if plat == 'bili':
+            try:  # 先去 B 站问一下有没有这个直播间，短号换成真房间号
+                async with bare.get(f'https://api.live.bilibili.com/room/v1/Room/room_init?id={room}', timeout=aiohttp.ClientTimeout(total=10)) as r:
+                    j = await r.json(content_type=None)
+                if j.get('code') != 0 or not (j.get('data') or {}).get('room_id'):
+                    return False, '没找到这个 B 站直播间，看看号对不对（直播间网址 live.bilibili.com/ 后面那串数字）'
+                room = int(j['data']['room_id'])
+            except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, TypeError):
+                return False, '问 B 站的时候没连上，过一会再试'
+        conf = load_config(args.config)
+        conf.update(room=room, room_plat=plat)
+        write_json(args.config, conf)
+        name = platforms.PLATS.get(plat, ('B 站',))[0] if plat != 'bili' else 'B 站'
+        log.info('换主直播间：%s %s', name, room)
+        if not (launcher or MANAGED_RESTART):
+            return True, f'已保存（{name} {room}）：把雾幕关掉再打开就连过去'
+        hub.state.dirty = True
+        hub.state.save()
+        hub.dmlog.flush()
+        asyncio.get_event_loop().call_later(1.0, lambda: os._exit(3))  # 退出码 3：桌面版、start.bat、守护都会马上重开
+        return True, f'正在重启，连到 {name} {room}，几秒后页面自己连回来'
+
     async def music_url(request):
         """放歌页来要「现在这首」的播放地址（2026-11-25）。只给正在放的那首，不能拿它去下别的歌"""
         it = hub.music.current()
@@ -4495,6 +4532,16 @@ async def main():
     client = None
     if args.demo:
         tasks.append(asyncio.create_task(demo_feed(hub)))
+    elif setup_mode:
+        log.info('还没设置直播间：打开网页，选平台、填房间号')
+    elif args.plat != 'bili':
+        # 主直播间在斗鱼 / 虎牙 / 抖音（2026-11-26）：用「其他平台」那套连接，消息直接进主直播间
+        src = platforms.CLASSES[args.plat](hub, args.plat, str(args.room), log)
+        hub.main_src = src
+        hub.room_update(title=f'{platforms.PLATS[args.plat][0]}直播间 {args.room}', room_real=args.room)
+        tasks.append(asyncio.create_task(src.run(bare)))
+        tasks.append(asyncio.create_task(daily_backup(hub)))
+        log.info('主直播间：%s %s', platforms.PLATS[args.plat][0], args.room)
     else:
         if not cookies:
             log.warning('没读到 B 站登录信息（%s），用户名会打码', LOGIN_FILE)

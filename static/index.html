@@ -171,7 +171,7 @@
     <div class="snavg">各栏</div>
     <button data-st="dm"><i class="ic" data-ic="p-dm"></i>弹幕</button><button data-st="sc"><i class="ic" data-ic="p-sc"></i>SC</button><button data-st="gift"><i class="ic" data-ic="p-gift"></i>礼物</button><button data-st="enter"><i class="ic" data-ic="p-enter"></i>进房</button><button data-st="users"><i class="ic" data-ic="p-users"></i>观众</button><button data-st="req"><i class="ic" data-ic="music"></i>点歌</button>
     <div class="snavg">其它</div>
-    <button data-st="pset"><i class="ic" data-ic="save"></i>设置方案</button><button data-st="link" class="admin-only"><i class="ic" data-ic="link"></i>链接</button><button data-st="more"><i class="ic" data-ic="grid"></i>更多</button>
+    <button data-st="room" class="admin-only"><i class="ic" data-ic="tv"></i>直播间</button><button data-st="pset"><i class="ic" data-ic="save"></i>设置方案</button><button data-st="link" class="admin-only"><i class="ic" data-ic="link"></i>链接</button><button data-st="more"><i class="ic" data-ic="grid"></i>更多</button>
   </div>
   <div class="body">
     <div class="spage on" data-sp="tts">
@@ -431,6 +431,15 @@
       </fieldset>
     </div>
 
+    <div class="spage" data-sp="room">
+      <h2 class="ptitle">直播间</h2>
+      <fieldset><legend>连哪个直播间</legend>
+        <div class="note" id="roomnow"></div>
+        <div class="opt"><select id="roomplat"><option value="bili">B 站</option><option value="douyu">斗鱼</option><option value="huya">虎牙</option><option value="douyin">抖音</option></select><input type="text" id="roomnum" inputmode="numeric" maxlength="20" placeholder="房间号" style="flex:1;min-width:0"><button class="btn sm go" id="roomsave">保存并重启</button></div>
+        <div class="note">B 站填直播间网址 live.bilibili.com/ 后面那串数字；斗鱼、虎牙填房间号；抖音填 live.douyin.com/ 后面的数字。保存后雾幕会重启，几秒后自己连回来。以前的存档都还在，换回来就接着用。</div>
+        <div class="note">同时在别的平台开播？那边的弹幕在「设置 → 弹幕 → 其他平台」里加，这里只管主直播间。</div>
+      </fieldset>
+    </div>
     <div class="spage" data-sp="more">
       <h2 class="ptitle">更多</h2>
       <fieldset id="mascotbox" class="admin-only"><legend>看板娘</legend>

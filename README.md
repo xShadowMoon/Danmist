@@ -21,18 +21,14 @@
 
 ## 怎么用（Windows）
 
-**最简单：安装版**（v0.9.6 起）。在 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) 下载 `Danmist-Setup-vX.Y.Z.exe`，双击就装好（不用管理员，装在 `%LOCALAPPDATA%\Programs\Danmist`），开始菜单和桌面都会有「雾幕」。第一次打开会问直播间号。以后有新版本在软件里点「下载更新」就行；不要了在「设置 → 应用」里卸载（会问要不要连存档一起删）。Windows 可能提示「已保护你的电脑」，点「更多信息 → 仍要运行」（安装包没有花钱买签名）。
+**最简单：安装版**（v0.9.6 起）。在 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) 下载 `Danmist-Setup-vX.Y.Z.exe`，双击就装好（不用管理员，装在 `%LOCALAPPDATA%\Programs\Danmist`），开始菜单和桌面都会有「雾幕」。第一次打开在软件里选平台（B 站 / 斗鱼 / 虎牙 / 抖音）、填直播间号，以后在「设置 → 直播间」里随时能换。以后有新版本在软件里点「下载更新」就行；不要了在「设置 → 应用」里卸载（会问要不要连存档一起删）。Windows 可能提示「已保护你的电脑」，点「更多信息 → 仍要运行」（安装包没有花钱买签名）。
 
 **国内下载慢**：可以从百度网盘下载，安装包、免安装包和说明都在里面：https://pan.baidu.com/s/1Ag5Ykctgn8S5OyVNB30jSg?pwd=xn55 （提取码 xn55）
 
 **免安装版**：
 1. 打开 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest)，下载 `Danmist-vX.Y.Z-windows-x64.zip`（自带 Python，不用另外安装）。
 2. 解压到一个固定的文件夹（不要直接在压缩包里双击运行），比如 `D:\雾幕\`。
-3. 双击 `start.bat`。第一次会问你的**直播间号**（直播间网址 `live.bilibili.com/` 后面那串数字），再问**打开方式**：
-   - **软件窗口**（推荐，v0.9.5 起）：雾幕像一个软件一样单独开一个窗口，没有黑色窗口；桌面上会多一个「雾幕」图标，以后双击它就行。关掉窗口，雾幕就停了。
-   - **浏览器**：跟以前一样，用浏览器打开 <http://127.0.0.1:8373>，关掉黑色窗口就停了。
-
-   以后想换，在雾幕「设置 → 更多 → 桌面版」里改。
+3. 双击 `start.bat`。默认用**软件窗口**打开（没有黑色窗口，桌面上会多一个「雾幕」图标）。第一次打开会出一张卡片：选平台、填**直播间号**（B 站是直播间网址 `live.bilibili.com/` 后面那串数字）。填错了在「设置 → 直播间」里改。想用浏览器打开，在「设置 → 更多 → 桌面版」里改。
 4. 在这台电脑上打开的页面拥有全部管理权限。
 
 - 没开播也能先看看效果：双击 `demo.bat`，会在 <http://127.0.0.1:8375> 随机生成假弹幕、礼物和 SC，每种样式都能看一遍。
@@ -122,7 +118,7 @@ cp config.example.json config.json   # 把 room 改成你的直播间号
 python server.py                     # 然后打开 http://127.0.0.1:8373
 ```
 
-Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Python，第一次运行时自动装依赖、问直播间号。
+Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Python，第一次运行时自动装依赖；直播间在打开的页面里选。
 
 不连直播间先看看：`python server.py --demo --port 8375`。
 
@@ -289,16 +285,14 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 
 ## Getting started (Windows)
 
-**Easiest: the installer** (from v0.9.6). Download `Danmist-Setup-vX.Y.Z.exe` from [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and double-click it. No admin rights needed; it installs to `%LOCALAPPDATA%\Programs\Danmist` and adds 雾幕 to the Start menu and desktop. The first launch asks for your room id. Later updates are one click inside the app; uninstall from Settings → Apps (it asks whether to delete your archives too). Windows SmartScreen may warn about an unknown publisher (the installer isn't code-signed): click "More info → Run anyway".
+**Easiest: the installer** (from v0.9.6). Download `Danmist-Setup-vX.Y.Z.exe` from [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and double-click it. No admin rights needed; it installs to `%LOCALAPPDATA%\Programs\Danmist` and adds 雾幕 to the Start menu and desktop. On first launch pick the platform (Bilibili / Douyu / Huya / Douyin) and enter your room id in the app; change it any time under Settings → Room. Later updates are one click inside the app; uninstall from Settings → Apps (it asks whether to delete your archives too). Windows SmartScreen may warn about an unknown publisher (the installer isn't code-signed): click "More info → Run anyway".
 
 **Slow downloads in mainland China**: the same files are on Baidu Netdisk: https://pan.baidu.com/s/1Ag5Ykctgn8S5OyVNB30jSg?pwd=xn55 (code xn55)
 
 **Portable zip**:
 1. Go to [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and download `Danmist-vX.Y.Z-windows-x64.zip`. Python is bundled; nothing else to install.
 2. Unzip it to a normal folder (don't run it from inside the zip).
-3. Double-click `start.bat`. The first time, it asks for your **live room id** (the number after `live.bilibili.com/`) and how to open it:
-   - **App window** (recommended, from v0.9.5): the board opens in its own window with no console; a 雾幕 shortcut appears on the desktop for next time. Closing the window stops the board.
-   - **Browser**: as before, your browser opens <http://127.0.0.1:8373>; close the console window to stop.
+3. Double-click `start.bat`. It opens as an **app window** by default (no console, plus a 雾幕 desktop shortcut). The first time, a card asks for the platform and your **room id** (on Bilibili, the number after `live.bilibili.com/`); change it later under Settings → Room. To use the browser instead, switch under Settings → More → Desktop.
 
    Change it later under Settings → More → Desktop.
 4. Pages opened on this computer have full admin rights.
@@ -390,7 +384,7 @@ cp config.example.json config.json   # then set room to your live room id
 python server.py                     # then open http://127.0.0.1:8373
 ```
 
-On Windows you can also double-click `start.bat`: it finds your Python, installs the dependencies the first time and asks for the room id.
+On Windows you can also double-click `start.bat`: it finds your Python, installs the dependencies the first time; you pick the room in the page.
 
 Try it without a live room: `python server.py --demo --port 8375`.
 

@@ -23,18 +23,10 @@ if not exist "python\python.exe" (
   )
 )
 
-rem 第一次运行：问直播间号和打开方式，写进 config.json
+rem 第一次运行：不再问直播间号（2026-11-26），打开以后在软件里选平台、填房间号；以后在「设置 → 直播间」里换
 if exist config.json goto mode
-echo.
-echo 第一次使用，请输入你的 B 站直播间号
-echo （直播间网址 live.bilibili.com/ 后面那串数字）
-%PY% -X utf8 -c "import json;c=json.load(open('config.example.json',encoding='utf-8'));c['room']=int(next(x for x in iter(lambda:input('直播间号：').strip(),None) if x.isdigit() or print('只能填数字，再输一次。')));print();print('打开方式：1 = 软件窗口（推荐，桌面上会有「雾幕」图标）  2 = 浏览器网页');k=input('选 1 或 2（直接回车 = 1）：').strip();c['open']='web' if k=='2' else 'app';json.dump(c,open('config.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)" 2>nul || (
-  echo.
-  echo 没能读到直播间号。也可以把 config.example.json 复制成 config.json，自己填 room。
-  pause
-  exit /b 1
-)
-echo 已保存到 config.json，以后想换直播间就改这个文件；打开方式在雾幕「设置 → 更多」里也能改。
+%PY% -X utf8 -c "import json;c=json.load(open('config.example.json',encoding='utf-8'));c['open']='app';json.dump(c,open('config.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)" 2>nul
+echo 第一次使用：打开以后在里面选平台、填直播间号就好（填错了在「设置 → 直播间」里改）。
 
 :mode
 rem 软件窗口（2026-11-25 桌面版）：交给 desktop.py，没有黑窗口；第一次顺便在桌面建快捷方式

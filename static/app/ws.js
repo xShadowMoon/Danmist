@@ -59,6 +59,7 @@ function connect() {
       Object.assign(EMO, data.emots || {});
       Object.assign(S, data);
       applyTags(); drawTagSet();  // 身份标签的名字和颜色（2026-11-26）
+      drawRoomSet();  // 直播间：没设置就出卡片（2026-11-26）
       if (S.music) S.music.skew = (S.music.now || Date.now() / 1000) - Date.now() / 1000;
       window.syncWorkbench?.();
       S.userCount = data.user_count;
@@ -143,6 +144,7 @@ function connect() {
       if (String(data.cmd).startsWith('profile_')) { profileResult(data); return; }
       if (String(data.cmd).startsWith('admin_link_')) { linkResult(data); return; }
       if (data.cmd === 'lan_set') { note(data.msg, data.ok); if (!data.ok) drawLinks(); return; }
+      if (data.cmd === 'room_set') { const t = $('sc-tip') || $('roomnow'); if (t) t.textContent = data.msg; note(data.msg, data.ok); return; }
       if (['update_download', 'update_restart', 'open_mode', 'make_shortcut'].includes(data.cmd)) { note(data.msg, data.ok); if (!data.ok && data.cmd === 'update_download') { updPct = -1; drawUpd(); } return; }
       if (['music_qr', 'music_poll', 'music_logout', 'music_cookie'].includes(data.cmd)) { musicLoginResult(data); return; }
       if (data.cmd === 'mute_list' || data.cmd === 'unmute') { muteResult(data); return; }

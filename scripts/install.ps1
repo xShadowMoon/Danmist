@@ -53,5 +53,5 @@ try {
   exit 1
 }
 
-# 装好就打开（第一次会问直播间号）
+# 装好就打开（第一次在软件里选平台、填直播间号）
 Start-Process -FilePath $pyw -ArgumentList ('"' + (Join-Path $dir 'desktop.py') + '"') -WorkingDirectory $dir

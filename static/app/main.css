@@ -211,6 +211,16 @@ body.resizing.ry { cursor: row-resize; }
 .tag.bot { background: #6fa892; }
 /* 身份标签（2026-11-26）：自己的标签、观众卡片里加标签、设置里改标签 */
 .tag.ct { background: #8a7cc8; }
+/* 第一次打开：选平台、填房间号（2026-11-26） */
+#setupcard { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: rgb(10 14 24 / .72); backdrop-filter: blur(4px); }
+#setupcard .sc-box { width: min(420px, calc(100vw - 32px)); padding: 22px 22px 18px; border-radius: 16px; background: var(--sheet, #1d2433); color: var(--ink); box-shadow: 0 12px 40px rgb(0 0 0 / .4); }
+#setupcard h2 { margin: 0 0 4px; font-size: 20px; }
+#setupcard p { margin: 0 0 14px; color: var(--ink2); }
+#setupcard .sc-row { display: flex; gap: 8px; }
+#setupcard select, #setupcard input { height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--input); color: var(--ink); font: inherit; padding: 0 10px; }
+#setupcard input { flex: 1; min-width: 0; }
+#setupcard small { display: block; margin-top: 10px; color: var(--ink3); line-height: 1.5; }
+#setupcard .sc-tip { margin-top: 8px; min-height: 1.2em; color: var(--mist-d); }
 .cardtags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 2px 2px; }
 .cardtags .ctl { font-size: 12px; color: var(--ink3); display: inline-flex; align-items: center; gap: 3px; }
 .cardtags .chip { border: 1px solid var(--line); background: var(--chip); color: var(--ink2); border-radius: 999px; padding: 2px 10px; font: inherit; font-size: 12px; cursor: pointer; }

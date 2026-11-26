@@ -168,16 +168,15 @@ def main():
         message('桌面上已经有「雾幕」了，以后双击它打开' if ok else '快捷方式没建成，可以直接双击 start.bat')
         return
     c = config()
-    if not c.get('room'):  # 第一次打开（安装版没有黑窗口可以问）：弹个小框问直播间号
-        room = ask_room()
-        if not room:
-            return
+    if not os.path.exists(os.path.join(APP, 'config.json')):
+        # 第一次打开：不再弹框问直播间号（2026-11-26 用户：填错了找不到地方改），软件里会出一张卡片让选平台、填房间号，
+        # 以后在「设置 → 直播间」里随时能换
         try:
             with open(os.path.join(APP, 'config.example.json'), encoding='utf-8') as f:
                 base = json.load(f)
         except (OSError, ValueError):
             base = {}
-        c = {**base, **c, 'room': room, 'open': c.get('open', 'app')}
+        c = {**base, **c, 'open': c.get('open', 'app')}
         with open(os.path.join(APP, 'config.json'), 'w', encoding='utf-8') as f:
             json.dump(c, f, ensure_ascii=False, indent=2)
     port = int(c.get('port') or 8373)

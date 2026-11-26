@@ -183,7 +183,7 @@ COMMAND_FIELDS = {
     'music_next': set(), 'music_ok': {'id'}, 'music_del': {'id'}, 'music_top': {'id'},
     'music_qr': {'src'}, 'music_poll': {'src', 'key'}, 'music_logout': {'src'}, 'music_cookie': {'src', 'cookie'},
     'plat_set': {'rooms'}, 'plat_show': {'plat', 'room', 'show'},
-    'tags_set': {'builtin', 'custom'}, 'tag_user': {'uid', 'tags', 'bot'},
+    'tags_set': {'builtin', 'custom'}, 'tag_user': {'uid', 'tags', 'bot'}, 'room_set': {'plat', 'room'},
 }
 
 TITLE_PRESETS_MAX = 12
@@ -272,6 +272,11 @@ def validate_command(c, clean_rules):
     elif cmd == 'open_mode':
         if c.get('mode') not in ('app', 'web'):
             raise InputError('打开方式只能是软件窗口或浏览器')
+    elif cmd == 'room_set':  # 换主直播间（2026-11-26）
+        if c.get('plat') not in ('bili', 'douyu', 'huya', 'douyin'):
+            raise InputError('平台不对')
+        if not re.fullmatch(r'\d{1,20}', str(c.get('room') or '')) or int(c.get('room')) <= 0:
+            raise InputError('房间号只能是数字')
     elif cmd == 'tags_set':  # 身份标签（2026-11-26）
         from tags import clean_config
         try:
