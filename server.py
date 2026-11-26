@@ -2008,7 +2008,7 @@ class Alerts:
 SAME_SESSION_SEC = 300  # 断流后这么多秒内又开播算同一场（跟 QQ 机器人一样 5 分钟，2026-11-23）
 SONGBOOK_MAX = 10000  # 歌本 / 曲库最多记多少首（跟曲库导入的上限一致）
 # 主页面拆成了 index.html + static/app/ 下的样式和几段脚本（2026-11-13）
-APP_FILES = ('app/main.css', 'app/icons.js', 'app/core.js', 'app/render.js', 'app/people.js', 'app/voice.js', 'app/songs.js', 'app/news.js', 'app/ws.js', 'app/ui.js')
+APP_FILES = ('app/main.css', 'app/icons.js', 'app/core.js', 'app/render.js', 'app/people.js', 'app/voice.js', 'app/songs.js', 'app/guide-art.js', 'app/news.js', 'app/ws.js', 'app/ui.js')
 PAGES = ('index.html', 'obs.html', 'obs-songs.html', 'obs-setup.html', 'obs-lyrics.html', 'workbench.js', 'workbench.css') + APP_FILES
 
 
