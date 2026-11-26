@@ -5,6 +5,61 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.13 · 2026-11-26
+
+### 直播间 · Live room
+
+- 第一次打开不再问直播间号：软件里出一张卡片，选平台（B 站 / 斗鱼 / 虎牙 / 抖音）、填房间号。填错了在「设置 → 直播间」随时换，保存后自己重启连过去。
+  No more room prompt on first launch: a card in the app lets you pick the platform (Bilibili / Douyu / Huya / Douyin) and enter the room. Change it any time in Settings → Live room; it restarts and reconnects by itself.
+- 可以直接粘贴整段直播间网址，平台也会自动选对。B 站会先显示主播名和直播间标题让你确认，免得把 UID 当成房间号。
+  You can paste the whole live-room URL and the platform is picked for you. For Bilibili, the streamer name and room title are shown for confirmation first, so a UID isn't mistaken for a room number.
+- 切换到别的直播间的菜单做大了，也能选斗鱼、虎牙、抖音。
+  The "switch room" menu is bigger and also offers Douyu, Huya and Douyin.
+
+### 新功能 · New
+
+- 身份标签自定义（设置 → 弹幕 → 身份标签）：舰长 / 提督 / 总督 / 房管 / 机器人 / 主播的名字、简称、颜色都能改；还能建自己的标签，在观众卡片里给人加上，或者标成机器人。
+  Custom identity tags: rename and recolor captain / admiral / governor / moderator / bot / streamer tags, create your own tags, and assign them (or mark bots) from the viewer card.
+- 一键备份 / 恢复：设置 → 更多 → 备份。立即备份、从某一份恢复（先备份现在的，再重启换上）、打开备份文件夹。软件内更新前会自动备份一份。
+  One-click backup / restore in Settings → More → Backup. Backs up automatically before an in-app update.
+- OBS 歌词源：歌单里「正在唱」的那首歌词上屏，有时间轴就跟着走。OBS 设置页多了「歌词」。
+  OBS lyrics source: shows the lyrics of the song marked "singing now"; timed lyrics follow the timeline. New "Lyrics" tab in the OBS setup page.
+- OBS 弹幕新选项：一段时间没人说话整列隐藏、SC 停留多久、表情包大小、进房提示只显示提督以上 / 只总督。
+  New OBS overlay options: hide when idle, SC display time, sticker size, entry banners for admiral+ / governor only.
+- 声音从哪出：设置 → 朗读，AI 朗读、提示音和这页放的歌可以选输出设备，比如只进耳机、不进直播。
+  Audio output device: in Settings → TTS, AI voice, alert sounds and in-page music can go to a chosen device (e.g. headphones only).
+- AI 音色（GPT-SoVITS）的地址在 设置 → 朗读 里填，保存时马上测连不连得上。
+  Set the GPT-SoVITS address in Settings → TTS; it is tested when you save.
+- 换看板娘以后，桌面和开始菜单的快捷方式图标也跟着换。
+  After changing the mascot, the desktop and Start menu shortcut icons change too.
+- 设置 → 更多 → 导出诊断信息：出问题时把这个发给作者（密钥、Cookie 会自动藏掉）。
+  Settings → More → Export diagnostics, with keys and cookies redacted.
+
+### 改进 · Improvements
+
+- 软件内更新：GitHub 下载不了时自动换国内加速站，下完按 GitHub 给的 sha256 核对；都不行会提示去百度网盘下。
+  In-app updates fall back to mirror sites when GitHub is unreachable and verify the sha256 published by GitHub; if all fail, it points to the Baidu Netdisk mirror.
+- 抖音：隐藏的浏览器不再下载直播视频，省 CPU、显卡和网速；抖音要验证或者页面上找不到聊天区时，那一行亮黄字并弹提醒。
+  Douyin: the hidden browser no longer downloads the video stream; if Douyin asks for verification or the chat area disappears, the row turns yellow and you get a notice.
+- 断流后 5 分钟内重新开播算同一场。
+  Restarting the stream within 5 minutes continues the same session.
+- AI 音色、网易云 / QQ 音乐、B 站名片这些外部服务连续失败时先歇一会再试，不再一直卡着。
+  External services (AI voice, music, Bilibili profile cards) back off after repeated failures.
+
+### 安全 · Security
+
+- 经 Nginx、frp、ngrok 这类转发进来的访问不再被当成「在这台电脑上打开」，要用管理链接才有管理权限。
+  Requests arriving through a reverse proxy (Nginx, frp, ngrok…) are no longer treated as local; they need an admin link.
+- 图片缓存最多占 500MB，超了先删最久没看的。抖音浏览器的调试口只开在本机。
+  Image cache is capped at 500 MB. The Douyin browser's debug port listens on localhost only.
+
+### 怎么更新 · How to update
+
+顶栏点「下载更新」→「重启生效」。更早的版本见 README「更新到新版本」。
+Click **download update** → **restart**. Older versions: see "Updating to a new version" in the README.
+
+---
+
 ## v0.9.12 · 2026-11-26
 
 ### 抖音 · Douyin
