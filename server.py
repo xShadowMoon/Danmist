@@ -2126,6 +2126,22 @@ async def watch_bili(hub, session):
 
 
 IMG_CACHE = os.path.join(DIR, 'data', 'imgcache')
+# 看板娘（2026-11-26）：设置 → 更多 → 看板娘 里换成自己的图。网页先缩好这几个尺寸的 PNG 传上来，存在 data/mascot；
+# 没换过就用 static/art 里默认的图标。网页、窗口、任务栏图标都走 /art/icon-{尺寸}.png，两种都认
+MASCOT_SIZES = (32, 64, 192, 256, 512)
+MASCOT_MAX = 1024 * 1024
+MASCOT_DIR = os.path.join(DIR, 'data', 'mascot')
+
+
+def mascot_ver(folder):
+    """换过的看板娘图最后一次改的时间（网页拿它刷新图标）；没换过是 0"""
+    times = []
+    for n in MASCOT_SIZES:
+        try:
+            times.append(int(os.path.getmtime(os.path.join(folder, f'icon-{n}.png'))))
+        except OSError:
+            pass
+    return max(times, default=0)
 
 
 def clean_img_cache(days=30):
@@ -3167,6 +3183,7 @@ async def main():
             snap['guardlist'] = viewer_view('guardlist', h.guardlist) if viewer else h.guardlist  # 舰长名单 B 站上本来就公开（不带到期时间）
             snap['ver'] = page_vers()
             snap['app_version'] = updates.VERSION
+            snap['mascot'] = mascot_ver(mascot_dir)  # 换过看板娘时网页拿它刷新图标
             if admin:
                 snap['update'] = new_release[0]  # GitHub 上有新版本时：{'v', 'url', 'name'}，没有就是 None
                 snap['songbook'] = hub.songbook_list()
@@ -3977,8 +3994,18 @@ async def main():
                   for g in (1, 2, 3)},
     }
 
+    mascot_dir = MASCOT_DIR
+    if args.demo:  # 演示模式不写 data：换的图放临时文件夹，关掉就没了
+        import tempfile
+        mascot_dir = tempfile.mkdtemp(prefix='danmist-mascot-')
+
     async def art_file(request):
         name = request.match_info.get('name', '')
+        icon = re.fullmatch(r'icon-(\d{2,3})\.png', name)
+        if icon and int(icon.group(1)) in MASCOT_SIZES:  # 看板娘图标：换过用换的，没换过用默认的
+            mine = os.path.join(mascot_dir, name)
+            path = mine if os.path.isfile(mine) else os.path.join(DIR, 'static', 'art', name)
+            return web.FileResponse(path, headers={'Cache-Control': 'no-cache'})
         m = re.fullmatch(r'(frame|guard)([123])(-s|-v2)?\.png', name)
         if not m or (m.group(1) == 'guard' and m.group(3)) or (m.group(1) == 'frame' and not m.group(3)):
             raise web.HTTPNotFound()
@@ -3987,6 +4014,37 @@ async def main():
             return web.FileResponse(local, headers={'Cache-Control': 'no-cache'})
         url = official_art[m.group(1)][int(m.group(2))]
         raise web.HTTPFound('/img?u=' + urllib.parse.quote(url, safe='') + '&s=big', headers={'Cache-Control': 'max-age=3600'})
+
+    async def mascot_put(request):
+        """传一个尺寸的看板娘图标（网页一次传 5 个尺寸）。只给管理身份"""
+        if not is_admin(request, links, args.port):
+            raise web.HTTPForbidden()
+        size = validation.validate_http('mascot_put', request.query, request.match_info)['size']
+        body = await request.read()
+        if not body or len(body) > MASCOT_MAX or not body.startswith(b'\x89PNG\r\n\x1a\n'):
+            raise web.HTTPBadRequest(text='要 1 MB 以内的 PNG 图')
+        os.makedirs(mascot_dir, exist_ok=True)
+        path = os.path.join(mascot_dir, f'icon-{size}.png')
+        tmp = path + '.tmp'
+        with open(tmp, 'wb') as f:
+            f.write(body)
+        os.replace(tmp, path)
+        v = mascot_ver(mascot_dir)
+        hub.emit('mascot', v)
+        return web.json_response({'ok': True, 'v': v})
+
+    async def mascot_reset(request):
+        """换回默认的看板娘"""
+        if not is_admin(request, links, args.port):
+            raise web.HTTPForbidden()
+        validation.validate_http('mascot_reset', request.query, request.match_info)
+        for n in MASCOT_SIZES:
+            try:
+                os.remove(os.path.join(mascot_dir, f'icon-{n}.png'))
+            except FileNotFoundError:
+                pass
+        hub.emit('mascot', 0)
+        return web.json_response({'ok': True, 'v': 0})
 
     async def music_url(request):
         """放歌页来要「现在这首」的播放地址（2026-11-25）。只给正在放的那首，不能拿它去下别的歌"""
@@ -4271,6 +4329,8 @@ async def main():
     app.router.add_get('/art/{name}', art_file)
     app.router.add_get('/api/art', art_list)
     app.router.add_post('/api/launcher/quit', launcher_quit)
+    app.router.add_post('/api/mascot', mascot_put)
+    app.router.add_post('/api/mascot/reset', mascot_reset)
     app.router.add_get('/api/history', hist_list)
     app.router.add_get('/api/offline', offline_list)
     app.router.add_get('/api/history/{sid}', hist_get)

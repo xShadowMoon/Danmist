@@ -68,6 +68,7 @@ function connect() {
       setViewer(!S.admin);
       document.body.classList.toggle('host', !!S.host);  // 主播专属链接：藏掉普通视角、链接管理、清零这些后台的东西
       if (S.host) setHostLook();  // 主播专属：左上角和浏览器标签页换成主播的头像
+      applyMascot(S.mascot);  // 换过看板娘：图标都换成换的那张（2026-11-26）
       if (!S.side) refreshOffDot();
       sideApply();
       if (scSynced()) {
@@ -161,6 +162,8 @@ function connect() {
       S.update = data; drawUpd();
     } else if (type === 'update_progress') {  // 桌面版：下载更新的进度（-1 = 失败）
       updPct = data.pct; drawUpd();
+    } else if (type === 'mascot') {  // 在别的地方换了看板娘
+      applyMascot(data);
     } else if (type === 'desktop') {
       S.desktop = data; updPct = null; drawUpd();
     } else if (type === 'face') {  // 没头像的人，后台去 B 站名片查到了（2026-11-25）：补上再画

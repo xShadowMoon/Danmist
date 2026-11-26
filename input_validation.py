@@ -391,6 +391,11 @@ def validate_http(kind, query, match):
         sid = match.get('sid')
         if not isinstance(sid, str) or not SID.fullmatch(sid):
             raise InputError('场次编号格式不对')
+    if kind == 'mascot_put':  # 看板娘图标（2026-11-26）
+        size = query_integer(query.get('size'), '图标尺寸', 32, 512)
+        if size not in (32, 64, 192, 256, 512):
+            raise InputError('图标尺寸不对')
+        return {'size': size}
     if kind == 'viewer_info':
         return {'uid': query_integer(match.get('uid'), '观众 uid', 1, MAX_UID)}
     if kind in ('dm_older', 'hist_dm'):

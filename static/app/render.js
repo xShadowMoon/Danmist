@@ -61,6 +61,7 @@ function glideBottom() {
 let newCount = 0;
 function hideNewbar() { newCount = 0; $('newbar').style.display = 'none'; }
 function unstick() {
+  hoverHeld = false;  // 人自己往上翻了：鼠标停着不动也不再自己跳回最底下（2026-11-26）
   if (!stick) return;
   stick = false;
   autoScroll = false;
@@ -70,17 +71,21 @@ function unstick() {
 // 现在：手指按着的时候不跟随；只有往下滚到底才重新跟随，往上滚永远不会被算成跟随
 // 2026-11-25 再修（B 站评论 nana 反馈）：弹幕满 300 条后每来一条都会删掉最上面的旧弹幕，浏览器为了让看着的内容不动，
 // 会把滚动位置往回调，这个「往上」的滚动以前被当成人在往上翻，于是不再跟随、一直显示「↓ n 条新弹幕」。
-// 现在：只有最近真的有人动过（滚轮、键盘、鼠标按下、手指滑）才算往上翻；删旧弹幕、图片撑高这些页面自己引起的滚动不算
-let touching = false, lastTop = 0, userAt = 0;
-const userInput = () => { userAt = performance.now(); };
-for (const t of ['wheel', 'pointerdown', 'touchmove']) dmList.addEventListener(t, userInput, { passive: true });
-addEventListener('keydown', userInput, true);
+// 现在：只有人真的在往上翻（按 PageUp / ↑ / Home、拖滚动条、滚轮往上、手指滑）才停止跟随；删旧弹幕、图片撑高、进房细栏这些页面自己引起的滚动不算。
+// 2026-11-26：人自己翻的时候，就算正赶上进房细栏弹出 / 收起，也照样算（以前这半秒里的滚动全不认，鼠标停着时 2 秒后会被拽回最底下）
+let touching = false, lastTop = 0, userAt = 0, dragging = false;
+addEventListener('keydown', e => {
+  if (['PageUp', 'ArrowUp', 'Home'].includes(e.key) && !e.target.closest?.('input, textarea, select, [contenteditable]')) userAt = performance.now();
+}, true);
+dmList.addEventListener('pointerdown', e => { if (e.offsetX > dmList.clientWidth) dragging = true; });  // 按住滚动条拖
+addEventListener('pointerup', () => { dragging = false; }, true);
+addEventListener('pointercancel', () => { dragging = false; }, true);
 dmList.addEventListener('scroll', () => {
-  const top = dmList.scrollTop, down = top >= lastTop;
+  const top = dmList.scrollTop, down = top >= lastTop, byUser = dragging || performance.now() - userAt < 800;
   lastTop = top;
-  if (autoScroll || touching || performance.now() < holdUntil) return;  // 自己滚到底产生的，不算人在滚
+  if (touching || (!byUser && (autoScroll || performance.now() < holdUntil))) return;  // 页面自己滚的，不算人在滚
   if (down && dmList.scrollHeight - top - dmList.clientHeight < 30) { stick = true; hideNewbar(); }
-  else if (!down && performance.now() - userAt < 800) stick = false;
+  else if (!down && byUser) { stick = false; hoverHeld = false; }
 });
 dmList.addEventListener('wheel', e => { if (e.deltaY < 0) { unstick(); hoverHeld = false; } }, { passive: true });
 // 鼠标停在弹幕上：先不往下滚（方便看清某一条、点名字），移开再接着跟到最新。设置 → 弹幕里能关

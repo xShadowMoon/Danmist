@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>雾幕</title>
-<link rel="icon" href="/static/art/icon-32.png" sizes="32x32"><link rel="icon" href="/static/art/icon-64.png" sizes="64x64">
+<link rel="icon" href="/art/icon-32.png" sizes="32x32"><link rel="icon" href="/art/icon-64.png" sizes="64x64">
 <link rel="manifest" id="manifest" href="/static/manifest.json">
-<link rel="apple-touch-icon" href="/static/art/icon-192.png">
+<link rel="apple-touch-icon" href="/art/icon-192.png">
 <script>if (location.pathname.startsWith('/host')) document.getElementById('manifest').href = '/static/manifest-host.json';</script>
 <script>
 // 先定好深色还是浅色，免得打开时闪一下
@@ -29,7 +29,7 @@
 <div class="app">
   <div class="top">
     <div class="brand">
-      <div class="logo"><img src="/static/art/icon-256.png" alt=""></div>
+      <div class="logo"><img src="/art/icon-256.png" alt=""></div>
       <div>
         <h1>雾幕<small id="roomid"></small></h1>
         <div class="titlerow"><div class="title" id="title">连接中…</div><form id="tedit" hidden><input id="tinput" maxlength="40" title="直播间标题：直接改，回车或点 ✓ 确认" placeholder="直播间标题"><select id="tarea" title="分区"></select><button class="btn sm" id="tsave" title="确认修改" disabled>✓</button><button type="button" class="btn sm" id="tprebtn" title="常用标题：点一下换成存好的标题和分区"><i class="ic" data-ic="pin"></i></button><button type="button" class="btn sm" id="tnewsbtn" title="直播间公告"><i class="ic" data-ic="notice"></i></button><button type="button" class="btn sm" id="golive" title="一键开播 / 下播"><i class="ic" data-ic="live"></i> <span>开播</span></button></form><div id="tpremenu" hidden></div>
@@ -427,6 +427,10 @@
 
     <div class="spage" data-sp="more">
       <h2 class="ptitle">更多</h2>
+      <fieldset id="mascotbox" class="admin-only"><legend>看板娘</legend>
+        <div class="about"><img id="mascotpv" src="/art/icon-256.png" alt=""><div><b id="mascotname">默认：雾冬Hanaki</b><span>换成你自己的图，软件里的图标、窗口和任务栏的图标都会跟着换。正方形的图最好，不是正方形会从中间裁。桌面快捷方式的图标换不了。</span></div></div>
+        <div class="chips"><label class="btn sm" id="mascotpick"><i class="ic" data-ic="upload"></i> 换成我的图<input type="file" id="mascotfile" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label><button class="btn sm" id="mascotreset" hidden>换回默认</button><span class="mtip" id="mascottip"></span></div>
+      </fieldset>
       <fieldset><legend>关于</legend>
         <div class="about"><img src="/static/art/icon-64.png" alt=""><div><b>雾幕 Danmist</b><small id="aboutver"></small><span>看板娘 <a href="https://live.bilibili.com/373317" target="_blank" rel="noopener">雾冬Hanaki</a> · <a href="https://github.com/xShadowMoon/Danmist" target="_blank" rel="noopener">GitHub</a></span></div></div>
       </fieldset>
@@ -445,7 +449,7 @@
 <div id="card"></div>
 <div id="spot"><span id="spottip"></span></div>
 <div class="fwin" id="lkbox" hidden><header><i class="ic" data-ic="link"></i><b>新的管理链接</b><small>只显示这一次</small><span class="sp"></span><button class="btn sm" id="lkboxclose"><i class="ic" data-ic="close"></i></button></header><div style="padding:12px;display:flex;gap:8px"><input type="text" id="lkboxurl" readonly style="flex:1;min-width:0"><button class="btn sm accent" id="lkboxcopy">复制</button></div><div id="lkboxqr" hidden></div></div>
-<div id="pwatip" hidden><img src="/static/art/icon-64.png" alt=""><div class="pt"><b>把雾幕装到桌面？</b><small>独立窗口，任务栏有主播图标</small></div><div class="pb"><button class="btn sm" id="pwalater">以后再说</button><button class="btn sm accent" id="pwayes">安装</button></div></div>
+<div id="pwatip" hidden><img src="/art/icon-64.png" alt=""><div class="pt"><b>把雾幕装到桌面？</b><small>独立窗口，任务栏有主播图标</small></div><div class="pb"><button class="btn sm" id="pwalater">以后再说</button><button class="btn sm accent" id="pwayes">安装</button></div></div>
 <div id="tour" hidden><div class="tt" id="tourtxt"></div><div class="tb"><span id="tourn"></span><button class="btn sm" id="tourskip">跳过</button><button class="btn sm accent" id="tournext">下一步</button></div></div>
 <div class="fwin" id="lyr" hidden><header><i class="ic" data-ic="lyrics"></i><b id="lyrname">歌词</b><span class="sp"></span><button class="btn sm" id="lyrsm" title="字小一点">A−</button><button class="btn sm" id="lyrbig" title="字大一点">A+</button><button class="btn sm" id="lyrclose" title="关掉"><i class="ic" data-ic="close"></i></button></header><div id="lyrbody"></div></div>
 <div class="fwin" id="mon" hidden><header><i class="ic" data-ic="monitor"></i><b>直播画面</b><small>静音 · 有几秒延迟</small><span class="sp"></span><button class="btn sm" id="monreload" title="重新加载"><i class="ic" data-ic="history"></i></button><button class="btn sm" id="monclose" title="关掉（关掉就不再占网速）"><i class="ic" data-ic="close"></i></button></header><iframe id="monframe" allow="autoplay; fullscreen" title="直播画面"></iframe></div>

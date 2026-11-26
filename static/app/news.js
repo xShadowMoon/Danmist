@@ -195,6 +195,69 @@ function drawDesktop() {
   $('dkshortcut').hidden = !D.win;
   $('dkver').textContent = `现在是 v${S.app_version || '?'}${D.staged ? ` · v${D.staged} 已下载，重启生效` : S.update?.v ? ` · 有新版本 v${S.update.v}` : ''}`;
 }
+// 看板娘（2026-11-26）：换成自己的图。网页里把图从中间裁成正方形、缩成 5 个尺寸的 PNG 传给电脑，
+// 软件里的图标、标签页 / 窗口 / 任务栏图标都走 /art/icon-{尺寸}.png，换完带上新的 ?v= 马上刷新
+const MASCOT_SIZES = [512, 256, 192, 64, 32];
+function applyMascot(v) {
+  S.mascot = v || 0;
+  const q = S.mascot ? '?v=' + S.mascot : '';
+  document.querySelectorAll('img[src*="/art/icon-"], link[href*="/art/icon-"]').forEach(el => {
+    const a = el.tagName === 'LINK' ? 'href' : 'src';
+    if (el.getAttribute(a).startsWith('/static/')) return;  // 「关于」里固定是雾幕自己的图标
+    el.setAttribute(a, el.getAttribute(a).replace(/(\/art\/icon-\d+\.png)(\?v=\d+)?/, '$1' + q));
+  });
+  if ($('mascotreset')) $('mascotreset').hidden = !S.mascot;
+  if ($('mascotname')) $('mascotname').textContent = S.mascot ? '现在用的是你换的图' : '默认：雾冬Hanaki';
+}
+// 大图一次缩到 32 像素会很糊、有锯齿：先对半对半地缩，最后一步再缩到目标大小
+function squarePng(img, n) {
+  const s = Math.min(img.naturalWidth, img.naturalHeight);
+  let src = img, sx = (img.naturalWidth - s) / 2, sy = (img.naturalHeight - s) / 2, size = s;
+  while (size / 2 >= n * 1.5) {
+    const half = document.createElement('canvas');
+    half.width = half.height = Math.round(size / 2);
+    const h = half.getContext('2d');
+    h.imageSmoothingQuality = 'high';
+    h.drawImage(src, sx, sy, size, size, 0, 0, half.width, half.height);
+    src = half; sx = sy = 0; size = half.width;
+  }
+  const c = document.createElement('canvas');
+  c.width = c.height = n;
+  const g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(src, sx, sy, size, size, 0, 0, n, n);
+  return new Promise(ok => c.toBlob(ok, 'image/png'));
+}
+async function mascotPost(path, body) {
+  const r = await fetch(path, body ? { method: 'POST', body, headers: { 'Content-Type': 'image/png' } } : { method: 'POST' });
+  if (r.status === 403) throw new Error('要用管理链接，或者在电脑上直接打开才能换');
+  if (!r.ok) throw new Error((await r.text()) || '电脑那边没收下');
+  return (await r.json()).v;
+}
+$('mascotfile')?.addEventListener('change', async e => {
+  const f = e.target.files[0], tip = $('mascottip');
+  e.target.value = '';
+  if (!f) return;
+  if (f.size > 30 * 1024 * 1024) { tip.textContent = '图太大了，换一张 30 MB 以内的'; return; }
+  const url = URL.createObjectURL(f), img = new Image();
+  try {
+    await new Promise((ok, bad) => { img.onload = ok; img.onerror = () => bad(new Error('这张图打不开')); img.src = url; });
+    tip.textContent = '正在换…';
+    let v = 0;
+    for (const n of MASCOT_SIZES) v = await mascotPost('api/mascot?size=' + n, await squarePng(img, n));
+    applyMascot(v);
+    tip.textContent = '换好了';
+  } catch (err) {
+    tip.textContent = '没换成：' + (err.message || '出错了');
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+});
+$('mascotreset')?.addEventListener('click', async () => {
+  const tip = $('mascottip');
+  try { applyMascot(await mascotPost('api/mascot/reset')); tip.textContent = '换回默认了'; }
+  catch (err) { tip.textContent = '没换成：' + (err.message || '出错了'); }
+});
 $('dkmode')?.addEventListener('click', e => { const b = e.target.closest('button'); if (b) window._ws?.send(JSON.stringify({ cmd: 'open_mode', mode: b.dataset.val })); });
 $('dkshortcut')?.addEventListener('click', () => window._ws?.send(JSON.stringify({ cmd: 'make_shortcut' })));
 $('dkcheck')?.addEventListener('click', () => {
