@@ -25,3 +25,4 @@ static/art/*
 # Portable Windows build (scripts/build-windows.ps1)
 python/
 dist/
+tests/ui-demo.log
