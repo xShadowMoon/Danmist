@@ -44,6 +44,7 @@ from ai_voice import AIVoice, Busy as VoiceBusy, VoiceError
 from breaker import Breaker
 from music import MusicService
 import platforms
+from bus import Bus
 import tags as tag_store
 from platforms import Platforms, PLATS as PLAT_NAMES
 import updates
@@ -804,6 +805,10 @@ class Hub:
                 self.sc_icons = {k: validation.safe_url(v) for k, v in raw.items() if k in ('500', '1000', '2000') and isinstance(v, str)} if isinstance(raw, dict) else {}
             except (OSError, ValueError):
                 self.sc_icons = {}
+        # 事件总线（2026-11-26）：每条消息记下来以后发一次，点歌、查头像这些顺便做的事都订阅它
+        self.bus = Bus()
+        self.bus.on('dm', self.on_dm_request)
+        self.bus.on('*', self.on_face)
         # 身份标签（2026-11-26）：自带标签改名字 / 颜色、自己的标签、手动标的机器人
         self.tags = tag_store.Tags(os.path.join(DIR, 'data', 'tags.json') if persist else None, write_json)
         state.manual_bots = list(self.tags.bots)
@@ -1278,12 +1283,20 @@ class Hub:
         s.dm.append(item)
         del s.dm[:-300]
         s.touch_user(uid, name, face, dm=1, guard=guard, medal=(f'{medal} {medal_level}' + ('' if medal_lit else ' dim')) if medal else '')
-        if not emoticon and uid not in s.bot_uids and uid != s.room.get('uid'):
+        self.bus.publish('dm', item)
+        self.emit('dm', item, uc=len(s.users))
+
+    def on_dm_request(self, item):
+        """订阅：弹幕里的点歌（直接放 / 进点歌列表）。主播自己、机器人、表情包不算"""
+        s = self.state
+        if not item.get('emoticon') and item['uid'] not in s.bot_uids and item['uid'] != s.room.get('uid'):
             if not self.music_dm(item):
                 self.collect(item)
+
+    def on_face(self, kind, item):
+        """订阅：没头像的人去 B 站名片查（礼物 / SC / 上舰的头像在 item 里）"""
         if not item.get('face'):
             self.need_face(item.get('uid'))
-        self.emit('dm', item, uc=len(s.users))
 
     block_logged = False
 
@@ -1594,8 +1607,7 @@ class Hub:
         s.enters.append(item)
         del s.enters[:-200]
         s.touch_user(uid, name, face, enter=1 if kind == 'enter' else 0, guard=guard)
-        if not item.get('face'):
-            self.need_face(item.get('uid'))
+        self.bus.publish('enter', item)
         self.emit('enter', item, uc=len(s.users))
 
     def room_warn(self, kind, msg):
@@ -1642,8 +1654,7 @@ class Hub:
         st['yuan'] = round(st['yuan'] + yuan, 2)
         s.flow['gift'] = round(s.flow['gift'] + yuan, 2)
         s.touch_user(uid, name, face, spend=yuan, guard=guard)
-        if not item.get('face'):
-            self.need_face(uid)
+        self.bus.publish('gift', item)
         self.emit('gift', {'item': item, 'flow': s.flow, 'user': self.user(uid)})
 
     def tags_changed(self):
@@ -1791,8 +1802,7 @@ class Hub:
         s.scs.append(item)
         s.flow['sc'] = round(s.flow['sc'] + price, 2)
         s.touch_user(uid, name, face, spend=price, guard=guard)
-        if not item.get('face'):
-            self.need_face(uid)
+        self.bus.publish('sc', item)
         self.emit('sc', {'item': item, 'flow': s.flow, 'user': self.user(uid)})
         return True
 
@@ -1821,6 +1831,7 @@ class Hub:
         s.touch_user(uid, name, spend=yuan, guard=level)
         self.guardbook.bought(uid, level, num, unit)
         self.guard_wake.set()
+        self.bus.publish('guard', item)
         self.emit('guard', {'item': item, 'flow': s.flow, 'user': self.user(uid)})
 
     def room_update(self, **kw):
