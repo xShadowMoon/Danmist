@@ -185,6 +185,11 @@
         <div class="opt r"><span>语速</span><div class="ctl"><input type="range" min="0.6" max="2" step="0.05" data-k="tts.rate" data-u="倍"></div><button class="rs" title="恢复默认">↺</button></div>
         <div class="opt r"><span>音调</span><div class="ctl"><input type="range" min="0.5" max="1.6" step="0.05" data-k="tts.pitch"></div><button class="rs" title="恢复默认">↺</button></div>
       </fieldset>
+      <fieldset class="admin-only" id="aibox"><legend>AI 音色（GPT-SoVITS）</legend>
+        <div class="opt"><input type="text" id="aiurl" maxlength="200" placeholder="地址，比如 http://127.0.0.1:9880（空着就不用）" style="flex:1;min-width:0"><select id="aiapi" title="接口"><option value="api_v2">GPT-SoVITS api_v2</option><option value="folder">说话服务（folder）</option></select></div>
+        <div class="chips"><button class="btn sm" id="aisave">保存并测试</button><span class="mtip" id="aitip"></span></div>
+        <div class="note">要先在电脑上开好 GPT-SoVITS（怎么开见 README「AI 音色」）。音色列表（参考音频、模型）还是写在 config.json 的 ai_voice.voices 里。</div>
+      </fieldset>
       <fieldset class="ckg"><legend>读什么</legend>
         <div class="chips">
           <label class="chip"><input type="checkbox" data-k="tts.dm"><span>弹幕</span></label>

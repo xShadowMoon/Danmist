@@ -4716,7 +4716,8 @@ async def main():
 
     # AI 音色（可选）：config.json 的 "ai_voice"，接本机的 GPT-SoVITS（见 README「AI 音色」）。
     # 只给管理身份用（不然谁都能借这个声音说任意的话）。网页拿到 wav 自己播；服务没开、太忙就退回浏览器语音
-    ai_voice = AIVoice(cfg.get('ai_voice'))
+    voice_box = [AIVoice(cfg.get('ai_voice'))]  # 设置里改了地址会换一个新的（2026-11-26）
+    ai_voice = voice_box[0]
     if restored:
         log.info('已经换成备份 %s（换之前的在 备份/数据 里，名字带「恢复前」）', restored)
     if ai_voice.enabled:
@@ -4725,9 +4726,39 @@ async def main():
     async def tts_voices(request):
         if not is_admin(request, links, args.port):
             return web.json_response({'ok': False, 'voices': [], 'online': False}, status=403)
-        rows, online = await ai_voice.voices(bare)
-        return web.json_response({'ok': True, 'enabled': ai_voice.enabled, 'online': online, 'voices': rows},
-                                 headers={'Cache-Control': 'no-store'})
+        av = voice_box[0]
+        rows, online = await av.voices(bare)
+        return web.json_response({'ok': True, 'enabled': av.enabled, 'online': online, 'voices': rows,
+                                  'url': av.url, 'api': av.api}, headers={'Cache-Control': 'no-store'})
+
+    async def tts_config(request):
+        """设置 → 朗读 → AI 音色：填地址、选接口，存进 config.json 的 ai_voice，马上换上并测一下连不连得上（2026-11-26）"""
+        if not is_admin(request, links, args.port):
+            raise web.HTTPForbidden()
+        try:
+            body = await request.json()
+        except ValueError:
+            body = None
+        if not isinstance(body, dict) or set(body) - {'url', 'api'}:
+            return web.json_response({'ok': False, 'msg': '格式不对'}, status=400)
+        url = str(body.get('url') or '').strip().rstrip('/')
+        api = 'api_v2' if body.get('api') == 'api_v2' else 'folder'
+        if url and (len(url) > 200 or not re.fullmatch(r'https?://[\w.\-]+(:\d{1,5})?(/[\w./\-]*)?', url)):
+            return web.json_response({'ok': False, 'msg': '地址要像 http://127.0.0.1:9880 这样'})
+        if args.demo:
+            return web.json_response({'ok': False, 'msg': '演示模式不改设置'})
+        conf = load_config(args.config)
+        av_conf = dict(conf.get('ai_voice') or {}) if isinstance(conf.get('ai_voice'), dict) else {}
+        av_conf.update(url=url, api=api)  # 别的（音色列表、名字）照旧
+        conf['ai_voice'] = av_conf
+        write_json(args.config, conf)
+        voice_box[0] = AIVoice(av_conf)
+        log.info('AI 音色改成：%s（%s）', url or '不用', api)
+        if not url:
+            return web.json_response({'ok': True, 'online': False, 'voices': [], 'msg': '已关掉 AI 音色'})
+        rows, online = await voice_box[0].voices(bare)
+        msg = f'连上了，有 {len(rows)} 个音色' if online and rows else ('连上了，但是没有音色（api_v2 要在 config.json 里写 voices）' if online else '连不上：看看 GPT-SoVITS 开着没有、地址对不对')
+        return web.json_response({'ok': online, 'online': online, 'voices': rows, 'msg': msg})
 
     async def tts_speak(request):
         if not is_admin(request, links, args.port):
@@ -4738,7 +4769,7 @@ async def main():
         except ValueError:
             speed = 1.0
         try:
-            wav = await ai_voice.speak(bare, q.get('voice', ''), q.get('text', ''), speed)
+            wav = await voice_box[0].speak(bare, q.get('voice', ''), q.get('text', ''), speed)
         except VoiceBusy as e:
             return web.json_response({'ok': False, 'msg': str(e)}, status=503)
         except (VoiceError, aiohttp.ClientError, asyncio.TimeoutError) as e:
@@ -4786,6 +4817,7 @@ async def main():
     app.router.add_get('/api/xrooms', xrooms_list)
     app.router.add_get('/api/tts/voices', tts_voices)
     app.router.add_get('/api/tts', tts_speak)
+    app.router.add_post('/api/tts/config', tts_config)
     app.router.add_get('/api/music/url', music_url)
     app.router.add_get('/obs-music', page('obs-music'))
     if GEQU_DIR:

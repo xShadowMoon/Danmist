@@ -284,3 +284,23 @@ function ding(notes = [880, 1318.5], vol = 0.6) {
   } catch {}
 }
 
+// 设置 → 朗读 → AI 音色（2026-11-26）：填地址、选接口，保存时后台马上测一下连不连得上
+async function drawAiBox() {
+  if (!$('aiurl') || !S.admin) return;
+  try {
+    const j = await (await fetch('api/tts/voices', { cache: 'no-store' })).json();
+    if (document.activeElement !== $('aiurl')) $('aiurl').value = j.url || '';
+    $('aiapi').value = j.api || 'api_v2';
+    $('aitip').textContent = !j.url ? '没开' : j.online ? `连着，${(j.voices || []).length} 个音色` : '连不上';
+  } catch {}
+}
+document.addEventListener('click', async e => {
+  if (e.target.closest('[data-st="tts"], #setbtn')) drawAiBox();
+  if (!e.target.closest('#aisave')) return;
+  $('aitip').textContent = '正在测…';
+  try {
+    const j = await (await fetch('api/tts/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: $('aiurl').value.trim(), api: $('aiapi').value }) })).json();
+    $('aitip').textContent = j.msg || (j.ok ? '好了' : '没成功');
+    if (typeof loadVoices === 'function') loadVoices();
+  } catch { $('aitip').textContent = '没保存上'; }
+});
