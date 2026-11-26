@@ -27,9 +27,9 @@ const DEF = {
   enterTip: { pos: 'flow', sec: 3.5, enter: true, follow: true, share: true, like: true, guardOnly: false, avatar: true }, compact: false,
   snd: { on: false, dm: false, sc: true, gift: true, guard: true, enterGuard: false, follow: false, giftMin: 10, scMin: 0, vol: 0.6 }, giftAnim: true, bigGift: { on: true, min: 10, guard: true }, dmSize: 15.5, giftMin: 0, snow: false,
   dmFilter: 'all', dmMedalMin: 10, hlWords: '主播 点歌',
-  dm: { gap: 0, name: 12, bg: 'none', font: '', color: '', avatar: true, medal: true, time: true, bold: false, inline: false, guardBg: true, note: true, hoverPause: true, anim: 'in', animMs: 600 },
+  dm: { gap: 0, name: 12, bg: 'none', font: '', color: '', avatar: true, medal: true, simple: true, time: true, bold: false, inline: false, guardBg: true, note: true, hoverPause: true, anim: 'in', animMs: 600 },
   sc: { size: 14.5, read: 'dim', avatar: true, bar: true, unreadTop: false, autoRead: false, min: 0 },
-  accent: '', bgAlpha: 85, fs: { sc: 100, gift: 100, enter: 100, users: 100, req: 100 }, topHide: [],
+  accent: '', bgAlpha: 85, fs: { sc: 100, gift: 100, enter: 100, users: 100, req: 100 }, topHide: [], topPin: ['obsbtn', 'ttsbtn', 'histbtn', 'librarybtn'],
   layout: clone(DEF_LAYOUT),
   tts: { on: false, voice: '', aiScope: 'thanks', volume: 1, rate: 1.15, pitch: 1,
     dm: true, sc: true, gift: true, giftMin: 1, guard: true, enter: false, enterGuardOnly: true, follow: false,
@@ -86,6 +86,7 @@ function applyCfg() {
   FONTS[D.font] ? R.setProperty('--dm-font', FONTS[D.font]) : R.removeProperty('--dm-font');
   $('dmlist').style.color = D.color || '';
   for (const k of ['bubble', 'stripe', 'line']) B.toggle('dm-' + k, D.bg === k);
+  B.toggle('dm-simple', !!D.simple);  // 简洁（2026-11-26）：名字前只留身份和自己直播间的粉丝牌
   B.toggle('dm-noav', !D.avatar); B.toggle('dm-notime', !D.time); B.toggle('dm-nomedal', !D.medal);
   B.toggle('dm-bold', !!D.bold); B.toggle('dm-inline', !!D.inline);
   // 主题色、背景图、各面板字号
@@ -271,18 +272,18 @@ function applyTheme() {
 }
 darkMQ.addEventListener?.('change', () => { if (cfg.theme === 'auto') applyTheme(); });
 $('themebtn').onclick = () => { cfg.theme = effTheme() === 'dark' ? 'light' : 'dark'; saveCfg(); applyTheme(); };
-// 顶栏按钮自己选（2026-11-25 用户：让人选显示哪些，开再多也不乱 —— 放不下的照旧收进「⋯」）
+// 顶栏按钮（2026-11-26 改）：勾上的带字放在外面（默认 OBS、朗读、历史、曲库），没勾的都在「更多」里；外面放不下的也收进「更多」
 const TOP_BTNS = [['librarybtn', '曲库'], ['preflightbtn', '自检'], ['histbtn', '历史'], ['obsbtn', 'OBS'], ['layoutbtn', '布局'], ['compactbtn', '紧凑'],
   ['themebtn', '深浅色'], ['ttsbtn', '朗读'], ['copylink', '复制链接'], ['viewbtn', '普通视角'], ['newsbtn', '公告']];
+const topPinned = () => Array.isArray(cfg.topPin) ? cfg.topPin : ['obsbtn', 'ttsbtn', 'histbtn', 'librarybtn'];
 function applyTopHide() {
-  const off = Array.isArray(cfg.topHide) ? cfg.topHide : [];
-  for (const [id] of TOP_BTNS) $(id)?.classList.toggle('uhide', off.includes(id));
+  const pin = topPinned();
   const box = $('topbtns');
   if (box && !box.dataset.done) {
     box.dataset.done = 1;
-    box.onchange = e => { const id = e.target.dataset.tb; if (!id) return; cfg.topHide = e.target.checked ? (cfg.topHide || []).filter(x => x !== id) : [...new Set([...(cfg.topHide || []), id])]; saveCfg(); applyTopHide(); };
+    box.onchange = e => { const id = e.target.dataset.tb; if (!id) return; cfg.topPin = e.target.checked ? [...new Set([...topPinned(), id])] : topPinned().filter(x => x !== id); saveCfg(); applyTopHide(); };
   }
-  if (box) box.innerHTML = TOP_BTNS.map(([id, n]) => `<label class="chip"><input type="checkbox" data-tb="${id}"${off.includes(id) ? '' : ' checked'}><span>${n}</span></label>`).join('');
+  if (box) box.innerHTML = TOP_BTNS.map(([id, n]) => `<label class="chip"><input type="checkbox" data-tb="${id}"${pin.includes(id) ? ' checked' : ''}><span>${n}</span></label>`).join('');
   window.fitTop?.();
 }
 function toggleCompact() { cfg.compact = !cfg.compact; saveCfg(); applyCfg(); renderLayoutBar(); }

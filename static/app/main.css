@@ -3,7 +3,7 @@
   --bg: #eef4fa; --bg2: #f7fafd; --glow1: #ffffff; --glow2: #e3eef9;
   --card: #fcfdff; --sheet: #fbfdff; --input: #ffffff;
   --line: #d8e4ef; --line-soft: #e4edf5;
-  --ink: #23364a; --ink2: #5d7186; --ink3: #8fa2b5;
+  --ink: #1f3246; --ink2: #4c6175; --ink3: #687c91;  /* 2026-11-26 浅色的灰字加深，原来 #8fa2b5 在白底上看不清 */
   --mist: #7fb3dd; --mist-d: #4a8cc4; --frost: #b9d7ef;
   --chip: #e3eef9; --pill: #e6edf4; --hover: rgba(127,179,221,.08);
   --live-bg: #ffe9ef; --live-ink: #d24d72; --bad-bg: #fdecec; --bad-ink: #c44;
@@ -345,7 +345,7 @@ body.resizing.ry { cursor: row-resize; }
 .sec h3::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .opt { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13.5px; }
 .opt > span:first-child { flex: 1; min-width: 0; }
-.opt small, .note { color: var(--ink3); font-size: 12px; }
+.opt small, .note { color: var(--ink3); font-size: 12.5px; }  /* 2026-11-26 最小 12.5px */
 .note { display: block; line-height: 1.5; margin: 2px 0 6px; }
 .note.warn { color: var(--warn-ink); background: var(--warn-bg); border-radius: 8px; padding: 7px 10px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
@@ -1509,3 +1509,46 @@ body.touring #spot { transition: opacity .3s, left .2s, top .2s, width .2s, heig
 [data-theme="dark"] .sc .bar { background: rgba(255,255,255,.12); }
 [data-theme="dark"] .sc .bar i { background: rgba(255,255,255,.75); opacity: 1; }
 [data-theme="dark"] .sc { box-shadow: 0 3px 10px rgba(0,0,0,.25); }
+/* 「更多」最下面那一行（2026-11-26） */
+.moremenu .morepin { border-top: 1px solid var(--line) !important; border-radius: 0 0 8px 8px !important; margin-top: 4px; color: var(--ink3); font-size: 12px !important; }
+.top.narrow .brand .title { max-width: 16vw; }
+.top.narrow #rankpill { display: none; }
+/* 弹幕「简洁」（2026-11-26）：名字前面只留身份和自己直播间的粉丝牌 */
+.dm-simple .dm .wealth, .dm-simple .dm .wealthimg, .dm-simple .dm .medal.other, .dm-simple .dm .medal.dim, .dm-simple .dm .tag.note { display: none; }
+/* 数据条小曲线（2026-11-26） */
+#stats .sparkw { margin-left: auto; display: flex; align-items: center; min-width: 0; }
+#stats .sparkw:empty { display: none; }
+#stats .sparkw + .s { margin-left: 10px; }
+#stats .spark { width: 120px; height: 26px; overflow: visible; }
+#stats .spark polyline { fill: none; stroke: var(--mist-d); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+#stats .spark rect { fill: var(--mist-d); opacity: .75; }
+.compact #stats .spark { width: 80px; height: 18px; }
+@media (max-width: 900px) { #stats .sparkw { display: none; } }
+
+/* 「开始用」清单（2026-11-26） */
+#startcard { position: fixed; right: 18px; bottom: 18px; z-index: 9; width: 320px; background: var(--card); border: 1px solid var(--mist); border-radius: 14px; padding: 14px 16px 10px; box-shadow: 0 12px 32px rgba(0,0,0,.28); }
+#startcard h4 { margin: 0; font-size: 15px; }
+#startcard .sub { font-size: 12px; color: var(--ink3); margin: 2px 0 8px; }
+#startcard .bar { height: 6px; border-radius: 3px; background: var(--chip); margin-bottom: 6px; overflow: hidden; }
+#startcard .bar i { display: block; height: 100%; background: var(--mist-d); border-radius: 3px; transition: width .4s; }
+#startcard .step { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+#startcard .step .ck { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); flex: none; display: grid; place-items: center; color: #fff; }
+#startcard .step.done .ck { background: var(--mist-d); border-color: var(--mist-d); }
+#startcard .step.done .ck svg { width: 12px; height: 12px; }
+#startcard .step.done > span:nth-child(2) { color: var(--ink3); text-decoration: line-through; }
+#startcard .step .btn { margin-left: auto; }
+#startcard .sfoot { text-align: right; padding-top: 4px; }
+#startcard .sfoot .btn { border: 0; background: none; color: var(--ink3); }
+
+/* 设置页：折起来的「更多设置」、标题旁的「?」（2026-11-26） */
+#settings details.sfold { margin-top: 10px; border: 1px dashed var(--line); border-radius: 12px; padding: 4px 10px; }
+#settings details.sfold > summary { cursor: pointer; padding: 8px 2px; font-size: 13.5px; font-weight: 600; color: var(--ink2); list-style: none; }
+#settings details.sfold > summary::before { content: "▸ "; color: var(--ink3); }
+#settings details.sfold[open] > summary::before { content: "▾ "; }
+#settings details.sfold > summary small { font-weight: 400; color: var(--ink3); margin-left: 8px; font-size: 12px; }
+#settings .note.qhide { display: none; }
+#settings fieldset.qshow .note.qhide, #settings.searching .note.qhide { display: block; }
+#settings .qtip { width: 18px; height: 18px; margin-left: 6px; border-radius: 50%; border: 1px solid var(--ink3); background: none; color: var(--ink3); font-size: 11px; line-height: 16px; padding: 0; cursor: pointer; vertical-align: 1px; }
+#settings fieldset.qshow .qtip { background: var(--mist-d); border-color: var(--mist-d); color: #fff; }
+/* 2026-11-26 小字最小 12.5px（标签、粉丝牌这种小牌子除外） */
+.stat .k, .stat .s, .mtip, #settings small, .lkrow small, .sfoot, #guide .gcard small { font-size: 12.5px; }

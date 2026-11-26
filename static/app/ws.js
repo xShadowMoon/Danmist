@@ -60,6 +60,7 @@ function connect() {
       Object.assign(S, data);
       applyTags(); drawTagSet();  // 身份标签的名字和颜色（2026-11-26）
       drawRoomSet();  // 直播间：没设置就出卡片（2026-11-26）
+      setTimeout(drawStart, 1500);  // 「开始用」清单
       if (S.music) S.music.skew = (S.music.now || Date.now() / 1000) - Date.now() / 1000;
       window.syncWorkbench?.();
       S.userCount = data.user_count;
@@ -135,6 +136,10 @@ function connect() {
       S.music = data; S.music.skew = (data.now || Date.now() / 1000) - Date.now() / 1000;
       if (reqTab === 'list') soon(renderReqs, 'mq');
       musicSync();
+    } else if (type === 'obs_seen') {  // OBS 里加上弹幕了：「开始用」清单打勾
+      S.obs_seen = true; drawStart();
+    } else if (type === 'series') {  // 数据条小曲线（2026-11-26）
+      S.series = data; drawSparks();
     } else if (type === 'platforms') {  // 其他平台的直播间和连接状态
       // 抖音要验证 / 页面改版收不到了：弹一句提醒（2026-11-26），同一个房间亮着黄字时只提醒一次
       const was = new Set((S.platforms?.rooms || []).filter(r => r.warn).map(r => r.plat + r.room));

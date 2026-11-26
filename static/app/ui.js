@@ -213,7 +213,7 @@ function tourStep(i) {
 function tourEnd() {
   clearInterval(tourFollow);
   tourI = -1; $('tour').hidden = true; $('spot').classList.remove('show'); document.body.classList.remove('touring');
-  if (!tourKey) { try { localStorage.setItem('xw-tour', '1'); } catch {} }
+  if (!tourKey) { try { localStorage.setItem('xw-tour', '1'); localStorage.setItem('xw-start', 'show'); } catch {} drawStart(); }
   TOUR_STEPS = TOUR; tourKey = '';
 }
 $('tournext').onclick = e => { e.stopPropagation(); tourStep(tourI + 1); };
@@ -339,9 +339,18 @@ document.addEventListener('click', e => { if (!$('xroommenu').hidden && !e.targe
   // 每个按钮原来的位置放一个看不见的记号，收回来时放回记号后面，顺序不会乱
   const mark = new Map(ORDER.map(id => $(id)).filter(Boolean).map(el => { const c = document.createComment(el.id); el.before(c); return [el, c]; }));
   const wrapped = () => top.offsetHeight > brand.offsetHeight + 12;
+  const pinTip = () => {  // 「更多」最下面：挑哪些放外面
+    let tip = $('morepin');
+    if (!tip) { tip = document.createElement('button'); tip.id = 'morepin'; tip.className = 'btn morepin'; tip.innerHTML = '<span class="lbl">挑哪些放到外面…</span>'; tip.onclick = () => goTo('set:view > #topbtns', '顶栏按钮'); }
+    menu.appendChild(tip);
+  };
   function fitTop() {
     for (const [el, c] of mark) if (el.parentNode === menu) c.after(el);
-    menu.hidden = true; wrap.hidden = true; top.classList.remove('icons');
+    menu.hidden = true; wrap.hidden = true; top.classList.remove('icons', 'narrow');
+    // 2026-11-26：没勾「放外面」的按钮一直在「更多」里；外面的带字
+    const pin = typeof topPinned === 'function' ? topPinned() : [];
+    for (const id of ORDER) { const el = $(id); if (el && !pin.includes(id) && el.getClientRects().length) menu.appendChild(el); }
+    if (menu.querySelector('.btn:not(#morepin)')) { pinTip(); wrap.hidden = false; } else $('morepin')?.remove();
     if (innerWidth <= 640) {  // 手机（2026-11-21）：按钮挤成两行太占地方，不常用的直接收进「⋯」
       top.classList.add('icons');
       for (const id of ORDER) { const el = $(id); if (el && !['themebtn', 'viewbtn'].includes(id) && el.getClientRects().length) menu.appendChild(el); }
@@ -349,15 +358,18 @@ document.addEventListener('click', e => { if (!$('xroommenu').hidden && !e.targe
       return;
     }
     if (!wrapped()) return;
-    top.classList.add('icons');  // 先去掉文字
+    top.classList.add('narrow');  // 先让标题短一点、藏掉排名（2026-11-26：外面的按钮尽量带字）
+    if (!wrapped()) return;
+    top.classList.add('icons');  // 再去掉文字
     if (!wrapped()) return;
     wrap.hidden = false;
     for (const id of ORDER) {
       const el = $(id);
-      if (!el || !el.getClientRects().length) continue;
-      menu.appendChild(el);
+      if (!el || !el.getClientRects().length || el.parentNode === menu) continue;
+      menu.insertBefore(el, $('morepin'));
       if (!wrapped()) break;
     }
+    if (!$('morepin')) pinTip();
   }
   let t = 0;
   addEventListener('resize', () => { clearTimeout(t); t = setTimeout(fitTop, 120); });
@@ -480,3 +492,61 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('change', e => { if (e.target.id === 'rmopen') xrSend(e.target.checked, xrList()); });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'rminput') { const r = rmKey(); if (r) xroomGo(r.k); } });
+
+/* ---------- 「开始用」清单（2026-11-26）：新用户看完引导后，右下角一张卡片，4 步做完一项勾一项 ----------
+   只给第一次用的人（看过新手引导的老用户不弹）；点「先不用」或者 4 步都做完就不再出来 */
+function startSteps() {
+  const r = S.room || {};
+  return [
+    ['room', '选好直播间', !S.setup, null],
+    ['login', '扫码登录（观众名字不打码）', !!(S.login_readonly || (r.login_ok && r.bot_name)), ['去登录', () => goTo('set:acct > #accadd', '扫码登录')]],
+    ['obs', 'OBS 里加上弹幕', !!S.obs_seen, ['复制网址', () => $('obsbtn').click()]],
+    ['tts', '试一下朗读', !!(cfg.tts?.on || startTried()), ['试听', () => { try { localStorage.setItem('xw-start-tts', '1'); } catch {} goTo("set:tts > [data-tryt='dm']", '试听'); drawStart(); }]],
+  ];
+}
+const startTried = () => { try { return !!localStorage.getItem('xw-start-tts'); } catch { return false; } };
+function drawStart() {
+  let want = ''; try { want = localStorage.getItem('xw-start') || ''; } catch {}
+  let box = $('startcard');
+  if (want !== 'show' || !S.admin || S.host || S.setup || S.side || POP || document.body.classList.contains('viewer')) { if (box) box.remove(); return; }
+  const steps = startSteps(), done = steps.filter(s => s[2]).length;
+  if (done === steps.length) {  // 都做完了：恭喜一下就收起来
+    try { localStorage.setItem('xw-start', 'done'); } catch {}
+    if (box) { note('都弄好了，可以开播了'); box.remove(); }
+    return;
+  }
+  if (!box) { box = document.createElement('div'); box.id = 'startcard'; document.body.append(box); }
+  box.innerHTML = `<h4>开始用${esc(BRAND_NAME())}</h4><div class="sub">做完这 ${steps.length} 步就能直播了 · ${done}/${steps.length}</div><div class="bar"><i style="width:${done / steps.length * 100}%"></i></div>`
+    + steps.map(([k, n, ok, act]) => `<div class="step${ok ? ' done' : ''}"><span class="ck">${ok ? icon('check') : ''}</span><span>${esc(n)}</span>${!ok && act ? `<button class="btn sm" data-start="${k}">${act[0]}</button>` : ''}</div>`).join('')
+    + '<div class="sfoot"><button class="btn sm" id="startoff">先不用</button></div>';
+  box.querySelectorAll('[data-start]').forEach(b => b.onclick = () => startSteps().find(s => s[0] === b.dataset.start)?.[3]?.[1]());
+  $('startoff').onclick = () => { try { localStorage.setItem('xw-start', 'off'); } catch {} box.remove(); };
+}
+setInterval(drawStart, 5000);  // 登录、开朗读这些在别处做完也能勾上
+
+/* ---------- 设置页减字（2026-11-26）：不常用的几组折进「更多设置」；说明的小字收成标题旁的「?」，点一下才出来 ---------- */
+(() => {
+  const FOLD = { tts: ['声音从哪出', 'AI 音色', '怎么读', '不读', '改说法'], dm: ['身份标签', '排版', '进场动画', '进房提示', '筛选'], view: ['顶栏外面', '背景图'] };
+  for (const [page, names] of Object.entries(FOLD)) {
+    const pg = document.querySelector(`#settings .spage[data-sp="${page}"]`);
+    if (!pg) continue;
+    const sets = [...pg.querySelectorAll(':scope > fieldset')].filter(f => names.some(n => (f.querySelector('legend')?.textContent || '').startsWith(n)));
+    if (!sets.length) continue;
+    const d = document.createElement('details');
+    d.className = 'sfold';
+    d.innerHTML = `<summary>更多设置<small>${sets.map(f => esc(f.querySelector('legend').textContent.replace(/（.*$/, ''))).join('、')}</small></summary>`;
+    sets.forEach(f => d.append(f));
+    pg.append(d);
+  }
+  for (const f of document.querySelectorAll('#settings .spage fieldset')) {
+    const notes = [...f.querySelectorAll(':scope > .note:not([id])')];
+    const lg = f.querySelector('legend');
+    if (!notes.length || !lg) continue;
+    notes.forEach(n => n.classList.add('qhide'));
+    const q = document.createElement('button');
+    q.type = 'button'; q.className = 'qtip'; q.textContent = '?';
+    q.title = notes.map(n => n.textContent.trim()).join('\n').slice(0, 300);
+    q.onclick = e => { e.preventDefault(); const on = !f.classList.contains('qshow'); f.classList.toggle('qshow', on); };
+    lg.append(q);
+  }
+})();

@@ -74,7 +74,7 @@
     <button class="btn" id="viewbtn" title="普通视角：看看拿普通链接的人看到什么（再点一下回到管理）" hidden><i class="ic" data-ic="eye"></i><span class="lbl"> 普通视角</span></button>
     <i class="tsep"></i>
     <button class="btn" id="newsbtn" title="功能一览、更新公告"><i class="ic" data-ic="book"></i><span class="lbl"> 功能</span></button>
-    <div class="wmode" id="morewrap" hidden><button class="btn" id="morebtn" title="更多" aria-haspopup="menu"><i class="ic" data-ic="more"></i></button><div class="wmenu moremenu" id="moremenu" hidden></div></div>
+    <div class="wmode" id="morewrap" hidden><button class="btn" id="morebtn" title="更多" aria-haspopup="menu"><i class="ic" data-ic="more"></i><span class="lbl"> 更多</span></button><div class="wmenu moremenu" id="moremenu" hidden></div></div>
     <button class="btn" id="setbtn" title="设置"><i class="ic" data-ic="gear"></i><span class="lbl"> 设置</span></button>
 
   </div>
@@ -286,8 +286,8 @@
           <label class="chip" title="舰长、提督、总督的头像框，跟 OBS 一样"><input type="checkbox" data-k="frames"><span>头像框</span></label>
         </div>
       </fieldset>
-      <fieldset class="ckg"><legend>顶栏按钮</legend>
-        <div class="chips" id="topbtns" title="不勾的按钮不在顶栏显示；放不下的会收进「⋯」"></div>
+      <fieldset class="ckg"><legend>顶栏外面放哪些按钮</legend>
+        <div class="chips" id="topbtns" title="勾上的带字放在顶栏上；没勾的在「更多」里"></div>
       </fieldset>
       <fieldset><legend>背景图</legend>
         <div class="opt r"><span>背景图</span><div class="ctl"><button class="btn sm" id="bgpick">选图</button><button class="btn sm" id="bgclear" title="去掉背景图">去掉</button><input type="file" id="bgfile" accept="image/*" hidden></div><span></span></div>
@@ -311,6 +311,7 @@
       </fieldset>
       <fieldset class="ckg"><legend>每条显示</legend>
         <div class="chips">
+          <label class="chip" title="名字前面只留舰长、房管、自己直播间的粉丝牌；荣耀等级、别家的粉丝牌、备注都先藏起来"><input type="checkbox" data-k="dm.simple"><span>简洁</span></label>
           <label class="chip"><input type="checkbox" data-k="dm.avatar"><span>头像</span></label>
           <label class="chip"><input type="checkbox" data-k="dm.medal"><span>粉丝牌</span></label>
           <label class="chip"><input type="checkbox" data-k="dm.time"><span>时间</span></label>

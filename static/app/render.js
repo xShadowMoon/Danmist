@@ -19,7 +19,10 @@ function dmHtml(d) {
   if (d.wealth) tags.push(wealthHtml(d.wealth));
   if (d.guard) tags.push(`<span class="tag g${d.guard}" title="${GN[d.guard]}">${GS[d.guard]}</span>`);
   if (d.admin) tags.push(`<span class="tag admin" title="${esc(tagName('admin'))}">${esc(tagShort('admin'))}</span>`);
-  if (d.medal) tags.push(medalHtml(d.medal, d.medal_level, d.guard, d.medal_dim));
+  if (d.medal) {  // 别的直播间的牌子标一下 other，「简洁」时藏掉
+    const other = d.medal_room && S.room?.room_real && d.medal_room !== S.room.room_real;
+    tags.push(other ? medalHtml(d.medal, d.medal_level, d.guard, d.medal_dim).replace('class="medal', 'class="medal other') : medalHtml(d.medal, d.medal_level, d.guard, d.medal_dim));
+  }
   if ((S.bot_uids || []).includes(d.uid)) tags.push(`<span class="tag bot" title="${esc(tagName('bot'))}发的弹幕">${esc(tagShort('bot'))}</span>`);
   if (S.tags?.users?.[d.uid]) tags.push(customTagsHtml(d.uid));  // 自己加的标签（2026-11-26）
   if (isMuted(d.uid)) tags.push('<span class="tag mute">不读</span>');
@@ -675,6 +678,7 @@ ${$('flowdetail').textContent}`;  // 明细不占地方，鼠标停上去看
   setText($('likes'), '点赞 ' + num(S.room.likes));
   setText($('title'), S.room.title || ((S.room.anchor_name || '主播') + ' 的直播间'));
   drawRoomBtns();
+  drawSparks();
   const live = $('live');
   setText(live, S.room.live ? '直播中' : '未开播');
   live.classList.toggle('on', !!S.room.live);
@@ -685,6 +689,25 @@ ${$('flowdetail').textContent}`;  // 明细不占地方，鼠标停上去看
   rp.hidden = !ranks.length; setText(rp, ranks.join(' · '));
   const t = (S.room.live ? '🔴 直播中 · ' : '') + BRAND_NAME();
   if (document.title !== t) document.title = t;
+}
+// 数据条右边的小曲线（2026-11-26）：最近 60 分钟，每分钟一个点（后台记的，只有管理身份有）
+function sparkSvg(vals, bars) {
+  if (vals.length < 2) return '';
+  const W = 120, H = 26, max = Math.max(...vals), min = bars ? 0 : Math.min(...vals), span = max - min || 1;
+  if (bars) {
+    const n = Math.min(vals.length, 20), v = vals.slice(-n), bw = W / 20, x0 = (20 - n) * bw;  // 一直按 20 格画，刚开始的几分钟靠右
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${v.map((x, i) => `<rect x="${x0 + i * bw + 1}" y="${H - Math.max(1.5, (x / (max || 1)) * H)}" width="${bw - 2}" height="${Math.max(1.5, (x / (max || 1)) * H)}" rx="1.5"/>`).join('')}</svg>`;
+  }
+  const pts = vals.map((x, i) => `${(i / (vals.length - 1) * W).toFixed(1)},${(H - 2 - (x - min) / span * (H - 4)).toFixed(1)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}"/></svg>`;
+}
+function drawSparks() {
+  const s = S.series || [];
+  const put = (id, html) => { const tile = $(id); if (!tile) return; let el = tile.querySelector('.sparkw'); if (!el) { el = document.createElement('span'); el.className = 'sparkw'; tile.querySelector('.s') ? tile.querySelector('.s').before(el) : tile.append(el); } if (el.dataset.k !== html) { el.dataset.k = html; el.innerHTML = html; } };
+  const ok = S.admin && s.length >= 2;
+  put('t-watched', ok ? sparkSvg(s.map(x => x.w)) : '');
+  put('t-online', ok ? sparkSvg(s.map(x => x.o)) : '');
+  put('t-users', ok ? sparkSvg(s.slice(1).map((x, i) => Math.max(0, x.d - s[i].d)), true) : '');  // 每分钟多少条弹幕
 }
 function tick() {
   if (!S.room.live) { $('dur').textContent = '—'; return; }

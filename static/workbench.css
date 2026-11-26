@@ -16,5 +16,5 @@
 /* 窗口不够宽时顶栏按钮再收紧一点，一行放得下（2026-11-13） */
 @media (max-width:1240px){.top{gap:6px}.top .btn{padding:6px 7px}}
 /* 多了曲库、自检、模式三个按钮：带字的顶栏要更宽才放得下，1480 以下只留图标 */
-@media (max-width:1900px){.top .btn .lbl{display:none}.top .btn{padding:6px 9px}}
+/* 2026-11-26：顶栏外面的按钮一直带字（放不下由 ui.js fitTop 收进「更多」或者去掉字），这里不再按宽度藏字 */
 @media (max-width:1240px){.top .btn{padding:6px 7px}}

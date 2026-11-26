@@ -2815,7 +2815,9 @@ async def main():
         demo_history(history)
     IMG_CACHE_READY = clean_img_cache()
     hub = Hub(state, history, persist=not args.demo)
-    hub.anchor_fixed = bool(args.anchor_name)  # config.json 写了主播名字就用写的；没写就去 B 站查（bili.poll_room，2026-11-26）
+    hub.anchor_fixed = bool(args.anchor_name)
+    hub.series = collections.deque(maxlen=60)  # 数据条小曲线（sample_series）
+    hub.obs_seen = os.path.exists(os.path.join(DIR, 'data', 'obs-seen'))  # OBS 里加过弹幕没有（「开始用」清单）  # config.json 写了主播名字就用写的；没写就去 B 站查（bili.poll_room，2026-11-26）
     hub.music = MusicService(os.path.join(DIR, 'data'), not args.demo, write_json, log, hub.emit, hub.emit_admin)
     hub.platforms = Platforms(hub, os.path.join(DIR, 'data'), not args.demo, write_json, log, lambda: bare)
     hub.admin_links, hub.public_limits = links, limits
@@ -3160,6 +3162,15 @@ async def main():
                     await ws.send_json({'type': 'result', 'data': {'cmd': 'connect', 'ok': False, 'msg': f'这个直播间现在不能切过去，先看{BRAND["short"]}这边'}})
             if client_kind in ('obs', 'obs-songs', 'obs-music'):
                 h.obs_clients[ws] = client_kind
+                if client_kind == 'obs' and h is hub and not hub.obs_seen:  # 「开始用」清单：OBS 里加过弹幕了（2026-11-26）
+                    hub.obs_seen = True
+                    if not args.demo:
+                        try:
+                            with open(os.path.join(DIR, 'data', 'obs-seen'), 'w', encoding='utf-8') as f:
+                                f.write(time.strftime('%Y-%m-%d %H:%M:%S'))
+                        except OSError:
+                            pass
+                    hub.emit_admin('obs_seen', True)
                 try:
                     gm = max(0.0, min(100000.0, float(request.query.get('gm', '0') or 0)))
                 except ValueError:
@@ -3208,6 +3219,8 @@ async def main():
             snap['dm_more'] = h is hub and not viewer and len(hub.dmlog.items) > len(snap['dm'])  # 前面还有更早的弹幕，往上翻能加载（普通链接不能翻）
             if admin:
                 snap['notes'] = hub.notes.data
+                snap['series'] = list(getattr(hub, 'series', []))
+                snap['obs_seen'] = bool(getattr(hub, 'obs_seen', False))
                 snap['public_url'] = args.public_url  # 「复制普通链接」用
                 snap['login_readonly'] = LOGIN_READONLY  # 连直播间的号是别的程序管的：设置 → 账号 里不给换
                 snap['lan'] = {'on': lan['on'], 'url': lan_url()}
@@ -4697,6 +4710,16 @@ async def main():
                 last = v
                 hub.emit_admin('platforms', v)
     tasks.append(asyncio.create_task(watch_platforms()))
+
+    async def sample_series():
+        """数据条上的小曲线（2026-11-26）：每分钟记一次看过、在线、弹幕总数、流水，留最近 60 分钟，只给管理身份"""
+        while True:
+            r, s = hub.state.room, hub.state
+            hub.series.append({'t': int(time.time()), 'w': int(r.get('watched') or 0), 'o': int(r.get('online') or 0),
+                               'd': int(s.dm_total()), 'y': round(sum(s.flow.values()), 2)})
+            hub.emit_admin('series', list(hub.series))
+            await asyncio.sleep(10 if args.demo else 60)
+    tasks.append(asyncio.create_task(sample_series()))
     # 有新版本就在管理页面上提示（只读 GitHub 最新 Release 的版本号，不下载任何东西）；演示模式只在测试时查
     if not args.no_update_check and (not args.demo or args.update_url):
         def on_new_release(info):

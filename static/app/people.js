@@ -388,7 +388,7 @@ function drawTagSet(keep = false) {
     + `<div class="mtip" id="tagtip"></div>`;
   // 没改过颜色的，颜色块显示现在真正用的颜色（不是一块灰）
   const hex = c => { const m = String(c).match(/\d+/g); return m && m.length >= 3 ? '#' + m.slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join('') : ''; };
-  box.querySelectorAll('[data-bk]').forEach(r => { if (!B[r.dataset.bk]?.color) { const h = hex(getComputedStyle(r.querySelector('.tag')).backgroundColor); if (h) r.querySelector('[data-f="color"]').value = h; } });
+  box.querySelectorAll('[data-bk]').forEach(r => { if (!B[r.dataset.bk]?.color) { const cs = getComputedStyle(r.querySelector('.tag')); let c = cs.backgroundColor; if (/rgba\(.*,\s*0\)$/.test(c)) c = (cs.backgroundImage.match(/rgba?\([^)]*\)/) || [''])[0];  /* 主播标签是渐变色：取渐变的第一个颜色 */ const h = hex(c); if (h) r.querySelector('[data-f="color"]').value = h; } });
 }
 document.addEventListener('input', e => {
   const r = e.target.closest('#tagset .tagrow'); if (!r || !tagDraft) return;

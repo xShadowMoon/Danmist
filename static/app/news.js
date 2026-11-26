@@ -117,6 +117,8 @@ async function goTo(go, name) {
   // 在设置的另一页上：换到那一页（2026-11-21 设置改版后有些项换了页）
   const spg = el?.closest('#settings .spage');
   if (spg && !spg.classList.contains('on')) { $('stabs').querySelector(`[data-st="${spg.dataset.sp}"]`)?.click(); await sleepMs(120); }
+  const fold = el?.closest('details:not([open])');  // 在折起来的「更多设置」里：先展开（2026-11-26）
+  if (fold) { fold.open = true; await sleepMs(80); }
   // 这个功能所在的面板现在没摆出来：带去「布局」里打开它
   const pool = el?.closest('#pool');
   if (pool) {
