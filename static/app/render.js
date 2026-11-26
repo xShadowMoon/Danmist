@@ -10,6 +10,8 @@ function emoText(d) {
 }
 function dmHtml(d) {
   // 禁言提示（2026-11-18）：和 B 站直播间一样，一行粉色小字
+  // B 站的活动 / 系统横幅（2026-11-23）：一行小字，有链接就带「查看」
+  if (d.kind === 'notice') return `<div class="dm dmsys notice" data-i="${d.i ?? ''}"><span>${icon('bell')}</span><span class="txt">${esc(d.text)}${d.link ? ` <a href="${esc(d.link)}" target="_blank" rel="noopener">查看</a>` : ''}</span><span class="time">${hhmm(d.t)}</span></div>`;
   if (d.kind === 'mute') return `<div class="dm dmsys" data-uid="${d.uid}" data-i="${d.i ?? ''}"><span>${icon('ban')}</span><span class="txt"><b>${esc(d.name)}</b> ${esc(d.text)}</span><span class="time">${hhmm(d.t)}</span></div>`;
   const tags = [];
   if (d.plat) tags.push(platTag(d.plat));  // 其他平台的弹幕（2026-11-25）
@@ -505,7 +507,7 @@ function renderGifts() {
   setList(el, items.length ? items.map(x => x.html).join('') : '<div class="empty xw">暂无礼物</div>');
 }
 
-const ACT = { enter: '进入直播间', follow: '关注了主播', share: '分享了直播间', like: '点赞了直播间' };
+const ACT = { enter: '进入直播间', get follow() { return '关注了' + ANCHOR(); }, share: '分享了直播间', like: '点赞了直播间' };
 function enterRow(e) {
   const g = e.guard || userOf(e.uid)?.guard || 0;
   return `<div class="row" data-uid="${e.uid}" data-k="e${e.uid}-${e.t}-${e.kind}">${avatar(e.face, e.name, g, 24)}<span class="n">${esc(e.name)}</span>${e.plat ? platTag(e.plat) : ''}${g ? `<span class="tag g${g}" title="${GN[g]}">${GS[g]}</span>` : ''}<span class="act ${e.kind}">${ACT[e.kind] || ''}</span><span class="r">${hhmm(e.t)}</span></div>`;
@@ -669,7 +671,7 @@ ${$('flowdetail').textContent}`;  // 明细不占地方，鼠标停上去看
   if (S.room.live && S.room.pop_rank) ranks.push(`人气榜 ${S.room.pop_rank}`);
   if (S.room.live && S.room.area_rank) ranks.push(`${String(S.room.area_rank_name || '小时榜').replace(/小时榜$/, '')}小时榜 ${S.room.area_rank}`);
   rp.hidden = !ranks.length; setText(rp, ranks.join(' · '));
-  const t = (S.room.live ? '🔴 直播中 · ' : '') + '雾幕';
+  const t = (S.room.live ? '🔴 直播中 · ' : '') + BRAND_NAME();
   if (document.title !== t) document.title = t;
 }
 function tick() {

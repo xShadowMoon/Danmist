@@ -406,16 +406,21 @@ document.documentElement.style.setProperty('--size', opt.size + 'px');
 document.documentElement.style.setProperty('--card', `rgba(${light ? '255,255,255' : '16,22,32'},${opt.bg / 100})`);
 if (light) B.add('light');
 // pal=sakura / mint / night / lilac  配色，跟雾幕的配色方案一样：普通弹幕的边框、名字换色
-{ const PAL = { sakura: ['236 160 192', '#f6b3cc', '#c4507c'], mint: ['130 205 178', '#9fe0c7', '#23865f'], night: ['165 170 238', '#bfc2fa', '#5055b8'], lilac: ['180 168 238', '#cbc2ff', '#6a5ac4'] }[str('pal', '')];
+{ const PAL = { sakura: ['236 160 192', '#f6b3cc', '#c4507c'], mint: ['130 205 178', '#9fe0c7', '#23865f'], night: ['165 170 238', '#bfc2fa', '#5055b8'], lilac: ['180 168 238', '#cbc2ff', '#6a5ac4'] }[str('pal', '') === 'hanaki' ? 'lilac' : str('pal', '')];
   if (PAL) { document.documentElement.style.setProperty('--pal-rgb', PAL[0]); document.documentElement.style.setProperty('--pal-ink', light ? PAL[2] : PAL[1]); } }
 // 2026-11-21 用户不要「流光、卡片、轻透、悬浮」了：style=glass / card / plain（还有不写 style 的旧网址）一律换成月见
 const XWS = ['moon', 'rime', 'clip', 'bubble', 'ticket'];
-const THEME = ['luna', ...XWS].includes(str('style', '')) ? str('style', '') : 'moon', LUNA = THEME === 'luna';
+// 包里的额外样式（2026-11-26）：static/ext/obs.js 往 window.OBS_THEMES 里登记 { 样式名: { scene 场景名里的写法, init(), dm(d, txt), dmCls(d),
+// giftLine(g, name, gimg), sc(s), guard(g), enter(e), after() 每次加完 / 删完一条, ownStroke 自己管描边 } }，没写的就用通用的画法
+const OBS_EXT = window.OBS_THEMES || {};
+const THEME = ['luna', ...XWS, ...Object.keys(OBS_EXT)].includes(str('style', '')) ? str('style', '') : 'moon', LUNA = THEME === 'luna';
+const EXT = OBS_EXT[THEME] || null;
 if (LUNA) B.add('theme-luna');
 // 按 OBS 场景名换样式（2026-11-25）：场景名里写 [雾凇]（或 [rime]）这个浏览器源就换成雾凇，切到没写的场景换回网址里的样式。
 // 只在 OBS 里有效；scene=0 关掉
 if (window.obsstudio && str('scene', '1') !== '0') {
-  const SCENE_STYLE = { 月见: 'moon', 雾凇: 'rime', 星扣: 'clip', 雾月: 'luna', 气泡: 'bubble', 票根: 'ticket' };
+  const SCENE_STYLE = { 月见: 'moon', 雾凇: 'rime', 星扣: 'clip', 雾月: 'luna', 气泡: 'bubble', 票根: 'ticket',
+    ...Object.fromEntries(Object.entries(OBS_EXT).filter(([, t]) => t.scene).map(([k, t]) => [t.scene, k])) };
   const base = str('style0', THEME);
   const want = name => {
     for (const m of String(name || '').matchAll(/[\[【]([^\]】]+)[\]】]/g)) {
@@ -437,7 +442,8 @@ if (window.obsstudio && str('scene', '1') !== '0') {
 // 新样式（2026-11-21）：月见 moon、雾凇 rime、星扣 clip（雾月系，居中半透明）；气泡 bubble、票根 ticket（靠左卡片）
 const XW = XWS.includes(THEME) ? THEME : '';
 if (XW) B.add('theme-xw', 'xw-' + XW);
-// 2026-11-25：通用版去掉了主播专属的薄雾 / 留言本两个样式（旧网址自动当月见）
+// 2026-11-25：通用版去掉了主播专属的薄雾 / 留言本两个样式（旧网址自动当月见）；包里登记了的话在这里初始化（2026-11-26）
+EXT?.init?.();
 const PIN_CLIP = '<svg class="pin" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.2" fill="#e9b949" stroke="#8a5a14" stroke-width="1.3"/><circle cx="10" cy="10" r="6" fill="#f3cd6a"/><rect x="5.2" y="8.9" width="9.6" height="2.2" rx="1" fill="#6b4512"/></svg>';
 // ---- 新样式用的小图 ----
 const XSTAR = '<svg class="xstar" viewBox="0 0 12 14"><path d="M6 0C6.8 4.85 7.8 6.1 12 7C7.65 7.95 6.8 9.35 6 14C5.2 9.25 4.3 7.95 0 7C4.3 6.1 5.25 4.9 6 0Z"/></svg>';
@@ -559,7 +565,7 @@ if (str('width', 'full') === 'fit') B.add('fitwidth');
   }
   if (parts.length) {
     // 主播专属风格、新样式、雾月自己画外圈；在设置里改过描边 / 阴影才用设置的
-    const own = ((XW || LUNA) && !['stroke', 'glow', 'stroke_color', 'glow_color'].some(k => P.has(k)));
+    const own = !!EXT?.ownStroke || ((XW || LUNA) && !['stroke', 'glow', 'stroke_color', 'glow_color'].some(k => P.has(k)));
     if (!own) B.add('ts');
     R.setProperty('--ts', parts.join(', '));
     const f = [];
@@ -650,6 +656,7 @@ function flushAdds() {
     glide(items.reduce((h, el) => h + el.offsetHeight + gap, 0));
   }
   while ($list.children.length > opt.max) $list.firstElementChild.remove();
+  EXT?.after?.();
 }
 function add(html, cls = '', key = '', stay = 1) {
   const el = document.createElement('div');
@@ -666,7 +673,7 @@ function add(html, cls = '', key = '', stay = 1) {
   pending.push(el);
   if (pending.length > opt.max) pending.shift()._drop = true;  // 一帧里来的比能显示的还多：最早的直接不上屏
   if (!flushing) flushing = requestAnimationFrame(flushAdds);
-  if (opt.fade > 0) setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 700); }, opt.fade * stay * 1000);
+  if (opt.fade > 0) setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); EXT?.after?.(); }, 700); }, opt.fade * stay * 1000);
   return el;
 }
 function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
@@ -694,11 +701,12 @@ function showDm(d, quiet) {
     }
   }
   const txt = d.emoticon ? `<img src="img?u=${encodeURIComponent(d.emoticon)}" alt="${esc(d.text)}">` : emoText(d);
-  const html = XW ? xwDm(d, txt)
+  const html = EXT?.dm ? EXT.dm(d, txt)
+    : XW ? xwDm(d, txt)
     : LUNA
     ? `<div class="body"><div class="lw"><span class="lav">${avatar(d.face, d.name)}</span>${d.guard ? gtag(d.guard) : ''}<span class="name">${esc(d.name)}</span>${wealth(d)}${medal(d)}</div><span class="txt">${txt}</span></div>`
     : `${identity(d.face, d.name, d.guard)}<div class="body"><span class="who"><span class="name">${esc(d.name)}</span>${wealth(d)}${medal(d)}${rankLabel(d.guard)}</span><span class="txt">${txt}</span></div>`;
-  const el = add(html, 'dm' + (d.guard ? ' g' + d.guard : ''));
+  const el = add(html, 'dm' + (d.guard ? ' g' + d.guard : '') + (EXT?.dmCls?.(d) || ''));
   if (d.guard === 1 && !quiet) el.classList.add('shine');
   if (quiet) { el.style.animation = 'none'; $list.style.transition = 'none'; $list.style.transform = ''; }
   if (opt.merge && !d.emoticon && !d.guard) {
@@ -709,6 +717,7 @@ function showDm(d, quiet) {
 function giftHtml(g) {
   const name = g.blind ? `${esc(g.blind)} 爆出 ${esc(g.gift)}` : esc(g.gift);
   const gimg = g.img ? `<img class="gi" src="img?u=${encodeURIComponent(g.img)}">` : '';
+  if (EXT?.giftLine) return EXT.giftLine(g, name, gimg);
   if (XW) return `${XMC}<span class="xbadge">${avatar(g.face, g.name)}</span><div class="body"><span class="name">${esc(g.name)}</span><div class="gl2">投喂 <b>${name}</b><span class="num"> ×${g.num}</span></div></div>${gimg}${opt.price ? `<span class="yen">${yuan(g.yuan)}</span>` : ''}<i class="deco"></i>`;
   if (LUNA) return `${identity(g.face, g.name, g.guard, true)}<div class="lb"><div class="lk">PRESENT</div><span class="name">${esc(g.name)}</span><div class="lm">${name}<span class="num"> ×${g.num}</span></div></div>${g.img ? `<img class="gi" src="img?u=${encodeURIComponent(g.img)}">` : ''}${opt.price ? `<span class="wm">${yuan(g.yuan)}</span>` : ''}`;
   return `${identity(g.face, g.name, g.guard, true)}<div class="body"><span class="who"><span class="name">${esc(g.name)}</span>${rankLabel(g.guard)}</span><span class="giftverb">送出</span> ${name}<span class="num">×${g.num}</span>${opt.price ? `<span class="yuan">${yuan(g.yuan)}</span>` : ''}</div>${g.img ? `<img class="gi" src="img?u=${encodeURIComponent(g.img)}">` : ''}`;
@@ -730,6 +739,7 @@ const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(' '
 function showSc(s) {
   if (!opt.sc || blocked(s.text)) return;
   const [c1, c2] = scColor(s.price);
+  if (EXT?.sc) { EXT.sc(s); return; }
   if (XW) { add(`<div class="st"><span class="cap">SUPER CHAT</span><span class="name">${esc(s.name)}</span><span class="p">¥${s.price}</span></div><div class="sb">${esc(s.text)}</div>`, 'xsc', '', 3).style.setProperty('--tone', hexRgb(c1)); return; }
   if (LUNA) {
     const el = add(`${identity(s.face, s.name, s.guard, true)}<div class="lb"><div class="lk">SUPER CHAT</div><span class="name">${esc(s.name)}</span><div class="lm">${esc(s.text)}</div></div><span class="wm">¥${s.price}</span>`, 'lcard sc-l', '', 3);
@@ -740,6 +750,7 @@ function showSc(s) {
 }
 function showGuard(g) {
   if (!opt.guardbuy) return;
+  if (EXT?.guard) { EXT.guard(g); return; }
   if (XW) { add(`${XSTAR}<div class="lv">${g.level_name}</div><div class="who2"><span class="name">${esc(g.name)}</span> · 开通了 ${g.num}${esc(g.unit)}</div>`, `xbuy g${g.level}`, '', 2); return; }
   if (LUNA && (str('buy', 'banner') === 'badge' || !art['banner' + g.level])) {
     // 徽章式：中间一个大船锚徽章（舰长单圈 / 提督双圈 / 总督双圈 + 光芒），下面等级和名字
@@ -765,6 +776,7 @@ function showEnter(e) {
   if (opt.enter === '0' || e.kind !== 'enter') return;
   if (opt.enter !== 'all' && !e.guard) return;
   $list.querySelector(`[data-k="e${e.uid}"]`)?.remove();  // 同一个人进房的消息可能来两条（普通 + 舰长特效），只留一条
+  if (EXT?.enter) { EXT.enter(e); return; }
   if (XW) { add(`${XSTAR}<span>${e.guard ? `欢迎${GN[e.guard]} ` : ''}<span class="name">${esc(e.name)}</span> 进入直播间</span>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid); return; }
   add(`${identity(e.face, e.name, e.guard)}<div class="body">${e.guard ? `欢迎${GN[e.guard]} ` : ''}<span class="name">${esc(e.name)}</span> 进入直播间</div>`, 'enter' + (e.guard ? ' g' + e.guard : ''), 'e' + e.uid);
 }

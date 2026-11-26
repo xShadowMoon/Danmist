@@ -252,7 +252,12 @@ $('tplreset').onclick = () => { cfg.tts.tpl = { ...DEF_TPL }; saveCfg(); fillSet
 /* ---------- 深色 / 浅色 ---------- */
 const darkMQ = matchMedia('(prefers-color-scheme: dark)');
 // 配色方案：名字、两个色点（浅色主色、深色主色）；OBS 设置页也有同样几套
+// 品牌（2026-11-26，小雾版和开源版合成一份）：后台在网页里放了 window.BRAND = { name 软件名, short 怎么称呼主播, host 主播专属链接地址, pack 有没有私有包 }
+const BRAND_NAME = () => window.BRAND?.name || '雾幕', ANCHOR = () => window.BRAND?.short || '主播';
+// 小雾版以前把「紫金」配色叫 hanaki，存过的设置照样认
+if (cfg.pal === 'hanaki') cfg.pal = 'lilac';
 const PALS = { '': ['雾蓝', '#7fb3dd', '#4a8cc4'], sakura: ['樱粉', '#f3c7d8', '#cc5d87'], mint: ['薄荷', '#b3e1cf', '#2b9670'], night: ['雪夜', '#c6c8ef', '#5a5fc4'], lilac: ['紫金', '#d3ccf3', '#f0b429'] };
+for (const [k, n] of Object.entries(window.EXT?.palLabel || {})) if (PALS[k]) PALS[k][0] = n;  // 包里可以给配色改名
 $('pals').innerHTML = Object.entries(PALS).map(([k, [n, a, b]]) => `<button data-pal="${k}" style="--a:${a};--b:${b}" title="${n}"><i></i>${n}</button>`).join('');
 $('pals').onclick = e => { const b = e.target.closest('[data-pal]'); if (!b) return; cfg.pal = b.dataset.pal; cfg.accent = ''; saveCfg(); applyCfg(); fillSettings(); };
 const effTheme = () => cfg.theme === 'auto' ? (darkMQ.matches ? 'dark' : 'light') : cfg.theme;

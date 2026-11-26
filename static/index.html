@@ -7,7 +7,7 @@
 <link rel="icon" href="/art/icon-32.png" sizes="32x32"><link rel="icon" href="/art/icon-64.png" sizes="64x64">
 <link rel="manifest" id="manifest" href="/static/manifest.json">
 <link rel="apple-touch-icon" href="/art/icon-192.png">
-<script>if (location.pathname.startsWith('/host')) document.getElementById('manifest').href = '/static/manifest-host.json';</script>
+<script>if (location.pathname !== '/') document.getElementById('manifest').href = '/static/manifest-host.json';</script>
 <script>
 // 先定好深色还是浅色，免得打开时闪一下
 (() => {

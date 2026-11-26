@@ -91,11 +91,12 @@ const P = new URLSearchParams(location.search);
 const num = (k, d) => { const v = parseFloat(P.get(k)); return isFinite(v) ? v : d; };
 const str = (k, d) => P.get(k) ?? d;
 const B = document.body.classList, R = document.documentElement.style;
-const STYLE = ['strip', 'vinyl'].includes(str('style', 'card')) ? str('style', 'card') : 'card';  // card 卡片 / strip 细条（一行）/ vinyl 唱片 / mist 薄雾 / diary 留言本（主播专属，2026-11-21）
+// 包里可以加歌单样式（2026-11-26）：static/ext/obs-songs.js 设 window.EXT = { songStyles: ['mist', 'diary'], xwDefault: '1', hname: '…' }
+const STYLE = ['strip', 'vinyl', ...(window.EXT?.songStyles || [])].includes(str('style', 'card')) ? str('style', 'card') : 'card';  // card 卡片 / strip 细条（一行）/ vinyl 唱片 / mist 薄雾 / diary 留言本（主播专属，2026-11-21）
 const HK = STYLE === 'mist' || STYLE === 'diary';
 B.add('s-' + STYLE);
 if (HK) B.add('hk');
-const opt = { done: Math.max(0, Math.min(20, num('done', 3))), n: Math.max(0, Math.min(20, num('n', 5))), head: str('head', '1') !== '0', headText: str('head_text', '今日歌单').slice(0, 20), xw: str('xw', '0') !== '0',
+const opt = { done: Math.max(0, Math.min(20, num('done', 3))), n: Math.max(0, Math.min(20, num('n', 5))), head: str('head', '1') !== '0', headText: str('head_text', '今日歌单').slice(0, 20), xw: str('xw', window.EXT?.xwDefault || '0') !== '0',
   count: str('count', '1') !== '0', demo: str('demo', '0') !== '0' };
 if (!opt.xw) B.add('noxw');
 const light = str('light', '0') === '1', bg = Math.max(0, Math.min(100, num('bg', 55)));
@@ -104,7 +105,7 @@ R.setProperty('--bg', bg / 100);
 if (bg === 0) B.add('nobg');
 if (light) B.add('light');
 // pal=sakura / mint / night / lilac  配色，跟雾幕一样
-{ const PAL = { sakura: ['236 170 196', '#f4a9c4', '#cc5d87'], mint: ['150 210 188', '#8fdcbf', '#2b9670'], night: ['175 178 240', '#b3b6f7', '#5a5fc4'], lilac: ['180 168 238', '#cbc2ff', '#6a5ac4'] }[str('pal', '')];  // 主播配色 2026-11-19 补上（之前歌单页漏了，选主播跟雾蓝一样）
+{ const PAL = { sakura: ['236 170 196', '#f4a9c4', '#cc5d87'], mint: ['150 210 188', '#8fdcbf', '#2b9670'], night: ['175 178 240', '#b3b6f7', '#5a5fc4'], lilac: ['180 168 238', '#cbc2ff', '#6a5ac4'] }[str('pal', '') === 'hanaki' ? 'lilac' : str('pal', '')];  // 主播配色 2026-11-19 补上（之前歌单页漏了，选主播跟雾蓝一样）
   if (PAL) { R.setProperty('--line', PAL[0]); R.setProperty('--accent', light ? PAL[2] : PAL[1]); } }
 B.add(str('align', 'left'));
 if (str('pos', 'top') === 'bottom') B.add('bottom');
@@ -150,7 +151,7 @@ function draw(songs) {
   const STAR = '<svg viewBox="0 0 12 14"><path d="M6 0C6.8 4.85 7.8 6.1 12 7C7.65 7.95 6.8 9.35 6 14C5.2 9.25 4.3 7.95 0 7C4.3 6.1 5.25 4.9 6 0Z"/></svg>';
   const cnt = opt.count ? `<small>${done}/${songs.length}</small>` : '';
   const head = !opt.head ? '' : STYLE === 'mist' ? `<div class="head">${STAR}${esc(opt.headText)}${cnt}</div>`
-    : STYLE === 'diary' ? `<div class="head"><div class="hand">${esc(str('hname', 'Diary'))}${STAR}</div><div class="sub">${esc(opt.headText)}${cnt}</div></div>`
+    : STYLE === 'diary' ? `<div class="head"><div class="hand">${esc(str('hname', window.EXT?.hname || 'Diary'))}${STAR}</div><div class="sub">${esc(opt.headText)}${cnt}</div></div>`
     : `<div class="head">🎵 ${esc(opt.headText)}${cnt}</div>`;
   // 唱完的不消失：最近唱完的几首放在最上面，灰色划线、打勾
   const sung = songs.filter(x => x.done).sort((a, c) => (a.done_at || 0) - (c.done_at || 0)).slice(-opt.done);

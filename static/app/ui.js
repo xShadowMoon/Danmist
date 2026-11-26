@@ -100,7 +100,7 @@ connect();
 let pwaPrompt = null;
 const pwaInstalled = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); pwaPrompt = e; });
-addEventListener('appinstalled', () => { pwaPrompt = null; note('装好了，桌面和开始菜单里有「雾幕」'); });
+addEventListener('appinstalled', () => { pwaPrompt = null; note(`装好了，桌面和开始菜单里有「${BRAND_NAME()}」`); });
 $('pwabtn').onclick = async () => {
   if (pwaInstalled()) return note('现在就是桌面应用的窗口');
   if (!pwaPrompt) return note(/Edg\//.test(navigator.userAgent) ? '点地址栏右边的「安装」小图标（或右上角 ⋯ → 应用 → 将此站点作为应用安装）' : '点地址栏右边的「安装」小图标（或右上角 ⋮ → 投放、保存和分享 → 将页面安装为应用）', false);
@@ -262,7 +262,7 @@ const SIDE_ROOM = Number(new URLSearchParams(location.search).get('room')) || 0;
 // 2026-11-21 名单放到后台：管理链接里增删、开关「普通链接也能切」，普通链接只能切名单里的（最多 10 个）
 // 名字都用 B 站用户名（2026-11-20 用户要求）；管理身份切过去一次就会换成那边最新的用户名
 const XR_MAX = 10;
-const mainName = () => S.room?.anchor_name || '主播';
+const mainName = () => S.room?.anchor_name || ANCHOR();
 const xrList = () => (S.xrooms?.rooms || []).map(x => ({ room: x.room, name: x.name || String(x.room) }));
 const xrSend = (open, rooms) => {
   if (!S.admin || window._ws?.readyState !== 1) { note('连接还没好，等一下再试', false); return; }
@@ -292,7 +292,7 @@ function sideApply() {
   if (S.admin && i >= 0 && sd.uname && a[i].name !== sd.uname) { a[i].name = sd.uname; xrSend(S.xrooms.open, a); }
   $('sidebar').innerHTML = `${icon('tv')}<span>正在看 <b>${esc(sd.uname || '')}</b> 的直播间 ${sd.room}（只是看，朗读和提示音先停着，回到 ${mainName()} 自动恢复）</span><button class="btn sm" id="sideback">回到 ${mainName()}</button>`;
   $('sideback').onclick = () => xroomGo(0);
-  document.title = `${sd.uname || sd.room} 的直播间 · 雾幕`;
+  document.title = `${sd.uname || sd.room} 的直播间 · ${BRAND_NAME()}`;
 }
 function xroomMenu() {
   const m = $('xroommenu'), a = xrList(), adm = !!S.admin && !S.host;

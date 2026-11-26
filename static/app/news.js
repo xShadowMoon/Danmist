@@ -103,7 +103,7 @@ async function goTo(go, name) {
     name = `先打开「${PANELS[id] || '这个模块'}」`;
   }
   if (el && !el.getClientRects().length) el = el.closest('label, .chip, .opt') || el;  // 勾选框本身是藏着的，圈它外面那个按钮
-  if (last === '#tedit' && !el?.getClientRects().length) { note('这个要先用主播的号登录：发送框左边的头像 → 扫码', false); return; }
+  if (last === '#tedit' && !el?.getClientRects().length) { note(`这个要先用${ANCHOR()}的号登录：发送框左边的头像 → 扫码`, false); return; }
   if (!el || !el.getClientRects().length) {
     note(el ? '这个功能在这里用不了（要管理身份，或者要先登录）' : '没找到这个位置', false);
     return;
@@ -200,6 +200,7 @@ function drawDesktop() {
 const MASCOT_SIZES = [512, 256, 192, 64, 32];
 function applyMascot(v) {
   S.mascot = v || 0;
+  if (window.BRAND?.pack) { $('mascotbox')?.remove(); return; }  // 有自己的包（图标在包里）就不用这个
   const q = S.mascot ? '?v=' + S.mascot : '';
   document.querySelectorAll('img[src*="/art/icon-"], link[href*="/art/icon-"]').forEach(el => {
     const a = el.tagName === 'LINK' ? 'href' : 'src';

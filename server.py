@@ -58,6 +58,14 @@ import blivedm.models.web as web_models  # noqa: E402
 LOGIN_FILE = os.path.join(DIR, 'data', 'bili-login.json')
 DISCORD_WEBHOOK = ''  # 掉线提醒发到哪个 Discord webhook（config.json 的 discord_webhook），空着就不发
 BOT_SAY_URL = ''  # 可选：让别的程序代发弹幕的本地接口（config.json 的 bot_say_url），空着就不用
+# 2026-11-26 小雾版和开源版合成一份代码：主播自己的东西放进一个私有的「包」（config.json 的 pack，一个文件夹）。
+# 包里 static/ 下的文件优先（自己的图、公告、manifest），static/ext/{页面}.css/.js 会自动加进那个页面（额外的 OBS 样式之类）
+PACK = ''
+# 软件叫什么、网页里怎么称呼主播（config.json 的 brand：{"name": "雾幕", "short": "主播"}）；主播专属链接的地址（host_path，默认 /host）
+BRAND = {'name': '雾幕', 'short': '主播'}
+HOST_PATH = '/host'
+DISCORD_WEBHOOK_FILE = ''  # 可选：从别的程序的 JSON 配置里读 discord_webhook（config.json 的 discord_webhook_file），改了那边这里跟着变
+LOGIN_READONLY = False  # 登录文件是别的程序的（比如机器人的），只读不写（config.json 的 login_readonly）
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 GUARD_NAMES = {1: '总督', 2: '提督', 3: '舰长'}
 BJ = datetime.timezone(datetime.timedelta(hours=8))
@@ -128,7 +136,7 @@ VIEWER_GUARD = ('id', 't', 'uid', 'name', 'face', 'level', 'level_name', 'num', 
 VIEWER_USER = ('uid', 'name', 'face', 'first', 'last', 'dm', 'enter', 'guard', 'medal')
 VIEWER_REQ = ('id', 't', 'uid', 'name', 'face', 'guard', 'kind', 'text', 'song', 'done', 'over', 'queued_id')
 VIEWER_GUARDLIST = ('uid', 'name', 'face', 'level', 'days', 't')
-VIEWER_DM = ('t', 'uid', 'name', 'face', 'text', 'medal', 'medal_level', 'medal_room', 'medal_dim', 'wealth', 'reply', 'guard', 'admin', 'emoticon', 'emots', 'i', 'kind', 'plat')
+VIEWER_DM = ('t', 'uid', 'name', 'face', 'text', 'medal', 'medal_level', 'medal_room', 'medal_dim', 'wealth', 'reply', 'guard', 'admin', 'emoticon', 'emots', 'i', 'kind', 'link', 'plat')
 VIEWER_SC = ('id', 't', 'uid', 'name', 'face', 'price', 'text', 'guard', 'end', 'icon')
 VIEWER_GIFT = ('id', 't', 'uid', 'name', 'face', 'gift', 'num', 'img', 'guard', 'blind', 'source', 'plat')
 VIEWER_SONG = ('id', 'name', 'done', 'now', 'done_at', 'artist', 'tags')
@@ -1233,6 +1241,25 @@ class Hub:
 
     block_logged = False
 
+    def room_notice(self, text, link=''):
+        """B 站在直播间里发的活动 / 系统横幅（COMMON_NOTICE_DANMAKU，比如「逃离鸭科夫：雾冬Hanaki 未能抵御第 1 级风暴…」，2026-11-23 用户要）：
+        当成一条特殊弹幕（kind = notice）放进弹幕列表和存档，不算发言、不朗读、不上 OBS。"""
+        text = re.sub(r'\s+', ' ', str(text or '')).strip()[:200]
+        if not text:
+            return
+        s = self.state
+        if any(d.get('kind') == 'notice' and d.get('text') == text and time.time() - d.get('t', 0) < 60 for d in s.dm[-30:]):
+            return  # 同一条横幅一分钟里推了好几次，只记一次
+        item = {'t': int(time.time()), 'uid': 0, 'name': '', 'face': '', 'text': text, 'kind': 'notice',
+                'medal': '', 'medal_level': 0, 'medal_room': 0, 'guard': 0, 'admin': False, 'emoticon': ''}
+        link = validation.safe_url(link) if link else ''
+        if link:
+            item['link'] = link
+        self.dmlog.add(item)
+        s.dm.append(item)
+        del s.dm[:-300]
+        self.emit('dm', item, uc=len(s.users))
+
     def room_block(self, uid, name, raw):
         """禁言提示：当成一条特殊弹幕（kind = mute）放进弹幕列表和存档，不算发言、不读、不收点歌。"""
         if not Hub.block_logged:  # 第一次记下 B 站给的原始字段，方便以后补「有效期」这类信息
@@ -1320,10 +1347,10 @@ class Hub:
         """开播前测试：只发给打开着的 OBS 弹幕页，一条弹幕、一条 SC、一条上舰，隔一秒多一条；不进本场数据。"""
         targets = [ws for ws, kind in self.obs_clients.items() if kind == 'obs']
         t = int(time.time())
-        msgs = [('dm', {'t': t, 'uid': 1, 'name': '测试·雾幕', 'face': '', 'text': '这是一条测试弹幕，看得到就好～', 'medal': '', 'medal_level': 0,
+        msgs = [('dm', {'t': t, 'uid': 1, 'name': '测试·' + BRAND['name'], 'face': '', 'text': '这是一条测试弹幕，看得到就好～', 'medal': '', 'medal_level': 0,
                         'medal_room': 0, 'guard': 0, 'admin': False, 'emoticon': '', 'i': -1}),
-                ('sc', {'item': {'id': f'test{t}', 't': t, 'uid': 1, 'name': '测试·雾幕', 'face': '', 'price': 30, 'text': '测试 SC：位置和颜色都对吗', 'guard': 0}}),
-                ('guard', {'item': {'t': t, 'uid': 1, 'name': '测试·雾幕', 'level': 3, 'level_name': '舰长', 'num': 1, 'unit': '月', 'yuan': 0}})]
+                ('sc', {'item': {'id': f'test{t}', 't': t, 'uid': 1, 'name': '测试·' + BRAND['name'], 'face': '', 'price': 30, 'text': '测试 SC：位置和颜色都对吗', 'guard': 0}}),
+                ('guard', {'item': {'t': t, 'uid': 1, 'name': '测试·' + BRAND['name'], 'level': 3, 'level_name': '舰长', 'num': 1, 'unit': '月', 'yuan': 0}})]
 
         async def run():
             for i, (kind, data) in enumerate(msgs):
@@ -1833,6 +1860,8 @@ class TrackedClient(blivedm.BLiveClient):
 class Handler(blivedm.BaseHandler):
     _CMD_CALLBACK_DICT = blivedm.BaseHandler._CMD_CALLBACK_DICT.copy()
 
+    notice_logged = set()
+
     def __init__(self, hub):
         self.hub = hub
         self.seen = collections.deque(maxlen=500)  # 同一个礼物新旧两种协议可能各来一条，按 tid 去重
@@ -1845,6 +1874,13 @@ class Handler(blivedm.BaseHandler):
         try:
             if not isinstance(command, dict):
                 raise ValueError('消息不是对象')
+            cmd = str(command.get('cmd', '')).split(':')[0]
+            # 没处理的 cmd 里带「活动 / 横幅」字样的，每种记一次原文到日志（2026-11-23：确认活动横幅是哪个 cmd，以后要加别的也好查）
+            if cmd not in self._CMD_CALLBACK_DICT and cmd not in Handler.notice_logged and len(Handler.notice_logged) < 50:
+                raw = json.dumps(command, ensure_ascii=False)
+                if any(w in raw for w in ('查看活动', '活动', 'content_segments')):
+                    Handler.notice_logged.add(cmd)
+                    log.info('没处理的 B 站消息 %s：%s', cmd, raw[:600])
             super().handle(client, command)
         except (TypeError, ValueError, KeyError, AttributeError, IndexError, OverflowError):
             log.warning('跳过格式不对的 B 站消息')
@@ -1877,6 +1913,24 @@ class Handler(blivedm.BaseHandler):
         if prev == 1:
             self.hub.close_broadcast('下播')
     _CMD_CALLBACK_DICT['PREPARING'] = __preparing  # noqa
+
+    # B 站的活动 / 系统横幅（2026-11-23）：content_segments 是一段段字，拼起来；「查看活动>>」这种带链接的那段只留链接
+    def __common_notice(self, client, command):
+        d = command.get('data') or {}
+        segs = d.get('content_segments') or []
+        text, link = '', ''
+        for sg in segs if isinstance(segs, list) else []:
+            if not isinstance(sg, dict):
+                continue
+            t = str(sg.get('text') or '')
+            u = str(sg.get('link') or sg.get('jump_url') or sg.get('url') or '')
+            if u.startswith('http') and not link:
+                link = u
+                if '查看' in t:
+                    continue
+            text += t
+        self.hub.room_notice(text, link)
+    _CMD_CALLBACK_DICT['COMMON_NOTICE_DANMAKU'] = __common_notice  # noqa
 
     # 有人被禁言：B 站在直播间里发一条「xx 已被房管禁言」，雾幕也在弹幕里显示一条（2026-11-18）
     def __room_block(self, client, command):
@@ -2126,6 +2180,7 @@ async def watch_bili(hub, session):
 
 
 IMG_CACHE = os.path.join(DIR, 'data', 'imgcache')
+GEQU_DIR = ''  # 歌切合集的文件夹（config.json 的 gequ_dir，可选）
 # 看板娘（2026-11-26）：设置 → 更多 → 看板娘 里换成自己的图。网页先缩好这几个尺寸的 PNG 传上来，存在 data/mascot；
 # 没换过就用 static/art 里默认的图标。网页、窗口、任务栏图标都走 /art/icon-{尺寸}.png，两种都认
 MASCOT_SIZES = (32, 64, 192, 256, 512)
@@ -2190,10 +2245,16 @@ class Alerts:
 
     async def send(self, text):
         url = DISCORD_WEBHOOK
+        if not url and DISCORD_WEBHOOK_FILE:
+            try:
+                with open(DISCORD_WEBHOOK_FILE, encoding='utf-8-sig') as f:
+                    url = str(json.load(f).get('discord_webhook', '') or '')
+            except (OSError, ValueError, AttributeError):
+                url = ''
         if not url:
             return False
         try:
-            async with self.session.post(url, json={'username': '雾幕', 'content': text},
+            async with self.session.post(url, json={'username': BRAND['name'], 'content': text},
                                          timeout=aiohttp.ClientTimeout(total=15)) as r:
                 ok = r.status < 300
         except (aiohttp.ClientError, asyncio.TimeoutError):
@@ -2225,8 +2286,8 @@ class Alerts:
     async def check_archive(self, state, dmlog):
         bad = bool(state.archive_pending or getattr(dmlog, 'repair_write', False))
         await self.check('archive', bad, 300,
-                         lambda m: f'⚠️ 雾幕存档写入已失败约 {m} 分钟，正在重试。请检查磁盘空间和权限。',
-                         lambda m: f'✅ 雾幕存档写入恢复（中断约 {m} 分钟）。')
+                         lambda m: f'⚠️ {BRAND["name"]}存档写入已失败约 {m} 分钟，正在重试。请检查磁盘空间和权限。',
+                         lambda m: f'✅ {BRAND["name"]}存档写入恢复（中断约 {m} 分钟）。')
 
 
 SONGBOOK_MAX = 10000  # 歌本 / 曲库最多记多少首（跟曲库导入的上限一致）
@@ -2235,15 +2296,61 @@ APP_FILES = ('app/main.css', 'app/icons.js', 'app/core.js', 'app/render.js', 'ap
 PAGES = ('index.html', 'obs.html', 'obs-songs.html', 'obs-setup.html', 'workbench.js', 'workbench.css') + APP_FILES
 
 
+def static_path(rel):
+    """static/ 下的一个文件：包里有同名的就用包里的（2026-11-26）"""
+    if PACK:
+        p = os.path.join(PACK, 'static', rel)
+        if os.path.isfile(p):
+            return p
+    return os.path.join(DIR, 'static', rel)
+
+
+def pack_file(rel):
+    """只在包里找（ext/ 下的额外样式和脚本只有包里才有）"""
+    if not PACK:
+        return ''
+    p = os.path.join(PACK, 'static', rel)
+    return p if os.path.isfile(p) else ''
+
+
+EXT_PAGES = ('index', 'obs', 'obs-setup', 'obs-songs', 'obs-music')
+
+
 def page_vers():
     """每个网页文件最后改动的时间。网页拿它判断自己是不是旧版：上线新版后页面和 OBS 浏览器源会自己刷新。"""
     out = {}
-    for n in PAGES:
+    for n in PAGES + tuple(f'ext/{p}.{e}' for p in EXT_PAGES for e in ('css', 'js')):
         try:
-            out[n] = int(os.path.getmtime(os.path.join(DIR, 'static', n)))
+            out[n] = int(os.path.getmtime(static_path(n)))
         except OSError:
             pass
+    # 包里的额外样式 / 脚本改了，用到它的网页也算新版（自己刷新）
+    for p in EXT_PAGES:
+        ext = [out[k] for k in (f'ext/{p}.css', f'ext/{p}.js') if k in out]
+        if ext and f'{p}.html' in out:
+            out[f'{p}.html'] = max(out[f'{p}.html'], *ext)
     return out
+
+
+def brand_view():
+    return {'name': BRAND['name'], 'short': BRAND['short'], 'host': HOST_PATH, 'pack': bool(PACK)}
+
+
+def render_page(name):
+    """读一个网页：填上 ?v= 版本号、换上品牌名、加上包里的额外样式和脚本（2026-11-26）"""
+    with open(static_path(name + '.html'), encoding='utf-8') as f:
+        html = f.read()
+    v = page_vers()
+    html = re.sub(r'((?:app/[\w-]+|workbench)\.(?:js|css))\?v=[\w.-]+', lambda m: f"{m.group(1)}?v={v.get(m.group(1), 0)}", html)
+    if BRAND['name'] != '雾幕':
+        nm = BRAND['name']
+        html = html.replace('<title>雾幕', '<title>' + nm).replace('· 雾幕</title>', '· ' + nm + '</title>').replace('<h1>雾幕<', '<h1>' + nm + '<')
+    tags = ['<script>window.BRAND=' + json.dumps(brand_view(), ensure_ascii=False).replace('</', '<\\/') + '</script>']
+    if pack_file(f'ext/{name}.css'):
+        tags.append(f'<link rel="stylesheet" href="/static/ext/{name}.css?v={v.get(f"ext/{name}.css", 0)}">')
+    if pack_file(f'ext/{name}.js'):
+        tags.append(f'<script src="/static/ext/{name}.js?v={v.get(f"ext/{name}.js", 0)}"></script>')
+    return html.replace('</head>', ''.join(tags) + '</head>', 1)
 
 
 def backup_data(keep=14):
@@ -2767,6 +2874,26 @@ async def list_offline(request, state, hub, links, port):
     return web.json_response({**out, 'flow': flow, 'total': round(sum(flow.values()), 2)}, headers={'Cache-Control': 'no-store'})
 
 
+def apply_pack_config(cfg):
+    """config.json 里包、品牌和几个可选项（2026-11-26）"""
+    global PACK, BRAND, HOST_PATH, GEQU_DIR, DISCORD_WEBHOOK_FILE, LOGIN_READONLY
+    def here(p):
+        p = str(p or '')
+        return p if not p or os.path.isabs(p) else os.path.join(DIR, p)
+    PACK = here(cfg.get('pack'))
+    if PACK and not os.path.isdir(PACK):
+        raise SystemExit(f'config.json 的 pack 文件夹不存在：{PACK}')
+    b = cfg.get('brand') if isinstance(cfg.get('brand'), dict) else {}
+    BRAND = {'name': str(b.get('name') or '雾幕')[:20], 'short': str(b.get('short') or '主播')[:12]}
+    hp = str(cfg.get('host_path') or '/host')
+    if not re.fullmatch(r'/[a-z0-9-]{1,30}', hp) or hp in ('/obs', '/ws', '/img', '/static', '/api', '/art'):
+        raise SystemExit('config.json 的 host_path 只能是 / 开头的小写字母、数字、横线')
+    HOST_PATH = hp
+    GEQU_DIR = here(cfg.get('gequ_dir'))
+    DISCORD_WEBHOOK_FILE = here(cfg.get('discord_webhook_file'))
+    LOGIN_READONLY = cfg.get('login_readonly') is True
+
+
 def load_config(path):
     """config.json（可选）：命令行没写的就用这里的值，见 config.example.json。"""
     try:
@@ -2812,6 +2939,7 @@ async def main():
     if not args.demo and not args.room:
         ap.error('要告诉我连哪个直播间：加 --room 房间号，或者在 config.json 里写 "room"')
     LOGIN_FILE, DISCORD_WEBHOOK, BOT_SAY_URL = args.login_file, args.discord_webhook, args.bot_say_url
+    apply_pack_config(cfg)
     if not os.path.isabs(LOGIN_FILE):
         LOGIN_FILE = os.path.join(DIR, LOGIN_FILE)
     for name in ('public_max', 'public_ip_max', 'public_connect_rate', 'public_http_rate', 'gequ_http_rate', 'obs_max', 'obs_ip_max'):
@@ -2867,22 +2995,27 @@ async def main():
                           'until': now + (3 + i * 9) * 86400, 'est': bool(i % 2)} for i, n in enumerate(DEMO_NAMES[:5])]
         hub.notes.data = {'1003': {'note': '老观众，喜欢点周杰伦', 'name': '小鱼干', 't': now}}
 
-    async def index(request):
-        # workbench.js / .css、app/ 下各文件的 ?v= 自动换成它们的改动时间：改了文件，浏览器和 Cloudflare 都会拿新的，不会再用旧缓存报错
-        with open(os.path.join(DIR, 'static', 'index.html'), encoding='utf-8') as f:
-            html = f.read()
-        v = page_vers()
-        html = re.sub(r'((?:app/[\w-]+|workbench)\.(?:js|css))\?v=[\w.-]+', lambda m: f"{m.group(1)}?v={v.get(m.group(1), 0)}", html)
-        return web.Response(text=html, content_type='text/html', headers={'Cache-Control': 'no-cache'})
-
-    async def obs_setup(request):
+    def page(name):
+        # workbench.js / .css、app/ 下各文件的 ?v= 自动换成它们的改动时间：改了文件，浏览器和 Cloudflare 都会拿新的，不会再用旧缓存报错。
         # 2026-11-21 用户：OBS 设置也对普通链接放开（只是拼一个网址，OBS 页面本来就是公开的；发测试弹幕之类的操作后台照样只认管理身份）
-        # OBS 设置页也用 app/icons.js，同样自动填 ?v=
-        with open(os.path.join(DIR, 'static', 'obs-setup.html'), encoding='utf-8') as f:
-            html = f.read()
-        v = page_vers()
-        html = re.sub(r'(app/[\w-]+\.(?:js|css))\?v=[\w.-]+', lambda m: f"{m.group(1)}?v={v.get(m.group(1), 0)}", html)
-        return web.Response(text=html, content_type='text/html', headers={'Cache-Control': 'no-cache'})
+        # no-cache：不让浏览器用旧版（2026-11-19：雾蓝预览一直是旧页面，没有唱片封面）
+        async def handler(request):
+            return web.Response(text=render_page(name), content_type='text/html', headers={'Cache-Control': 'no-cache'})
+        return handler
+
+    index = page('index')
+    obs_setup = page('obs-setup')
+
+    async def static_file(request):
+        """static/ 下的文件；包里有同名的用包里的（2026-11-26）"""
+        rel = request.match_info.get('path', '')
+        parts = rel.replace('\\', '/').split('/')
+        if not rel or any(p in ('', '.', '..') or ':' in p for p in parts):
+            raise web.HTTPNotFound()
+        path = static_path('/'.join(parts))
+        if not os.path.isfile(path):
+            raise web.HTTPNotFound()
+        return web.FileResponse(path)
 
     def open_where(request):
         """这次打开是从哪来的（2026-11-19）：IP 和地区都来自 Cloudflare 加的请求头；城市要在 Cloudflare 开「访客位置请求头」才有。"""
@@ -3151,7 +3284,7 @@ async def main():
                     except Exception as e:
                         await ws.send_json({'type': 'result', 'data': {'cmd': 'connect', 'ok': False, 'msg': f'切换直播间失败：{e}'}})
                 elif viewer:
-                    await ws.send_json({'type': 'result', 'data': {'cmd': 'connect', 'ok': False, 'msg': '这个直播间现在不能切过去，先看主播这边'}})
+                    await ws.send_json({'type': 'result', 'data': {'cmd': 'connect', 'ok': False, 'msg': f'这个直播间现在不能切过去，先看{BRAND["short"]}这边'}})
             if client_kind in ('obs', 'obs-songs', 'obs-music'):
                 h.obs_clients[ws] = client_kind
                 try:
@@ -3238,7 +3371,7 @@ async def main():
                     continue
                 cmd = c['cmd']
                 if h is not hub:
-                    await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': '正在看别的直播间，回到主播再操作'}})
+                    await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': f'正在看别的直播间，回到{BRAND["short"]}再操作'}})
                     continue
                 if link_id and links.is_host(link_id) and (cmd.startswith('admin_link_') or cmd == 'reset'):
                     await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': '这个链接不能做这个操作'}})
@@ -3509,7 +3642,7 @@ async def main():
         extra_note = ''
         # 2026-11-25：开源版用户反馈「左下角登录了还是打码」—— 以前扫码登录只用来发弹幕，连直播间用的是 data/bili-login.json，
         # 没放那个文件就一直打码。现在：还没有连直播间的登录（或者它失效了），就顺便用这个号连，马上重连
-        if not args.demo and (not load_cookie() or hub.state.room.get('login_ok') is False):
+        if not args.demo and not LOGIN_READONLY and (not load_cookie() or hub.state.room.get('login_ok') is False):
             try:
                 write_json(LOGIN_FILE, {'cookie': cookie})
                 session.cookie_jar.update_cookies(make_cookies(cookie))
@@ -4009,12 +4142,12 @@ async def main():
         icon = re.fullmatch(r'icon-(\d{2,3})\.png', name)
         if icon and int(icon.group(1)) in MASCOT_SIZES:  # 看板娘图标：换过用换的，没换过用默认的
             mine = os.path.join(mascot_dir, name)
-            path = mine if os.path.isfile(mine) else os.path.join(DIR, 'static', 'art', name)
+            path = mine if os.path.isfile(mine) else static_path('art/' + name)
             return web.FileResponse(path, headers={'Cache-Control': 'no-cache'})
         m = re.fullmatch(r'(frame|guard)([123])(-s|-v2)?\.png', name)
         if not m or (m.group(1) == 'guard' and m.group(3)) or (m.group(1) == 'frame' and not m.group(3)):
             raise web.HTTPNotFound()
-        local = os.path.join(DIR, 'static', 'art', name)
+        local = static_path('art/' + name)
         if os.path.isfile(local):
             return web.FileResponse(local, headers={'Cache-Control': 'no-cache'})
         url = official_art[m.group(1)][int(m.group(2))]
@@ -4052,6 +4185,17 @@ async def main():
         hub.emit('mascot', 0)
         return web.json_response({'ok': True, 'v': 0})
 
+    # 歌切合集（可选，config.json 的 gequ_dir）：别的程序生成的 index.html 和 songs.json，这里只读出来公开，
+    # 粉丝站可以直接读（CORS），缓存 5 分钟。不用 GitHub、不用任何登录凭据（2026-11-13）
+    async def gequ(request):
+        if args.demo:
+            raise web.HTTPNotFound()
+        name = 'songs.json' if request.path.endswith('.json') else 'index.html'
+        p = os.path.join(GEQU_DIR, name)
+        if not os.path.exists(p):
+            raise web.HTTPNotFound()
+        return web.FileResponse(p, headers={'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*'})
+
     async def music_url(request):
         """放歌页来要「现在这首」的播放地址（2026-11-25）。只给正在放的那首，不能拿它去下别的歌"""
         it = hub.music.current()
@@ -4066,7 +4210,8 @@ async def main():
     async def art_list(request):
         """static/art 里自己放了哪些图（只回文件名），页面据此决定用不用 B 站官方的框"""
         try:
-            names = sorted(n for n in os.listdir(os.path.join(DIR, 'static', 'art')) if re.fullmatch(r'[\w-]+\.(?:png|webp)', n))
+            dirs = [os.path.join(DIR, 'static', 'art')] + ([os.path.join(PACK, 'static', 'art')] if PACK else [])
+            names = sorted({n for d in dirs if os.path.isdir(d) for n in os.listdir(d) if re.fullmatch(r'[\w-]+\.(?:png|webp)', n)})
         except OSError:
             names = []
         return web.json_response(names, headers={'Cache-Control': 'no-store'})
@@ -4088,19 +4233,19 @@ async def main():
                 r = state.room
                 await alerts.check_archive(state, hub.dmlog)
                 await alerts.check('bili', r.get('bili_ok') is False, 180,
-                                   lambda m: f'⚠️ 雾幕连不上 B 站直播间已经 {m} 分钟了，弹幕、礼物暂时收不到（会自己一直重连）。',
-                                   lambda m: f'✅ 雾幕跟 B 站的连接恢复了（断了约 {m} 分钟）。')
+                                   lambda m: f'⚠️ {BRAND["name"]}连不上 B 站直播间已经 {m} 分钟了，弹幕、礼物暂时收不到（会自己一直重连）。',
+                                   lambda m: f'✅ {BRAND["name"]}跟 B 站的连接恢复了（断了约 {m} 分钟）。')
                 await alerts.check('login', r.get('login_ok') is False, 60,
-                                   lambda m: '⚠️ 雾幕用的 B 站登录失效了，弹幕里的名字会打码。机器人重新扫码登录后会自动恢复。',
-                                   lambda m: f'✅ 雾幕的 B 站登录恢复了（失效了约 {m} 分钟）。')
+                                   lambda m: f'⚠️ {BRAND["name"]}用的 B 站登录失效了，弹幕里的名字会打码。机器人重新扫码登录后会自动恢复。',
+                                   lambda m: f'✅ {BRAND["name"]}的 B 站登录恢复了（失效了约 {m} 分钟）。')
                 try:
                     async with bare.get(url, timeout=aiohttp.ClientTimeout(total=20)) as resp:
                         tunnel_ok = resp.status == 200 and (await resp.text()) == 'ok'
                 except (aiohttp.ClientError, asyncio.TimeoutError):
                     tunnel_ok = False
                 await alerts.check('tunnel', not tunnel_ok, 120,
-                                   lambda m: f'⚠️ 外网打不开雾幕了（{args.public_url}）已经 {m} 分钟，电脑上本身还在运行，可能是隧道或网络断了。',
-                                   lambda m: f'✅ 外网又能打开雾幕了（断了约 {m} 分钟）。')
+                                   lambda m: f'⚠️ 外网打不开{BRAND["name"]}了（{args.public_url}）已经 {m} 分钟，电脑上本身还在运行，可能是隧道或网络断了。',
+                                   lambda m: f'✅ 外网又能打开{BRAND["name"]}了（断了约 {m} 分钟）。')
             except Exception as e:
                 log.warning('掉线检查出错：%s', e)
             await asyncio.sleep(30)
@@ -4194,7 +4339,7 @@ async def main():
             raise web.HTTPForbidden(text='请从直播姬页面操作')
         resp = await handler(request)
         a = request.query.get('admin', '')
-        if a and request.path in ('/', '/host') and links.authenticate(a):
+        if a and request.path in ('/', '/host', HOST_PATH) and links.authenticate(a):
             resp.set_cookie('xwadmin', a, max_age=86400 * 365, httponly=True, samesite='Lax')
         return resp
 
@@ -4324,12 +4469,14 @@ async def main():
     app = web.Application(middlewares=[input_errors, public_rate, auth, remember_admin])
     app.router.add_get('/', index)
     app.router.add_get('/host', index)  # 主播专属链接用这个地址
+    if HOST_PATH != '/host':
+        app.router.add_get(HOST_PATH, index)  # 包里给主播专属链接换的地址（config.json 的 host_path）
     # OBS 浏览器源用的弹幕叠加页（透明背景）
-    app.router.add_get('/obs', lambda request: web.FileResponse(os.path.join(DIR, 'static', 'obs.html'), headers={'Cache-Control': 'no-cache'}))  # 不让浏览器用旧版（2026-11-19：雾蓝预览一直是旧页面，没有唱片封面）
+    app.router.add_get('/obs', page('obs'))
     # 调 OBS 弹幕样式的设置页：调好一键复制网址
     app.router.add_get('/obs-setup', obs_setup)
     # OBS 浏览器源用的歌单页（正在唱 + 接下来几首，跟雾幕的歌单同步）
-    app.router.add_get('/obs-songs', lambda request: web.FileResponse(os.path.join(DIR, 'static', 'obs-songs.html'), headers={'Cache-Control': 'no-cache'}))  # 不让浏览器用旧版（2026-11-19：雾蓝预览一直是旧页面，没有唱片封面）
+    app.router.add_get('/obs-songs', page('obs-songs'))
     app.router.add_get('/ws', ws_handler)
     app.router.add_get('/img', img_proxy)
     app.router.add_get('/art/{name}', art_file)
@@ -4355,8 +4502,11 @@ async def main():
     app.router.add_get('/api/tts/voices', tts_voices)
     app.router.add_get('/api/tts', tts_speak)
     app.router.add_get('/api/music/url', music_url)
-    app.router.add_get('/obs-music', lambda r: web.FileResponse(os.path.join(DIR, 'static', 'obs-music.html'), headers={'Cache-Control': 'no-cache'}))
-    app.router.add_static('/static', os.path.join(DIR, 'static'))
+    app.router.add_get('/obs-music', page('obs-music'))
+    if GEQU_DIR:
+        app.router.add_get('/gequ.html', gequ)
+        app.router.add_get('/gequ.json', gequ)
+    app.router.add_get('/static/{path:.+}', static_file)
 
     cookies = make_cookies(load_cookie()) if not args.demo else {}
     session = aiohttp.ClientSession(headers={'User-Agent': UA})
@@ -4433,7 +4583,7 @@ async def main():
         tasks.append(asyncio.create_task(load_emots()))
         tasks.append(asyncio.create_task(daily_backup(hub)))
         tasks.append(asyncio.create_task(watch_health()))
-        if not args.no_alert and DISCORD_WEBHOOK:  # 填了 Discord 地址才发掉线提醒
+        if not args.no_alert and (DISCORD_WEBHOOK or DISCORD_WEBHOOK_FILE):  # 填了 Discord 地址才发掉线提醒
             tasks.append(asyncio.create_task(watch_alerts()))
 
     for task in tasks:

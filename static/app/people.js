@@ -23,7 +23,7 @@ function openUser(uid) {
     ...gifts.map(g => ({ t: g.t, h: `${icon('p-gift')} 投喂 ${esc(g.gift)} × ${g.num}${g.yuan == null ? '' : `（${yuan(g.yuan)}）`}` })),
     ...scs.map(s => ({ t: s.t, h: `${icon('p-sc')} ¥${s.price} SC：${esc(s.text)}` })),
     ...guards.map(g => ({ t: g.t, h: `${icon('anchor')} 开通${g.level_name} × ${g.num}${esc(g.unit)}${g.yuan == null ? '' : `（${yuan(g.yuan)}）`}` })),
-    ...pick(S.enters).map(e => ({ t: e.t, h: e.kind === 'follow' ? icon('heart') + ' 关注了主播' : e.kind === 'share' ? '↗ 分享了直播间' : icon('p-enter') + ' 进入直播间' })),
+    ...pick(S.enters).map(e => ({ t: e.t, h: e.kind === 'follow' ? icon('heart') + ' 关注了' + ANCHOR() : e.kind === 'share' ? '↗ 分享了直播间' : icon('p-enter') + ' 进入直播间' })),
   ].sort((a, b) => b.t - a.t).slice(0, 200);
   const histHtml = h => h.length ? h.map(x => `<div class="it"><span class="tm">${hhmm(x.t)}</span><span>${x.h}</span></div>`).join('') : '<div class="empty">暂无记录</div>';
   const hist = histOf(dms);
@@ -178,11 +178,15 @@ function refreshOffDot() {
 function offThanked(id, done) {
   const it = H.off && [...H.off.gifts, ...H.off.guards].find(x => String(x.id) === String(id));
   if (!it) return;
-  if (done) it.thanked = true; else delete it.thanked;
+  if (done) { it.thanked = true; offJust.add(String(id)); } else delete it.thanked;
   drawOffDot();
   if (H.detail?.off) drawOffline();
 }
+// 2026-11-23 用户：以前感谢过的就不要再显示了 —— 只列还没感谢的；这次打开页面时刚打勾的先留着（变淡，点错了还能取消），
+// 下次打开就不见了；最下面「看看已感谢的」可以全部摊开
+let offJust = new Set(), offAll = false;
 async function openOffline() {
+  offJust = new Set(); offAll = false;
   $('hbody').innerHTML = '<div class="empty">加载中…</div>';
   try { H.off = await (await fetch('api/offline', { cache: 'no-store' })).json(); } catch {}
   if (!H.off) { $('hbody').innerHTML = '<div class="empty">加载失败</div>'; return; }
@@ -196,6 +200,9 @@ function drawOffline() {
   const gift = g => `<div class="gift${g.thanked ? ' thx' : ''}">${avatar(g.face, g.name, g.guard)}<div class="body"><div class="n"><span class="nm">${esc(g.name)}</span></div><div class="g">投喂 ${esc(g.gift)} × ${num(g.num)} · ${fmtMd(g.t)}</div></div>${g.img ? `<img class="gi" src="img?u=${encodeURIComponent(g.img)}" alt="">` : ''}${thx(g)}<span class="y">${yuan(g.yuan || 0)}</span></div>`;
   const left = offUnthx(o), byT = (a, b) => b.t - a.t;
   const nG = o.guards.filter(x => !x.thanked).length, nF = o.gifts.filter(x => !x.thanked).length;
+  const show = x => offAll || !x.thanked || offJust.has(String(x.id));
+  const gs = o.guards.filter(show), fs = o.gifts.filter(show), hid = o.guards.length + o.gifts.length - gs.length - fs.length;
+  const none = (n, all) => `<div class="empty sm">${all ? '都感谢过了' : '无'}</div>`;
   $('hbody').innerHTML = `<div class="hoff">
     <div class="hsum">
       <div class="stat money" title="收益 = 流水 × 50%"><div class="k">${icon('coin')} 收益</div><div class="v">${yuan((o.total || 0) / 2)}</div><div class="s">流水 ${yuan(o.total || 0)}</div></div>
@@ -204,12 +211,14 @@ function drawOffline() {
       <div class="stat${left ? ' todo' : ''}"><div class="k">${icon('check')} 还没感谢</div><div class="v">${left}</div><div class="s">${left ? '点右边的 ✓ 标成已感谢' : '都感谢过了'}</div></div>
     </div>
     <div class="offcols">
-      <div class="offbox"><h4>${icon('anchor')} 舰长${nG ? `<small class="todo">${nG} 条没感谢</small>` : ''}</h4><div class="lst offlist">${o.guards.length ? o.guards.slice().sort(byT).map(g => guardRow(g, 0, 0, true).slice(0, -6) + thx(g) + '</div>').join('') : '<div class="empty sm">无</div>'}</div></div>
-      <div class="offbox"><h4>${icon('p-gift')} 礼物${nF ? `<small class="todo">${nF} 条没感谢</small>` : ''}</h4><div class="lst offlist">${o.gifts.length ? o.gifts.slice().sort(byT).map(gift).join('') : '<div class="empty sm">无</div>'}</div></div>
+      <div class="offbox"><h4>${icon('anchor')} 舰长${nG ? `<small class="todo">${nG} 条没感谢</small>` : ''}</h4><div class="lst offlist">${gs.length ? gs.slice().sort(byT).map(g => guardRow(g, 0, 0, true).slice(0, -6) + thx(g) + '</div>').join('') : none(0, o.guards.length)}</div></div>
+      <div class="offbox"><h4>${icon('p-gift')} 礼物${nF ? `<small class="todo">${nF} 条没感谢</small>` : ''}</h4><div class="lst offlist">${fs.length ? fs.slice().sort(byT).map(gift).join('') : none(0, o.gifts.length)}</div></div>
     </div>
+    ${hid || offAll ? `<div style="text-align:center;margin-top:10px"><button class="btn sm" id="offall">${offAll ? '收起已感谢的' : `看看已感谢的（${hid} 条）`}</button></div>` : ''}
   </div>`;
 }
 document.addEventListener('click', e => {
+  if (e.target.closest('#offall')) { offAll = !offAll; drawOffline(); return; }
   const b = e.target.closest('[data-othx]'); if (!b || !H.off) return;
   e.stopPropagation();
   const it = [...H.off.gifts, ...H.off.guards].find(x => String(x.id) === b.dataset.othx); if (!it) return;

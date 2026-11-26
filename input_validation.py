@@ -433,6 +433,7 @@ def event(kind, values):
         integer(values.get('medal_room', 0), '粉丝牌房间', 0)
         boolean(values.get('admin', False), '房管状态')
         url(values.get('emoticon', ''))
+        url(values.get('link', ''))  # 活动横幅的「查看」链接（2026-11-23）
         emots = values.get('emots')
         if emots is not None and (not isinstance(emots, dict) or len(emots) > 4096):
             raise InputError('表情格式不对')
@@ -492,7 +493,7 @@ def event_row(kind, row):
         defaults.update(unit='月')
     aliases = {'gift_name': 'gift', 'sc_id': 'id', 'price': 'price', 'text': 'text'}
     fields = {'t', 'uid', 'name', 'face', 'guard', 'id', 'i', 'thanked', 'medal', 'medal_level', 'medal_room', 'admin', 'emoticon', 'emots',
-              'gift', 'num', 'yuan', 'img', 'blind', 'price', 'text', 'end', 'level', 'level_name', 'unit', 'kind', 'recovered', 'source', 'op', 'days', 'days_est', 'dmid', 'plat'}
+              'gift', 'num', 'yuan', 'img', 'blind', 'price', 'text', 'end', 'level', 'level_name', 'unit', 'kind', 'recovered', 'source', 'op', 'days', 'days_est', 'dmid', 'link', 'plat'}
     result = {**defaults, **{k: v for k, v in row.items() if k in fields}}
     values = {**result, **{key: result.get(value) for key, value in aliases.items() if value in result}}
     event(kind, values)

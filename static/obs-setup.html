@@ -228,6 +228,8 @@ const FONT_OPTS = [['', '默认'], ['yahei', '雅黑'], ['hei', '黑体'], ['rou
 const FONT_CSS = { yahei: '"Microsoft YaHei"', hei: '"SimHei"', round: '"YouYuan"', kai: '"KaiTi"', song: '"SimSun"',
   wenkai: '"XW 霞鹜文楷"', smiley: '"XW 得意黑"', marker: '"XW 霞鹜漫黑"', kuaile: '"XW 站酷快乐体"', xiaowei: '"XW 站酷小薇"',
   huangyou: '"XW 站酷黄油体"', notosans: '"XW 思源黑体"', notoserif: '"XW 思源宋体"', mashan: '"XW 马善政"', longcang: '"XW 龙藏体"' };
+// 包里的额外样式（2026-11-26）：static/ext/obs-setup.js 设 window.SETUP_EXT = { fields, songFields, songStyles, looks, songLooks, na, sna, lookExtra, showExtra, palLabel }
+const SX = window.SETUP_EXT || {};
 let F = [
   { k: 'style', tab: 'look', type: 'hidden', def: 'moon' },
   { k: 'buy', tab: 'look', label: '⚓ 上舰样式', type: 'select', def: 'banner', opts: [['banner', '横幅'], ['badge', '徽章']], show: c => c.style === 'luna', tip: '有人开通舰长时出来的那条：一张横幅图，还是中间一个大徽章' },
@@ -278,7 +280,7 @@ let F = [
   { k: 'rank', tab: 'who', label: '🏷 身份字', type: 'check', def: true, tip: '舰长 / 提督 / 总督文字' },
   { k: 'names', tab: 'who', label: '✏ 昵称', type: 'check', def: true },
   { k: 'avatar_size', tab: 'who', label: '🙂 头像大小', type: 'range', min: 24, max: 72, step: 2, def: 46, unit: 'px', show: c => c.avatar },
-  { k: 'medal', tab: 'who', label: '🏅 粉丝牌', type: 'select', def: 'all', opts: [['all', '全部'], ['own', '只主播的'], ['0', '无']] },
+  { k: 'medal', tab: 'who', label: '🏅 粉丝牌', type: 'select', def: 'all', opts: [['all', '全部'], ['own', `只${window.BRAND?.short || '主播'}的`], ['0', '无']] },
 
   { k: 'merge', tab: 'what', label: '×3 合并重复', type: 'check', def: true, tip: '一样的弹幕合并成「×3」' },
   { k: 'bot', tab: 'what', label: '🤖 机器人弹幕', type: 'check', def: false, tip: '显示机器人发的弹幕' },
@@ -286,7 +288,7 @@ let F = [
   { k: 'price', tab: 'what', label: '💰 价格', type: 'check', def: false, tip: '礼物后面显示价格。不开的话，后台连价格都不发给这个 OBS 网址' },
   { k: 'gift_line', tab: 'what', label: '🎁 礼物只占一行', type: 'check', def: false, show: c => ['moon', 'rime', 'clip', 'bubble', 'ticket'].includes(c.style || 'moon'), tip: '礼物卡缩成一行小胶囊，打游戏时少挡一块' },
   // 直播间（2026-11-21）：只能选切房名单里的，名单在雾幕里「主播名字 ▾」管理
-  { k: 'room', tab: 'what', label: '📡 直播间', type: 'select', def: '', opts: [['', '主播']], tip: '这个 OBS 网址显示哪个直播间的弹幕。只能选雾幕切房名单里的' },
+  { k: 'room', tab: 'what', label: '📡 直播间', type: 'select', def: '', opts: [['', window.BRAND?.short || '主播']], tip: '这个 OBS 网址显示哪个直播间的弹幕。只能选雾幕切房名单里的' },
   { k: 'sc', tab: 'what', label: '✉ SC', type: 'check', def: true },
   { k: 'sc_bg', tab: 'what', label: '✉ SC 底色', type: 'check', def: true },
   { k: 'guardbuy', tab: 'what', label: '⚓ 上舰', type: 'check', def: true },
@@ -297,6 +299,7 @@ let F = [
 // 歌单上屏（/obs-songs）的设置：正在唱 + 接下来几首，跟雾幕的歌单同步
 // 颜色选项旁边的几个常用色，一点就用（也能点最右边的色块任意选）
 const SWATCH = ['ffffff', 'ffe58a', 'ffc2d6', 'b9dcff', 'b8f0c8', 'c4507c', '5a6b80', '222222'];  // 2026-11-19 加了两个深一点的，给描边用
+F.push(...(SX.fields || []));
 const SF = [
   { k: 'style', tab: 'songs', label: '🎨 样式', type: 'select', def: 'card', opts: [['card', '卡片'], ['strip', '细条'], ['vinyl', '唱片']], tip: '卡片：正在唱 + 列表；细条：只有一行；唱片：左边一张黑胶' },
   { k: 'size', tab: 'songs', label: '🔠 字号', type: 'range', min: 12, max: 60, step: 1, def: 20, unit: 'px' },
@@ -321,6 +324,9 @@ const SF = [
   { k: 'w', tab: 'songs', label: '📐 宽', type: 'num', min: 150, max: 1920, step: 10, def: 400, unit: 'px', local: true, tip: 'OBS 浏览器源的宽度' },
   { k: 'h', tab: 'songs', label: '📐 高', type: 'num', min: 100, max: 1080, step: 10, def: 360, unit: 'px', local: true, tip: 'OBS 浏览器源的高度' },
 ];
+SF.push(...(SX.songFields || []));
+SF.find(f => f.k === 'style').opts.push(...(SX.songStyles || []));
+for (const f of [...F, ...SF]) if (f.k === 'pal') { f.opts = f.opts.map(([k, n]) => [k, SX.palLabel?.[k] || n]); }
 // 两种 OBS 页面：弹幕（/obs）和歌单（/obs-songs），各有各的设置，分开存
 const MODES = { dm: { F, key: 'xw-obs', page: 'obs', tab: 'look' }, songs: { F: SF, key: 'xw-obs-songs', page: 'obs-songs', tab: 'songs' } };
 let mode = 'dm';
@@ -330,8 +336,9 @@ function loadMode() {
   F = fields = MODES[mode].F;
   cfg = Object.fromEntries(fields.map(f => [f.k, f.def]));
   try { const saved = JSON.parse(localStorage.getItem(MODES[mode].key) || '{}'); Object.assign(cfg, saved); if (saved.square && saved.radius == null) cfg.radius = 6; delete cfg.square;
-    if (mode === 'dm' && ['card', 'glass', 'plain', 'mist', 'diary'].includes(cfg.style)) cfg.style = 'moon';  // 2026-11-21 这几个样式去掉了（薄雾、留言本 11-25 从通用版去掉）
-    if (mode === 'songs' && ['mist', 'diary'].includes(cfg.style)) cfg.style = 'card';
+    if (mode === 'dm' && ['card', 'glass', 'plain', 'mist', 'diary'].includes(cfg.style) && !SX.looks?.[cfg.style]) cfg.style = 'moon';  // 2026-11-21 这几个样式去掉了（薄雾、留言本 11-25 从通用版去掉）
+    if (mode === 'songs' && ['mist', 'diary'].includes(cfg.style) && !SX.songLooks?.[cfg.style]) cfg.style = 'card';
+    if (cfg.pal === 'hanaki') cfg.pal = 'lilac';  // 小雾版以前的叫法
     if (mode === 'dm' && saved.right === true && !saved.align) cfg.align = 'right';  // 2026-11-25 「靠右」换成「靠哪边」
     delete cfg.right;
     // 第一次打开：配色跟雾幕现在用的一样
@@ -348,6 +355,7 @@ const LOOKS = {
   // 2026-11-21 用户挑的：月见 / 雾凇 / 星扣（雾月系，居中半透明）、气泡、票根；不要的流光 / 卡片 / 轻透 / 悬浮去掉了（旧网址自动当月见）
   moon: ['✨', '月见', { style: 'moon' }], rime: ['❄', '雾凇', { style: 'rime' }], clip: ['📌', '星扣', { style: 'clip' }],
   luna: ['🌙', '雾月', { style: 'luna' }], bubble: ['🫧', '气泡', { style: 'bubble' }], ticket: ['🏷', '票根', { style: 'ticket' }],
+  ...(SX.looks || {}),
 };
 // 文字效果：一键套一组描边 / 阴影
 const TEXTS = {
@@ -371,7 +379,7 @@ function setMode(m) {
 // 每一页：[编号, 图标, 标题, [[框的标题, 这框里的设置], ...]]；COLOR = 颜色小表，TEXTS = 文字效果一键套，IMPORT = 读旧网址
 const PAGES = {
   dm: [
-    ['look', 'sparkle', '样式', [['这个样式的', ['buy']], ['常用', ['size', 'max', 'align', 'gift_size', 'pal']], ['进场动画', ['anim', 'anim_ms']]]],
+    ['look', 'sparkle', '样式', [['这个样式的', [...(SX.lookExtra || []), 'buy']], ['常用', ['size', 'max', 'align', 'gift_size', 'pal']], ['进场动画', ['anim', 'anim_ms']]]],
     ['font', 'type', '文字', [['效果', 'TEXTS'], ['字体', ['font', 'fw']], ['描边和阴影', ['stroke', 'stroke_color', 'glow', 'glow_color']], ['行距', ['lh', 'ls']]]],
     ['color', 'palette', '颜色', 'COLOR'],
     ['who', 'user', '每条显示', [['显示什么', ['avatar', 'frame', 'badge', 'rank', 'names', 'wealth']], ['粉丝牌和头像', ['medal', 'avatar_size']]]],
@@ -382,7 +390,7 @@ const PAGES = {
     ['look', 'music', '样式', [['常用', ['size', 'pal', 'n', 'done']]]],
     ['font', 'type', '文字', [['字体', ['font']], ['描边和阴影', ['stroke', 'stroke_color', 'glow', 'glow_color']]]],
     ['color', 'palette', '颜色', 'COLOR'],
-    ['show', 'eye', '显示', [['显示什么', ['head', 'count', 'num', 'light']], ['标题和底板', ['head_text', 'bg']]]],
+    ['show', 'eye', '显示', [['显示什么', [...(SX.showExtra || []), 'head', 'count', 'num', 'light']], ['标题和底板', ['head_text', 'bg']]]],
     ['pos', 'grid', '位置', [['位置', ['align', 'pos']]]],
   ],
 };
@@ -397,9 +405,11 @@ const NA = {
   clip: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'badge'],
   bubble: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'badge', 'frame'],
   ticket: ['pal', 'bubble', 'border', 'shadow', 'light', 'radius', 'width', 'layout', 'badge', 'frame'],
+  ...(SX.na || {}),
 };
 const SNA = {
   card: [], strip: ['done', 'n', 'head', 'num', 'head_text'], vinyl: ['done'],
+  ...(SX.sna || {}),
 };
 function useless(f) {
   if (mode === 'songs') return (SNA[cfg.style] || []).includes(f.k);
@@ -408,7 +418,7 @@ function useless(f) {
   return (NA[look] || []).includes(f.k);
 }
 const visible = f => f && f.type !== 'hidden' && (!f.show || f.show(cfg)) && !useless(f);
-const SONG_LOOKS = { card: ['card', '卡片'], strip: ['square', '细条'], vinyl: ['music', '唱片'] };
+const SONG_LOOKS = { card: ['card', '卡片'], strip: ['square', '细条'], vinyl: ['music', '唱片'], ...(SX.songLooks || {}) };
 const fieldOf = k => fields.find(f => f.k === k);
 const sameV = (a, b) => JSON.stringify(a ?? '') === JSON.stringify(b ?? '');
 const chg = k => { const f = fieldOf(k); return !!f && !sameV(cfg[k], f.def); };

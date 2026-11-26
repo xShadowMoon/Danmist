@@ -569,7 +569,7 @@ drawPsets();
 $('cfgexport').onclick = () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'xiaowu-danmuji', cfg, presets: loadPsets() }, null, 1)], { type: 'application/json' }));
-  a.download = '雾幕设置.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  a.download = BRAND_NAME() + '设置.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 };
 $('cfgimport').onclick = () => $('cfgfile').click();
 $('cfgfile').onchange = async e => {
@@ -580,7 +580,7 @@ $('cfgfile').onchange = async e => {
     if (!j || typeof j.cfg !== 'object') throw 0;
     if (j.presets && typeof j.presets === 'object') savePsets({ ...loadPsets(), ...j.presets });
     useCfg(j.cfg); drawPsets(); note('已导入');
-  } catch { note('这不是雾幕的设置文件', false); }
+  } catch { note(`这不是${BRAND_NAME()}的设置文件`, false); }
 };
 
 /* ---------- 浮动小窗：拖标题挪位置，右下角拖大小，位置记在这台电脑上 ---------- */
@@ -649,7 +649,7 @@ function newsOpen() {
     $('tnewstext').addEventListener('input', cnt);
     $('tnewsclose').onclick = () => { p.hidden = true; };
     $('tnewssave').onclick = () => {
-      if (!acct?.token) { note('先在发送框左边扫码登录主播的号', false); return; }
+      if (!acct?.token) { note(`先在发送框左边扫码登录${ANCHOR()}的号`, false); return; }
       $('tnewssave').disabled = true;
       window._ws?.send(JSON.stringify({ cmd: 'news_set', acct: acct.token, text: $('tnewstext').value.trim() }));
     };
