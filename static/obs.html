@@ -855,7 +855,7 @@ let retry = 0;
 function connect() {
   // 后台照网址里的设置挑着发：没开「显示价格」就不发礼物价格，只告诉大不大、够不够最低价；room = 切房名单里的别的直播间（2026-11-21）
   const q = new URLSearchParams({ client: 'obs', price: opt.price ? '1' : '0', gm: String(opt.giftMin || 0) });
-  if (/^\d{1,12}$/.test(str('room', ''))) q.set('room', str('room', ''));
+  if (/^\d{1,12}$/.test(str('room', '')) || /^(douyu|huya|douyin):\d{1,20}$/.test(str('room', ''))) q.set('room', str('room', ''));
   const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + location.pathname.replace(/[^/]*$/, '') + 'ws?' + q);
   ws.onopen = () => { retry = 0; };
   ws.onclose = () => setTimeout(connect, Math.min(30000, 2000 * 2 ** retry++));

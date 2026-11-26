@@ -701,7 +701,8 @@ setMode(mode);
 fetch('api/xrooms').then(r => r.json()).then(j => {
   const f = F.find(x => x.k === 'room');
   if (!f || !Array.isArray(j.rooms)) return;
-  f.opts = [['', j.main?.name || '主播'], ...j.rooms.map(r => [String(r.room), r.name || String(r.room)])];
+  const PL = { douyu: '斗鱼', huya: '虎牙', douyin: '抖音' };
+  f.opts = [['', j.main?.name || '主播'], ...j.rooms.map(r => [r.plat ? `${r.plat}:${r.room}` : String(r.room), (r.plat ? PL[r.plat] + ' · ' : '') + (r.name || String(r.room))])];
   if (cfg.room && !f.opts.some(o => o[0] === String(cfg.room))) { cfg.room = ''; }
   draw(); update();
 }).catch(() => {});

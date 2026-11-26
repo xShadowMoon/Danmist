@@ -190,7 +190,7 @@ XROOMS_MAX = 10  # 普通链接能切的直播间最多几个（2026-11-21 用�
 
 
 def xrooms(c):
-    """普通链接能切到哪些直播间（2026-11-21）：{open 开没开, rooms [{room 房间号, name 名字}]}"""
+    """普通链接能切到哪些直播间（2026-11-21）：{open 开没开, rooms [{room 房间号, name 名字, plat 平台（B 站不写；2026-11-26 起能放斗鱼 / 虎牙 / 抖音）}]}"""
     if not isinstance(c, dict) or set(c) - {'open', 'rooms'}:
         raise InputError('直播间名单格式不对')
     rows = c.get('rooms', [])
@@ -198,13 +198,17 @@ def xrooms(c):
         raise InputError(f'直播间最多 {XROOMS_MAX} 个')
     out, seen = [], set()
     for r in rows:
-        if not isinstance(r, dict) or set(r) - {'room', 'name'}:
+        if not isinstance(r, dict) or set(r) - {'room', 'name', 'plat'}:
             raise InputError('直播间名单格式不对')
-        room = integer(r.get('room'), '房间号', 1, 10**12 - 1)
+        plat = r.get('plat') or ''
+        if plat not in ('', 'bili', 'douyu', 'huya', 'douyin'):
+            raise InputError('平台不对')
+        plat = '' if plat == 'bili' else plat
+        room = integer(r.get('room'), '房间号', 1, 10**20 - 1 if plat else 10**12 - 1)
         text(r.get('name', ''), '直播间名字', 40)
-        if room not in seen:
-            seen.add(room)
-            out.append({'room': room, 'name': str(r.get('name', '')).strip()})
+        if (plat, room) not in seen:
+            seen.add((plat, room))
+            out.append({'room': room, 'name': str(r.get('name', '')).strip(), **({'plat': plat} if plat else {})})
     return {'open': boolean(c.get('open', False), '开关'), 'rooms': out}
 
 

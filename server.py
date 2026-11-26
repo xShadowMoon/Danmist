@@ -42,6 +42,7 @@ from public_limits import PublicLimits, client_ip
 import history_maintenance
 from ai_voice import AIVoice, Busy as VoiceBusy, VoiceError
 from music import MusicService
+import platforms
 from platforms import Platforms, PLATS as PLAT_NAMES
 import updates
 from backend_limits import OperationError, OperationRate, WS_IMPORT_LIMIT, WS_NORMAL_LIMIT, operation_info, parse_operation
@@ -1646,11 +1647,11 @@ class Hub:
         return ('普通链接可以切换直播间' if self.xrooms['open'] else '普通链接不能切换直播间了') + f"（名单里 {len(self.xrooms['rooms'])} 个）"
 
     def xroom_listed(self, *rooms):
-        ok = {r['room'] for r in self.xrooms['rooms']}
+        ok = {xroom_key(r) for r in self.xrooms['rooms']}
         return any(r in ok for r in rooms if r)
 
     def xroom_allowed(self, *rooms):
-        ok = {r['room'] for r in self.xrooms['rooms']} if self.xrooms['open'] else set()
+        ok = {xroom_key(r) for r in self.xrooms['rooms']} if self.xrooms['open'] else set()
         return any(r in ok for r in rooms if r)
 
     def tpre_set(self, rows):
@@ -1863,6 +1864,11 @@ class NullHistory:
 
     def dm_file(self, sid):
         return os.devnull
+
+
+def xroom_key(r):
+    """切房名单里一个房间的「钥匙」：B 站就是房间号（数字），别的平台是 平台:房间号（2026-11-26）"""
+    return f"{r['plat']}:{r['room']}" if r.get('plat') else r['room']
 
 
 class SideHub(Hub):
@@ -2756,7 +2762,8 @@ async def collect_side_rooms(side_hubs):
                     side_hubs.pop(k, None)
                 e['task'].cancel()
                 try:
-                    await e['client'].stop_and_close()
+                    if e.get('client'):  # 别的平台没有 B 站连接，只有上面那个任务（2026-11-26）
+                        await e['client'].stop_and_close()
                 except Exception as ex:
                     log.warning('关别的直播间连接出错：%s', ex)
                 log.info('别的直播间 %s 没人看了，已关掉', e['hub'].side_info.get('room'))
@@ -3118,11 +3125,34 @@ async def main():
 
     side_gc_task = []
 
+    async def side_hub_plat(plat, room):
+        """切到斗鱼 / 虎牙 / 抖音的直播间（2026-11-26）：跟「其他平台」一样的连接，只是收进一套单独的 SideHub 里"""
+        key = f'{plat}:{room}'
+        e = side_hubs.get(key)
+        if e:
+            e['idle'] = 0
+            return e['hub']
+        if plat == 'douyin' and not hub.platforms.view().get('douyin'):
+            raise ValueError('抖音要在装了 Edge / Chrome 的 Windows 电脑上开')
+        row = next((r for r in hub.xrooms['rooms'] if xroom_key(r) == key), None)
+        label = platforms.PLATS[plat][0]
+        h = SideHub(MemState(int(room) % 10**12), NullHistory(), persist=False)
+        h.admin_links, h.public_limits, h.bot_uids = hub.admin_links, hub.public_limits, []
+        h.side_info = {'room': key, 'uname': (row or {}).get('name') or f'{label} {room}', 'plat': plat}
+        h.state.room['live'] = 1  # 别的平台不查开没开播，先当在播
+        src = platforms.CLASSES[plat](h, plat, str(room), log)
+        e = {'hub': h, 'client': None, 'src': src, 'task': asyncio.create_task(src.run(bare)), 'idle': 0}
+        side_hubs[key] = e
+        if not side_gc_task:
+            side_gc_task.append(asyncio.create_task(side_gc()))
+        log.info('切到%s直播间 %s', label, room)
+        return h
+
     async def fill_xroom_names():
         """切房名单里没名字的（刚加进去的），去 B 站查用户名填上（2026-11-21）。"""
         rooms, changed = [dict(r) for r in hub.xrooms['rooms']], False
         for r in rooms:
-            if r.get('name'):
+            if r.get('name') or r.get('plat'):  # 别的平台的名字自己填（查不到用户名）
                 continue
             try:
                 async with session.get(f"https://api.live.bilibili.com/room/v1/Room/get_info?room_id={r['room']}", timeout=aiohttp.ClientTimeout(total=10)) as resp:
@@ -3323,7 +3353,17 @@ async def main():
             if link_id and not links.active(link_id):
                 return ws
             want = str(request.query.get('room', ''))
-            if want.isdigit() and 0 < int(want) < 10**12 and int(want) != args.room:
+            pm = re.fullmatch(r'(douyu|huya|douyin):(\d{1,20})', want)
+            if pm:
+                # 别的平台的直播间（2026-11-26）：规矩跟 B 站的一样，管理身份随便看，普通链接 / OBS 要在名单里
+                if admin or (viewer and hub.xroom_allowed(want)) or (client_kind == 'obs' and hub.xroom_listed(want)):
+                    try:
+                        h = await side_hub_plat(pm.group(1), int(pm.group(2)))
+                    except Exception as e:
+                        await ws.send_json({'type': 'result', 'data': {'cmd': 'connect', 'ok': False, 'msg': f'切换直播间失败：{e}'}})
+                elif viewer:
+                    await ws.send_json({'type': 'result', 'data': {'cmd': 'connect', 'ok': False, 'msg': f'这个直播间现在不能切过去，先看{BRAND["short"]}这边'}})
+            elif want.isdigit() and 0 < int(want) < 10**12 and int(want) != args.room:
                 # 普通链接只能切到名单里的，而且开关要开着（2026-11-21）；OBS 弹幕只要在名单里就行（OBS 设置里的「直播间」）
                 if admin or (viewer and hub.xroom_allowed(int(want))) or (client_kind == 'obs' and hub.xroom_listed(int(want))):
                     try:

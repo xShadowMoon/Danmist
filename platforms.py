@@ -390,8 +390,11 @@ class Douyin(Source):
     OFF = {'left': -32000, 'top': -32000, 'width': 1280, 'height': 860}
     ON = {'left': 80, 'top': 60, 'width': 1280, 'height': 860}
 
+    alive = set()  # 正在用浏览器的抖音直播间（主直播间的「其他平台」和切过去看的共用一个浏览器）
+
     def __init__(self, hub, plat, room, log):
         super().__init__(hub, plat, room, log)
+        Douyin.alive.add(self)
         self.proc = None
         self.ws = None
         self.calls = {}
@@ -504,9 +507,10 @@ class Douyin(Source):
                             self.state = '页面被跳走了（可能要登录或过验证）：点「显示窗口」看看'
                 reader.result()
             except asyncio.CancelledError:
-                # 在设置里关掉 / 删掉这个直播间：把浏览器也关了
+                # 在设置里关掉 / 删掉这个直播间：只关自己这一页（同一个浏览器里可能还开着别的抖音直播间，2026-11-26）；
+                # 最后一页关掉浏览器就自己退出了
                 try:
-                    await asyncio.wait_for(self.call('Browser.close'), 3)
+                    await asyncio.wait_for(self.call('Page.close'), 3)
                 except BaseException:
                     pass
                 raise
@@ -569,6 +573,9 @@ class Douyin(Source):
             self.close()
 
     def close(self):
+        Douyin.alive.discard(self)
+        if Douyin.alive:  # 还有别的抖音直播间在用这个浏览器
+            return
         if self.proc and self.proc.poll() is None:
             try:
                 self.proc.terminate()

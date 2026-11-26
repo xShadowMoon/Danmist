@@ -35,7 +35,7 @@ function connect() {
   clearTimeout(wsTimer);
   const old = window._ws;
   if (old && old.readyState < 2) { old.onclose = old.onmessage = null; old.close(); }
-  const room = Number(new URLSearchParams(location.search).get('room')) || 0;  // 切到别的直播间（2026-11-20）
+  const room = (v => /^\d{1,12}$/.test(v) || /^(douyu|huya|douyin):\d{1,20}$/.test(v) ? v : '')(new URLSearchParams(location.search).get('room') || '');  // 切到别的直播间（2026-11-20）；别的平台是 douyu:9999 这样（2026-11-26）
   const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + location.pathname.replace(/[^/]*$/, '') + 'ws' + ((q => q ? '?' + q : '')(new URLSearchParams({ ...(preview ? { view: 'public' } : {}), ...(room ? { room } : {}) }).toString())));  // 普通视角也能切直播间（2026-11-21）
   window._ws = ws;
   ws.onopen = () => { wsRetry = 0; lastMsgAt = Date.now(); wsOpen = true; drawConn(); $('netbar').classList.remove('on'); };
@@ -184,7 +184,7 @@ function connect() {
       S.title_presets = data; if (!$('tpremenu').hidden) drawTpre();
     } else if (type === 'xrooms') {  // 切直播间的名单、开关（2026-11-21）
       S.xrooms = data; xrShow(); if (!$('xroommenu').hidden) xroomMenu();
-      if (!S.admin && S.side && !(data.open && data.rooms.some(x => x.room === S.side.room || x.room === SIDE_ROOM))) xroomGo(0);
+      if (!S.admin && S.side && !(data.open && data.rooms.some(x => xrKey(x) === String(S.side.room) || xrKey(x) === SIDE_ROOM))) xroomGo(0);
     } else if (type === 'guardlist') {
       S.guardlist = data; renderUsers();
     } else if (type === 'guards_all') {  // 后台补了陪伴天数（2026-11-20）

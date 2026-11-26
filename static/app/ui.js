@@ -258,15 +258,18 @@ cpBtn.addEventListener('click', async e => {
 
 /* ---------- 切换直播间（2026-11-20）：整页切过去，弹幕、礼物、SC、上舰、观众、数字、标题都换成那个直播间的；
    网址带 ?room=房间号，后台给那个房间单独开一套（只在内存里），主播的记录、统计、OBS 都不受影响 ---------- */
-const SIDE_ROOM = Number(new URLSearchParams(location.search).get('room')) || 0;
+// 2026-11-26：也能切到斗鱼 / 虎牙 / 抖音的直播间，网址里是 room=douyu:9999 这样；B 站还是只写房间号
+const SIDE_ROOM = (v => /^\d{1,12}$/.test(v) || /^(douyu|huya|douyin):\d{1,20}$/.test(v) ? v : '')(new URLSearchParams(location.search).get('room') || '');
+const xrKey = x => x.plat ? `${x.plat}:${x.room}` : String(x.room);
+const XR_PLATS = [['', 'B 站'], ['douyu', '斗鱼'], ['huya', '虎牙'], ['douyin', '抖音']];
 // 2026-11-21 名单放到后台：管理链接里增删、开关「普通链接也能切」，普通链接只能切名单里的（最多 10 个）
 // 名字都用 B 站用户名（2026-11-20 用户要求）；管理身份切过去一次就会换成那边最新的用户名
 const XR_MAX = 10;
 const mainName = () => S.room?.anchor_name || ANCHOR();
-const xrList = () => (S.xrooms?.rooms || []).map(x => ({ room: x.room, name: x.name || String(x.room) }));
+const xrList = () => (S.xrooms?.rooms || []).map(x => ({ room: x.room, plat: x.plat || '', name: x.name || String(x.room) }));
 const xrSend = (open, rooms) => {
   if (!S.admin || window._ws?.readyState !== 1) { note('连接还没好，等一下再试', false); return; }
-  window._ws.send(JSON.stringify({ cmd: 'xrooms_set', open: !!open, rooms: rooms.slice(0, XR_MAX).map(x => ({ room: Number(x.room), name: String(x.name || '').slice(0, 40) })) }));
+  window._ws.send(JSON.stringify({ cmd: 'xrooms_set', open: !!open, rooms: rooms.slice(0, XR_MAX).map(x => ({ room: Number(x.room), name: String(x.name || '').slice(0, 40), ...(x.plat ? { plat: x.plat } : {}) })) }));
 };
 // 普通链接：开关开着、名单里有直播间才出现切换按钮
 function xrShow() {
@@ -274,7 +277,7 @@ function xrShow() {
   if (w) w.hidden = !(S.admin || (S.xrooms?.open && S.xrooms.rooms?.length));
 }
 function xroomGo(room) {
-  room = Number(room) || 0;
+  room = room && room !== '0' ? String(room) : '';
   const u = new URL(location.href);
   if (room) u.searchParams.set('room', room); else u.searchParams.delete('room');
   location.href = u.toString();
@@ -288,17 +291,20 @@ function sideApply() {
   $('sidebar').hidden = !sd;
   if (!sd) return;
   // 管理身份：名单里这个直播间的名字换成 B 站现在的用户名
-  const a = xrList(), i = a.findIndex(x => x.room === sd.room || x.room === SIDE_ROOM);
-  if (S.admin && i >= 0 && sd.uname && a[i].name !== sd.uname) { a[i].name = sd.uname; xrSend(S.xrooms.open, a); }
-  $('sidebar').innerHTML = `${icon('tv')}<span>正在看 <b>${esc(sd.uname || '')}</b> 的直播间 ${sd.room}（只是看，朗读和提示音先停着，回到 ${mainName()} 自动恢复）</span><button class="btn sm" id="sideback">回到 ${mainName()}</button>`;
+  const a = xrList(), i = a.findIndex(x => xrKey(x) === String(sd.room) || xrKey(x) === SIDE_ROOM);
+  if (S.admin && i >= 0 && sd.uname && !sd.plat && a[i].name !== sd.uname) { a[i].name = sd.uname; xrSend(S.xrooms.open, a); }
+  $('sidebar').innerHTML = `${icon('tv')}<span>正在看 ${sd.plat ? platTag(sd.plat) + ' ' : ''}<b>${esc(sd.uname || '')}</b> 的直播间 ${esc(String(sd.room).replace(/^\w+:/, ''))}（只是看，朗读和提示音先停着，回到 ${mainName()} 自动恢复）</span><button class="btn sm" id="sideback">回到 ${mainName()}</button>`;
   $('sideback').onclick = () => xroomGo(0);
   document.title = `${sd.uname || sd.room} 的直播间 · ${BRAND_NAME()}`;
 }
 function xroomMenu() {
   const m = $('xroommenu'), a = xrList(), adm = !!S.admin && !S.host;
-  m.innerHTML = `<button data-xr="0"${!SIDE_ROOM ? ' class="on"' : ''}>${icon('mic')}${mainName()} <small>${S.room?.room_real || ''}</small></button>`
-    + a.map(x => `<div class="xrrow"><button data-xr="${x.room}"${SIDE_ROOM === x.room || S.side?.room === x.room ? ' class="on"' : ''}>${icon('tv')}${esc(x.name)} <small>${x.room}</small></button>${adm ? `<button class="xrdel" data-xrdel="${x.room}" title="从名单里删掉">${icon('close')}</button>` : ''}</div>`).join('')
-    + (S.admin ? `<div class="xrnew"><input id="xrinput" inputmode="numeric" placeholder="输入房间号" maxlength="12"><button class="btn sm" id="xrgo" title="只是自己看一下，不加进名单">看</button>${adm ? `<button class="btn sm" id="xradd" title="加进名单，普通链接也能切过去"${a.length >= XR_MAX ? ' disabled' : ''}>加到名单</button>` : ''}</div>` : '')
+  // 2026-11-26 用户：做大一点，在这里就能选平台。每个房间前面标平台；新加的先选平台再填房间号
+  const plats = XR_PLATS.filter(([k]) => k !== 'douyin' || S.platforms?.douyin);
+  m.innerHTML = `<div class="xrhead">切换直播间</div><button data-xr="0"${!SIDE_ROOM ? ' class="on"' : ''}>${icon('mic')}<span class="xrn">${esc(mainName())}</span><span class="tag plat p-bili">B 站</span><small>${S.room?.room_real || ''}</small></button>`
+    + a.map(x => `<div class="xrrow"><button data-xr="${esc(xrKey(x))}"${SIDE_ROOM === xrKey(x) || String(S.side?.room) === xrKey(x) ? ' class="on"' : ''}>${icon('tv')}<span class="xrn">${esc(x.name)}</span>${x.plat ? platTag(x.plat) : '<span class="tag plat p-bili">B 站</span>'}<small>${x.room}</small></button>${adm ? `<button class="xrdel" data-xrdel="${esc(xrKey(x))}" title="从名单里删掉">${icon('close')}</button>` : ''}</div>`).join('')
+    + (S.admin ? `<div class="xrnew"><select id="xrplat" title="哪个平台">${plats.map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select><input id="xrinput" inputmode="numeric" placeholder="房间号" maxlength="20"><button class="btn sm" id="xrgo" title="只是自己看一下，不加进名单">看</button>${adm ? `<button class="btn sm" id="xradd" title="加进名单，普通链接也能切过去"${a.length >= XR_MAX ? ' disabled' : ''}>加到名单</button>` : ''}</div>`
+      + `<div class="xrtip">抖音填 live.douyin.com/ 后面的数字；斗鱼、虎牙填房间号</div>` : '')
     + (adm ? `<label class="xropen"><span>普通链接也能切<small>名单 ${a.length}/${XR_MAX}</small></span><span class="switch"><input type="checkbox" id="xropen"${S.xrooms?.open ? ' checked' : ''}><i></i></span></label>` : '');
   m.hidden = false;
   const r = $('xroombtn').getBoundingClientRect();  // 标题栏会裁掉超出的部分，菜单用 fixed 定位贴在按钮下面
@@ -310,19 +316,19 @@ $('xroombtn').onclick = e => { e.stopPropagation(); if ($('xroommenu').hidden) x
 $('xroommenu').addEventListener('click', e => {
   e.stopPropagation();
   const d = e.target.closest('[data-xrdel]');
-  if (d) return xrSend(S.xrooms?.open, xrList().filter(x => x.room !== Number(d.dataset.xrdel)));
+  if (d) return xrSend(S.xrooms?.open, xrList().filter(x => xrKey(x) !== d.dataset.xrdel));
   const b = e.target.closest('[data-xr]');
   if (b) return xroomGo(b.dataset.xr);
-  const v = ($('xrinput')?.value || '').replace(/\D/g, '');
-  if (e.target.closest('#xrgo') && v) xroomGo(v);
-  if (e.target.closest('#xradd') && v) {
+  const v = ($('xrinput')?.value || '').replace(/\D/g, ''), pl = $('xrplat')?.value || '', k = v ? (pl ? `${pl}:${v}` : v) : '';
+  if (e.target.closest('#xrgo') && k) xroomGo(k);
+  if (e.target.closest('#xradd') && k) {
     const a = xrList();
-    if (a.some(x => x.room === Number(v))) { note('名单里已经有了', false); return; }
+    if (a.some(x => xrKey(x) === k)) { note('名单里已经有了', false); return; }
     if (a.length >= XR_MAX) { note(`名单最多 ${XR_MAX} 个`, false); return; }
-    xrSend(S.xrooms?.open, [...a, { room: Number(v), name: '' }]);
+    xrSend(S.xrooms?.open, [...a, { room: Number(v), name: pl ? `${XR_PLATS.find(p => p[0] === pl)[1]} ${v}` : '', plat: pl }]);
   }
 });
-$('xroommenu').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'xrinput') { const v = e.target.value.replace(/\D/g, ''); if (v) xroomGo(v); } });
+$('xroommenu').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'xrinput') { const v = e.target.value.replace(/\D/g, ''), pl = $('xrplat')?.value || ''; if (v) xroomGo(pl ? `${pl}:${v}` : v); } });
 document.addEventListener('click', e => { if (!$('xroommenu').hidden && !e.target.closest('.xrwrap')) $('xroommenu').hidden = true; });
 
 /* ---------- 半屏（2026-11-20）：顶栏一行放不下时，从后往前把按钮收进「⋯」菜单；设置、工作模式一直留在外面 ---------- */

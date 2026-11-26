@@ -1129,6 +1129,15 @@ body.fdrag iframe { pointer-events: none; }
 .xrbtn svg.ic { width: 13px; height: 13px; flex: none; }
 .xrbtn .wcaret { width: 10px; height: 10px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; }
 .xrmenu { left: 0; right: auto; min-width: 210px; font-weight: 400; }
+/* 2026-11-26 做大一点，能选平台 */
+.xrmenu { width: 340px; max-width: calc(100vw - 16px); padding: 6px; font-size: 13.5px; }
+.xrmenu .xrhead { padding: 4px 8px 6px; font-size: 12px; color: var(--ink3); }
+.xrmenu button[data-xr] { gap: 8px; padding: 8px 10px; }
+.xrmenu .xrn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xrmenu .tag.plat { flex: none; font-size: 10.5px; }
+.tag.p-bili { background: #fb7299; }
+.xrmenu .xrnew select { flex: none; height: 28px; border: 1px solid var(--line); border-radius: 7px; background: var(--input); color: var(--ink); font: inherit; font-size: 12.5px; padding: 0 4px; }
+.xrmenu .xrtip { padding: 2px 8px 4px; font-size: 11px; color: var(--ink3); }
 .xrmenu button small { margin-left: auto; color: var(--ink3); font-size: 11px; }
 .xrmenu button.on { color: var(--mist-d); background: var(--chip); }
 .xrwrap[hidden] { display: none !important; }
