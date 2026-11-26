@@ -6,8 +6,8 @@
 
 做的事：
 1. 在后台开雾幕服务（server.py，没有黑窗口），日志写 data/server.log；
-2. 服务起来后，用 Edge（没有就 Chrome）的「应用窗口」打开它 —— 没有地址栏、任务栏单独一个图标，
-   看起来就是一个软件；用单独的配置文件夹 data/desktop-browser，不碰你平时的浏览器；
+2. 服务起来后，用雾幕自己的窗口打开它（native_window.py，Windows 自带的 WebView2，2026-11-26 起）；
+   开不起来再用 Edge（没有就 Chrome）的「应用窗口」—— 用单独的配置文件夹 data/desktop-browser，不碰你平时的浏览器；
 3. 窗口关掉，服务也一起停；
 4. 页面上点了「重启生效」（软件内更新）：服务以退出码 75 退出，这里把下载好的新版本换上，再把服务开起来，
    窗口不用关，几秒后页面自己连回来、刷新成新版本。
@@ -24,6 +24,8 @@ import urllib.request
 APP = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, APP)
 import updates  # noqa: E402
+import native_window  # noqa: E402
+import threading  # noqa: E402
 
 NO_WINDOW = 0x08000000 if sys.platform == 'win32' else 0
 TOKEN = secrets.token_hex(16)  # 关窗口时叫服务先存好再退用的口令
@@ -194,11 +196,13 @@ def main():
     port = int(c.get('port') or 8373)
     web = '--web' in args or c.get('open') == 'web'
     url = f'http://127.0.0.1:{port}/'
+    native = not web and '--edge' not in args and native_window.available()
+    title = str((c.get('brand') or {}).get('name') or '雾幕') if isinstance(c.get('brand'), dict) else '雾幕'
     if port_open(port):  # 已经开着一份：直接再开一个窗口
         if web:
             import webbrowser
             webbrowser.open(url)
-        else:
+        elif not (native and native_window.show(url + '?app=1', title)):
             open_window(url)
         return
     updates.apply(APP, say)  # 上次下载好、还没换上的新版本，先换上
@@ -213,6 +217,18 @@ def main():
         message('雾幕没启动起来，看看 data\\server.log 里写了什么（或者双击 start.bat 看报错）')
         server.kill()
         return
+    if native:  # 雾幕自己的窗口：窗口在主线程里一直开着，服务的看护放到后台线程
+        state = {'server': server, 'stop': False}
+        threading.Thread(target=watch_server, args=(port, state), daemon=True).start()
+        ok = native_window.show(url + '?app=1', title)
+        if ok:
+            state['stop'] = True
+            say('窗口关了，雾幕也停了')
+            stop_server(port, state['server'])
+            return
+        say('雾幕自己的窗口没开起来（可能没装 WebView2），改用 Edge 的窗口')
+        state['stop'] = True
+        server = state['server']
     win = None
     if web:
         import webbrowser
@@ -238,12 +254,32 @@ def main():
             continue
         if win is not None and not window_open():  # 窗口关了：一起停
             say('窗口关了，雾幕也停了')
-            try:  # 先让它把这一场存好再退
-                urllib.request.urlopen(urllib.request.Request(f'http://127.0.0.1:{port}/api/launcher/quit?t={TOKEN}', data=b'', method='POST'), timeout=5)
-                server.wait(10)
-            except (OSError, subprocess.TimeoutExpired):
-                server.kill()
+            stop_server(port, server)
             return
+        time.sleep(1)
+
+
+def stop_server(port, server):
+    try:  # 先让它把这一场存好再退
+        urllib.request.urlopen(urllib.request.Request(f'http://127.0.0.1:{port}/api/launcher/quit?t={TOKEN}', data=b'', method='POST'), timeout=5)
+        server.wait(10)
+    except (OSError, subprocess.TimeoutExpired):
+        server.kill()
+
+
+def watch_server(port, state):
+    """自己的窗口开着时，在后台看着服务：点了「重启生效」就换上新版本再开；意外停了就重开"""
+    while not state['stop']:
+        code = state['server'].poll()
+        if code is not None and not state['stop']:
+            if code == updates.RESTART_CODE:
+                v = updates.apply(APP, say)
+                say(f'重启{"，换成 v" + v if v else ""}')
+            else:
+                say(f'服务停了（{code}），过 3 秒重开')
+                time.sleep(3)
+            state['server'] = start_server(port)
+            wait_ready(port, state['server'])
         time.sleep(1)
 
 

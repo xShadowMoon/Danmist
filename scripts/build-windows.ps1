@@ -43,6 +43,18 @@ $pyMinor = ($PythonVersion -split '\.')[0..1] -join '.'
   --platform win_amd64 --python-version $pyMinor --implementation cp `
   --target (Join-Path $py 'Lib\site-packages') -r (Join-Path $root 'requirements.txt')
 if ($LASTEXITCODE) { throw 'pip install failed' }
+# 3b. App window (2026-11-26): pywebview on Windows' own WebView2 + its .NET bridge. proxy_tools only ships as a source
+#     package, so build its (pure Python) wheel here first.
+$site = Join-Path $py 'Lib\site-packages'
+& $hostPy[0] $hostPy[1..9] -m pip install --disable-pip-version-check --no-compile --only-binary=:all: --upgrade `
+  --platform win_amd64 --python-version $pyMinor --implementation cp --target $site --no-deps `
+  'pywebview==6.2.1' 'pythonnet==3.2.1' 'clr_loader==0.3.1' 'cffi>=1.17' 'pycparser' 'bottle' 'typing_extensions'
+if ($LASTEXITCODE) { throw 'pip install (window) failed' }
+$wheels = Join-Path $root 'dist\_cache\wheels'
+& $hostPy[0] $hostPy[1..9] -m pip wheel --disable-pip-version-check --no-deps 'proxy_tools==0.1.0' -w $wheels
+if ($LASTEXITCODE) { throw 'pip wheel proxy_tools failed' }
+& $hostPy[0] $hostPy[1..9] -m pip install --disable-pip-version-check --no-compile --upgrade --target $site --no-deps (Get-ChildItem $wheels -Filter 'proxy_tools-*.whl' | Select-Object -First 1).FullName
+if ($LASTEXITCODE) { throw 'pip install proxy_tools failed' }
 Get-ChildItem (Join-Path $py 'Lib\site-packages') -Directory -Filter 'bin' | Remove-Item -Recurse -Force
 
 # 4. Zip
