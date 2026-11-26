@@ -8,7 +8,7 @@ param([Parameter(Mandatory = $true)][string]$Version)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $dist = Join-Path $root 'dist'
-$zip = Join-Path $dist "bili-danmaku-board-v$Version-windows-x64.zip"
+$zip = Join-Path $dist "Danmist-v$Version-windows-x64.zip"
 if (-not (Test-Path $zip)) { throw "先跑 build-windows.ps1 -Version $Version" }
 $stage = Join-Path $dist '_installer'
 if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }

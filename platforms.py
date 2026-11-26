@@ -1,22 +1,24 @@
 """其他直播平台（2026-11-25）：斗鱼、虎牙的弹幕、礼物、进房，只读，跟 B 站的混在一起显示，每条标上平台。
-（抖音没做：它的弹幕要过抖音自己的反爬签名，绕过它不合适；以后可以走抖音开放平台的官方接口。）
+抖音（2026-11-26）：不碰它的接口和签名，在这台电脑上开一个屏幕外的浏览器窗口正常打开直播间，从页面上读（见 Douyin）。
 
 用法：设置 → 弹幕 → 「其他平台」里加直播间（同时在好几个平台开播时用）。存在 data/platforms.json。
 每个直播间一个连接，断了自动重连；平台改了协议就只是这一路收不到，不影响 B 站。
 uid 加上平台号 × 10^14，跟 B 站的 uid 不会撞。
 """
 import asyncio
+import hashlib
 import json
 import os
 import random
 import re
 import ssl
 import struct
+import subprocess
 import time
 
 import aiohttp
 
-PLATS = {'douyu': ('斗鱼', 1), 'huya': ('虎牙', 2)}
+PLATS = {'douyu': ('斗鱼', 1), 'huya': ('虎牙', 2), 'douyin': ('抖音', 3)}
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
 UA_M = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 ROOMS_MAX = 6
@@ -312,7 +314,270 @@ class Huya(Source):
             self.enter(b.get(0), b.get(1, ''), b.get(6, ''))
 
 
-CLASSES = {'douyu': Douyu, 'huya': Huya}
+# ---------- 抖音（2026-11-26）：不碰抖音的接口和签名。在这台电脑上开一个放在屏幕外面的普通浏览器窗口，
+# 像人一样打开直播间网页，把页面上显示出来的弹幕、礼物、进房读出来。要登录 / 过验证时点「显示窗口」把它叫出来自己弄。
+# 只在 Windows、装了 Edge 或 Chrome 的电脑上能用（桌面版就是这样）。登录状态存在 data/douyin-browser 里，下次还在。
+DY_JS = r"""(() => {
+  if (window.__danmistOn || window.top !== window) return;  // 只管直播间那一页，里面嵌的小页面不算
+  window.__danmistOn = true;
+  const send = o => { try { window.__danmist(JSON.stringify(o)); } catch (e) {} };
+  // 列表是会重画的：同一个人 10 秒里同样的话只算一次
+  const recent = new Map();
+  const fresh = o => { const k = o.k + '|' + o.name + '|' + (o.text || o.gift || '') + '|' + (o.num || ''); const t = Date.now(); if (t - (recent.get(k) || 0) < 10000) return false; recent.set(k, t); if (recent.size > 500) recent.clear(); return true; };
+  const seen = new Set(), seenEl = new WeakSet();  // 进房那种有 data-id，弹幕没有：按元素本身认
+  // 一段内容里的字：文字原样，表情图用它的说明（[捂脸] 这种）
+  const words = n => { let s = ''; n.childNodes.forEach(c => { s += c.nodeType === 3 ? c.textContent : c.tagName === 'IMG' ? (c.alt || '') : words(c); }); return s; };
+  const level = it => { const m = it.innerHTML.match(/new_user_grade_level_v1_(\d+)/); return m ? +m[1] : 0; };
+  const read = it => {
+    const id = it.getAttribute('data-id') || '';
+    if (seenEl.has(it) || (id && seen.has(id))) return;
+    seenEl.add(it);
+    if (id) seen.add(id);
+    if (seen.size > 5000) seen.clear();
+    // 一条：[等级、粉丝团小图] [名字：] [内容]，最后两个分别是名字和内容（类名是乱码，会变，不靠它）
+    let row = it;
+    while (row.children.length === 1) row = row.firstElementChild;  // 弹幕比进房多包一层
+    const kids = [...row.children];
+    if (kids.length < 2) return;
+    const box = kids[kids.length - 1], name = kids[kids.length - 2].textContent.replace(/[：:]\s*$/, '').trim();
+    const text = words(box).replace(/\s+/g, ' ').trim();
+    if (!name || !text) return;
+    const img = box.querySelector('img');
+    const out = o => { if (fresh(o)) send(o); };
+    let m;
+    if (/^(来了|加入了直播间)$/.test(text)) out({ k: 'enter', name, lv: level(it) });
+    else if (/^(为主播点赞了|分享了直播间|关注了主播|推荐直播给)/.test(text)) out({ k: 'act', name, text });
+    else if ((m = text.match(/^送(?:出了?|给主播)\s*(?:\d+\s*个)?\s*(.+?)\s*[×xX]\s*(\d+)$/) || text.match(/^送(?:出了?|给主播)\s*(\d+)\s*个\s*(.+)$/)))
+      out(/^\d+$/.test(m[1]) ? { k: 'gift', name, gift: m[2], num: +m[1], img: img ? img.src : '', lv: level(it) } : { k: 'gift', name, gift: m[1], num: +m[2], img: img ? img.src : '', lv: level(it) });
+    else out({ k: 'dm', name, text, lv: level(it) });
+  };
+  const scan = n => { if (n.matches && n.matches('.webcast-chatroom___item')) read(n); if (n.querySelectorAll) n.querySelectorAll('.webcast-chatroom___item').forEach(read); };
+  // 礼物价格：页面下面那排礼物写着「跑车 1200钻」
+  const prices = () => {
+    const p = {};
+    document.querySelectorAll('[data-e2e="gifts-container"] *').forEach(e => { const m = (e.innerText || '').trim().match(/^([^\n]{1,20})\n(\d+)\s*钻$/); if (m) p[m[1].trim()] = +m[2]; });
+    if (Object.keys(p).length) send({ k: 'prices', p });
+  };
+  const start = () => {
+    document.querySelectorAll('.webcast-chatroom___item').forEach(it => { seenEl.add(it); const id = it.getAttribute('data-id'); if (id) seen.add(id); });  // 打开时已经在列表里的不算新的
+    new MutationObserver(ms => { for (const m of ms) m.addedNodes.forEach(n => { if (n.nodeType === 1) scan(n); }); }).observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(prices, 8000);
+    setInterval(prices, 600000);
+    send({ k: 'ready', url: location.href, title: document.title });
+  };
+  document.readyState === 'loading' ? addEventListener('DOMContentLoaded', start) : start();
+})();"""
+
+
+def find_browser():
+    pf = [os.environ.get(k, '') for k in ('ProgramFiles(x86)', 'ProgramFiles', 'LOCALAPPDATA')]
+    for base in pf:
+        for rel in (r'Microsoft\Edge\Application\msedge.exe', r'Google\Chrome\Application\chrome.exe'):
+            p = os.path.join(base, rel)
+            if base and os.path.isfile(p):
+                return p
+    return None
+
+
+def dy_uid(name):
+    """网页上看不到抖音号，用名字算一个固定的数当 uid（同名的人会算成一个）"""
+    return int(hashlib.md5(name.encode('utf-8')).hexdigest()[:12], 16)
+
+
+class Douyin(Source):
+    """抖音直播间：开一个屏幕外的浏览器窗口打开直播间网页，从页面上读（见上面）"""
+    profile_root = ''  # data/ 文件夹，Platforms 设
+    OFF = {'left': -32000, 'top': -32000, 'width': 1280, 'height': 860}
+    ON = {'left': 80, 'top': 60, 'width': 1280, 'height': 860}
+
+    def __init__(self, hub, plat, room, log):
+        super().__init__(hub, plat, room, log)
+        self.proc = None
+        self.ws = None
+        self.calls = {}
+        self.seq = 0
+        self.window = None
+        self.shown = False
+        self.prices = {}
+
+    def profile(self):
+        return os.path.join(self.profile_root or '.', 'douyin-browser')
+
+    async def call(self, method, params=None, timeout=15):
+        self.seq += 1
+        fut = asyncio.get_event_loop().create_future()
+        self.calls[self.seq] = fut
+        await self.ws.send_str(json.dumps({'id': self.seq, 'method': method, 'params': params or {}}))
+        try:
+            return await asyncio.wait_for(fut, timeout)
+        finally:
+            self.calls.pop(self.seq, None)
+
+    async def show(self, on):
+        """把窗口拿到屏幕上（登录、过验证）或者放回屏幕外"""
+        if not self.ws or self.window is None:
+            return False
+        try:
+            await self.call('Browser.setWindowBounds', {'windowId': self.window, 'bounds': {'windowState': 'normal'}})
+            await self.call('Browser.setWindowBounds', {'windowId': self.window, 'bounds': self.ON if on else self.OFF})
+            self.shown = on
+            if on:
+                await self.call('Page.bringToFront')
+            return True
+        except Exception as e:
+            self.log.info('抖音窗口挪不动：%s', e)
+            return False
+
+    async def devtools_port(self, session):
+        """已经开着的（上次没关掉）就接着用；没有就开一个"""
+        port_file = os.path.join(self.profile(), 'DevToolsActivePort')
+
+        async def alive():
+            try:
+                with open(port_file, encoding='utf-8') as f:
+                    port = int(f.readline().strip())
+                async with session.get(f'http://127.0.0.1:{port}/json/version', timeout=aiohttp.ClientTimeout(total=3)) as r:
+                    return port if r.status == 200 else 0
+            except (OSError, ValueError, aiohttp.ClientError, asyncio.TimeoutError):
+                return 0
+        port = await alive()
+        if port:
+            return port
+        exe = find_browser()
+        if not exe:
+            self.state = '没找到 Edge / Chrome，抖音要在装了浏览器的 Windows 电脑上用'
+            raise RuntimeError('no browser')
+        os.makedirs(self.profile(), exist_ok=True)
+        try:
+            os.remove(port_file)
+        except OSError:
+            pass
+        args = [exe, '--remote-debugging-port=0', '--remote-allow-origins=http://127.0.0.1', f'--user-data-dir={self.profile()}',
+                '--no-first-run', '--no-default-browser-check', '--new-window', '--mute-audio',
+                f"--window-position={self.OFF['left']},{self.OFF['top']}", f"--window-size={self.OFF['width']},{self.OFF['height']}",
+                # 窗口在屏幕外也要照常刷新，不然页面不往下走
+                '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
+                f'https://live.douyin.com/{self.room}']
+        flags = 0x08000000 if os.name == 'nt' else 0  # 不弹黑窗口
+        self.proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=flags)
+        for _ in range(100):
+            await asyncio.sleep(0.2)
+            port = await alive()
+            if port:
+                return port
+        raise RuntimeError('浏览器没开起来')
+
+    async def connect(self, session):
+        self.state = '打开直播间网页…'
+        port = await self.devtools_port(session)
+        url = f'https://live.douyin.com/{self.room}'
+        async with session.get(f'http://127.0.0.1:{port}/json', timeout=aiohttp.ClientTimeout(total=5)) as r:
+            targets = await r.json(content_type=None)
+        page = next((t for t in targets if t.get('type') == 'page' and f'live.douyin.com/{self.room}' in t.get('url', '')), None)
+        if not page:
+            async with session.put(f'http://127.0.0.1:{port}/json/new?{url}', timeout=aiohttp.ClientTimeout(total=5)) as r:
+                page = await r.json(content_type=None)
+        async with session.ws_connect(page['webSocketDebuggerUrl'], max_msg_size=0) as ws:
+            self.ws = ws
+            reader = asyncio.get_event_loop().create_task(self.read(ws))
+            try:
+                await self.call('Runtime.enable')
+                await self.call('Page.enable')
+                await self.call('Runtime.addBinding', {'name': '__danmist'})
+                await self.call('Page.addScriptToEvaluateOnNewDocument', {'source': DY_JS})
+                await self.call('Runtime.evaluate', {'expression': DY_JS})
+                try:
+                    self.window = (await self.call('Browser.getWindowForTarget')).get('windowId')
+                    if not self.shown:
+                        await self.show(False)
+                except Exception:
+                    self.window = None
+                self.state = '已打开，等弹幕'
+                last_check = time.time()
+                while not reader.done():
+                    await asyncio.sleep(5)
+                    if time.time() - last_check > 60:  # 每分钟看一眼还在不在直播间（被跳到登录 / 验证页时提示）
+                        last_check = time.time()
+                        r = await self.call('Runtime.evaluate', {'expression': 'location.href', 'returnByValue': True})
+                        href = str(((r.get('result') or {}).get('value')) or '')
+                        if f'live.douyin.com/{self.room}' not in href:
+                            self.state = '页面被跳走了（可能要登录或过验证）：点「显示窗口」看看'
+                reader.result()
+            except asyncio.CancelledError:
+                # 在设置里关掉 / 删掉这个直播间：把浏览器也关了
+                try:
+                    await asyncio.wait_for(self.call('Browser.close'), 3)
+                except BaseException:
+                    pass
+                raise
+            finally:
+                reader.cancel()
+                self.ws = None
+                for f in self.calls.values():
+                    if not f.done():
+                        f.cancel()
+                self.calls.clear()
+
+    async def read(self, ws):
+        async for msg in ws:
+            if msg.type != aiohttp.WSMsgType.TEXT:
+                break
+            m = json.loads(msg.data)
+            if 'id' in m:
+                f = self.calls.get(m['id'])
+                if f and not f.done():
+                    if 'error' in m:
+                        f.set_exception(RuntimeError(str(m['error'].get('message'))))
+                    else:
+                        f.set_result(m.get('result') or {})
+                continue
+            meth = m.get('method')
+            if meth == 'Runtime.bindingCalled' and (m.get('params') or {}).get('name') == '__danmist':
+                try:
+                    self.on_item(json.loads(m['params'].get('payload') or '{}'))
+                except (ValueError, TypeError, KeyError) as e:
+                    self.log.info('抖音一条没读懂：%s', e)
+            elif meth in ('Inspector.detached', 'Inspector.targetCrashed'):
+                raise RuntimeError('抖音页面关了')
+        raise RuntimeError('抖音窗口关了')
+
+    def on_item(self, d):
+        k = d.get('k')
+        name = str(d.get('name') or '')[:40]
+        if k == 'ready':
+            self.state = '已连接' if f'live.douyin.com/{self.room}' in str(d.get('url', '')) else '页面不对：点「显示窗口」看看'
+        elif k == 'prices' and isinstance(d.get('p'), dict):
+            self.prices = {str(a)[:20]: int(b) for a, b in d['p'].items() if isinstance(b, (int, float))}
+        elif not name:
+            return
+        elif k == 'dm':
+            self.state = '已连接'
+            self.dm(dy_uid(name), name, '', str(d.get('text') or ''))
+        elif k == 'enter':
+            self.enter(dy_uid(name), name, '')
+        elif k == 'gift':
+            gift = str(d.get('gift') or '礼物')[:20]
+            num = max(1, min(int(d.get('num') or 1), 10 ** 6))
+            diamonds = self.prices.get(gift, 0)
+            img = str(d.get('img') or '')
+            self.gift(dy_uid(name), name, '', gift, num, diamonds * num / 10, img if img.startswith('https://') else '')  # 1 钻 = 0.1 元
+
+    async def run(self, session):
+        try:
+            await super().run(session)
+        finally:
+            self.close()
+
+    def close(self):
+        if self.proc and self.proc.poll() is None:
+            try:
+                self.proc.terminate()
+            except OSError:
+                pass
+        self.proc = None
+
+
+CLASSES = {'douyu': Douyu, 'huya': Huya, 'douyin': Douyin}
 
 
 class Platforms:
@@ -323,6 +588,7 @@ class Platforms:
         self.file = os.path.join(data_dir, 'platforms.json') if persist else None
         self.rooms, self.tasks, self.sources = [], {}, {}
         self.session_factory = session_factory
+        Douyin.profile_root = data_dir
         try:
             with open(self.file, encoding='utf-8') as f:
                 self.rooms = clean_rooms(json.load(f).get('rooms') or [])
@@ -334,7 +600,15 @@ class Platforms:
         for r in self.rooms:
             src = self.sources.get((r['plat'], r['room']))
             out.append({**r, 'label': PLATS[r['plat']][0], 'state': src.state if (src and r['on']) else '没开'})
-        return {'rooms': out}
+        # 抖音要在这台电脑上开浏览器：只有 Windows、装了 Edge / Chrome 才给选
+        return {'rooms': out, 'douyin': os.name == 'nt' and bool(find_browser())}
+
+    async def show(self, plat, room, on):
+        """抖音：把那个浏览器窗口叫出来（登录、过验证），或者放回屏幕外"""
+        src = self.sources.get((plat, str(room)))
+        if not isinstance(src, Douyin):
+            return False
+        return await src.show(bool(on))
 
     def set_rooms(self, rows):
         self.rooms = clean_rooms(rows)

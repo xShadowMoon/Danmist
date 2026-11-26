@@ -113,14 +113,18 @@ function musicLoginResult(d) {
   mqr.t = setTimeout(() => window._ws?.send(JSON.stringify({ cmd: 'music_poll', src: mqr.src, key: mqr.key })), 2000);
 }
 /* ---------- 其他平台（2026-11-25）：斗鱼、虎牙的直播间，弹幕收进来标上平台 ---------- */
-const PLAT_LABEL = { douyu: '斗鱼', huya: '虎牙' };
+const PLAT_LABEL = { douyu: '斗鱼', huya: '虎牙', douyin: '抖音' };
 function platTag(p) { return PLAT_LABEL[p] ? `<span class="tag plat p-${p}" title="${PLAT_LABEL[p]}直播间">${PLAT_LABEL[p]}</span>` : ''; }
 function drawPlats() {
   const box = $('platbox'), P = S.platforms;
   if (!box) return;
   box.hidden = !P;
   if (!P) return;
-  $('platlist').innerHTML = (P.rooms || []).map((r, i) => `<div class="lkrow"><div>${platTag(r.plat)} <b>${esc(r.room)}</b><small>${esc(r.state || '')}</small></div><label class="chip"><input type="checkbox" data-plon="${i}"${r.on ? ' checked' : ''}><span>收</span></label><button class="btn sm" data-pldel="${i}">删掉</button></div>`).join('')
+  // 抖音（2026-11-26）：在这台电脑上开一个看不见的浏览器窗口读直播间网页；只有 Windows + Edge / Chrome 才有
+  const dy = $('platsel').querySelector('option[value="douyin"]');
+  if (P.douyin && !dy) $('platsel').insertAdjacentHTML('beforeend', '<option value="douyin">抖音</option>');
+  if (!P.douyin && dy) dy.remove();
+  $('platlist').innerHTML = (P.rooms || []).map((r, i) => `<div class="lkrow"><div>${platTag(r.plat)} <b>${esc(r.room)}</b><small>${esc(r.state || '')}</small></div>${r.plat === 'douyin' ? `<button class="btn sm" data-plshow="${i}" title="把抖音那个浏览器窗口拿出来：登录（不登录名字会打码）、过验证">显示窗口</button><button class="btn sm" data-plhide="${i}">藏起来</button>` : ''}<label class="chip"><input type="checkbox" data-plon="${i}"${r.on ? ' checked' : ''}><span>收</span></label><button class="btn sm" data-pldel="${i}">删掉</button></div>`).join('')
     || '<div class="empty" style="padding:8px">还没加。同时在别的平台开播时，把那边的房间号加进来</div>';
 }
 function sendPlats(rooms) { window._ws?.send(JSON.stringify({ cmd: 'plat_set', rooms: rooms.map(r => ({ plat: r.plat, room: r.room, on: r.on })) })); }
@@ -129,6 +133,7 @@ $('platadd')?.addEventListener('click', () => {
   sendPlats([...(S.platforms?.rooms || []), { plat: $('platsel').value, room, on: true }]); $('platroom').value = '';
 });
 $('platlist')?.addEventListener('change', e => { const i = e.target.dataset.plon; if (i == null) return; const R = [...(S.platforms?.rooms || [])]; R[i] = { ...R[i], on: e.target.checked }; sendPlats(R); });
+$('platlist')?.addEventListener('click', e => { const s = e.target.closest('[data-plshow],[data-plhide]'); if (s) { const r = (S.platforms?.rooms || [])[Number(s.dataset.plshow ?? s.dataset.plhide)]; if (r) window._ws?.send(JSON.stringify({ cmd: 'plat_show', plat: r.plat, room: r.room, show: s.dataset.plshow != null })); return; } });
 $('platlist')?.addEventListener('click', e => { const b = e.target.closest('[data-pldel]'); if (!b) return; sendPlats((S.platforms?.rooms || []).filter((_, i) => i !== Number(b.dataset.pldel))); });
 function renderSongs() {
   const all = S.songs || [], left = all.filter(x => !x.done).length;

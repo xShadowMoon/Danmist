@@ -5,6 +5,29 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.12 · 2026-11-26
+
+### 抖音 · Douyin
+
+- 同时在抖音开播时，抖音直播间的弹幕、进房、礼物也能收进雾幕：设置 → 弹幕 → 其他平台，选「抖音」，填直播间网址 live.douyin.com/ 后面那串数字。每条标「抖音」，OBS 上也标。
+  Douyin live rooms are supported: Settings → Danmaku → Other platforms → Douyin, enter the number after live.douyin.com/. Messages are tagged "抖音", on the OBS overlay too.
+- 不碰抖音的接口和签名：雾幕在这台电脑上开一个放在屏幕外面、看不见的浏览器窗口，像人一样打开直播间网页，把页面上显示出来的读出来。所以只能在装了 Edge 或 Chrome 的 Windows 电脑上用（桌面版、安装版就是这样）。
+  It doesn't touch Douyin's APIs or signatures: an off-screen browser window on this PC opens the live room like a person would and reads what the page shows. Requires Windows with Edge or Chrome.
+- 不登录抖音时观众名字会打码。点那一行的「显示窗口」，在弹出来的窗口里登录抖音（或者过验证），弄好点「藏起来」；登录会记住。抖音网页不登录时基本不显示礼物，礼物要登录后才收得到。
+  Names are masked until you log in to Douyin: click "Show window", log in (or pass a check) in that window, then "Hide". The login is remembered. Gifts mostly only show on the Douyin web page when logged in.
+
+### 其他 · Other
+
+- 免安装包改名 `Danmist-vX.Y.Z-windows-x64.zip`（以前叫 bili-danmaku-board-…），软件内更新照样能找到。Release 里多了一份给网盘用户的简单说明（Danmist-README-CN.txt）。
+  The portable zip is renamed to `Danmist-vX.Y.Z-windows-x64.zip`; in-app updates still find it. Releases now include a short Chinese readme for download mirrors.
+
+### 怎么更新 · How to update
+
+v0.9.5 起：顶栏点「下载更新」→「重启生效」。更早的版本见 README「更新到新版本」。
+From v0.9.5: click **download update** → **restart**. Older versions: see "Updating to a new version" in the README.
+
+---
+
 ## v0.9.11 · 2026-11-26
 
 ### 新功能 · New

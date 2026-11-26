@@ -3317,6 +3317,11 @@ async def main():
                                 hub.emit_admin('profiles', hub.profiles.listing())
                             await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': '设置方案已同步', **result}})
                             continue
+                        if cmd == 'plat_show':
+                            ok = await hub.platforms.show('douyin', str(c.get('room')), c.get('show'))
+                            await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok,
+                                                'msg': ('抖音窗口拿出来了：在里面登录或者过验证，弄好点「藏起来」' if c.get('show') else '抖音窗口藏回去了') if ok else '这个抖音直播间还没连上，等一下再点'}})
+                            continue
                         if cmd == 'plat_set':
                             try:
                                 hub.platforms.set_rooms(c.get('rooms') or [])
@@ -4133,7 +4138,7 @@ async def main():
     async def img_proxy(request):
         url = validation.validate_http('img_proxy', request.query, request.match_info)['u']
         host = urllib.parse.urlsplit(url).hostname or ''
-        other = url.startswith('https://') and host.endswith(('.douyucdn.cn', '.msstatic.com', '.huya.com'))
+        other = url.startswith('https://') and host.endswith(('.douyucdn.cn', '.msstatic.com', '.huya.com', '.douyinpic.com'))
         if not other and not url.startswith(('https://i0.hdslb.com/', 'https://i1.hdslb.com/', 'https://i2.hdslb.com/',
                                              'https://s1.hdslb.com/', 'http://i0.hdslb.com/', 'http://i1.hdslb.com/',
                                              'http://i2.hdslb.com/')):

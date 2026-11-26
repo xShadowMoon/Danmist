@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import unittest
@@ -50,6 +51,33 @@ class PlatformTests(unittest.TestCase):
         d, _ = platforms.tars_read(bytes(w.b))
         self.assertEqual(d, {0: 1400, 1: '弹幕', 2: 2 ** 40, 3: b'\x01\x02', 4: ['a', 'b']})
 
+
+
+class DouyinTests(unittest.TestCase):
+    """抖音（2026-11-26）：页面上读到的一条 → 雾幕里的弹幕 / 礼物 / 进房"""
+    def test_items_map_to_hub(self):
+        got = []
+
+        class Hub:
+            def danmaku(self, *a, **k): got.append(('dm', a, k))
+            def gift(self, *a, **k): got.append(('gift', a, k))
+            def enter(self, *a, **k): got.append(('enter', a, k))
+        d = platforms.Douyin(Hub(), 'douyin', '123', logging.getLogger('t'))
+        d.on_item({'k': 'prices', 'p': {'跑车': 1200}})
+        d.on_item({'k': 'dm', 'name': '光*****', 'text': '几点钟开直播'})
+        d.on_item({'k': 'gift', 'name': 'a', 'gift': '跑车', 'num': 2, 'img': 'https://p3-webcast.douyinpic.com/x.png'})
+        d.on_item({'k': 'enter', 'name': 'b'})
+        d.on_item({'k': 'act', 'name': 'c', 'text': '为主播点赞了'})
+        d.on_item({'k': 'dm', 'name': '', 'text': '没名字的不要'})
+        self.assertEqual([g[0] for g in got], ['dm', 'gift', 'enter'])
+        self.assertEqual(got[0][1][1:4], ('光*****', '', '几点钟开直播'))
+        self.assertEqual(got[0][2]['plat'], 'douyin')
+        self.assertEqual(got[1][1][3:6], ('跑车', 2, 240.0))  # 1 钻 = 0.1 元
+        self.assertEqual(got[0][1][0], got[0][1][0])
+        self.assertEqual(platforms.puid('douyin', platforms.dy_uid('光*****')), got[0][1][0])
+
+    def test_room_must_be_digits(self):
+        self.assertEqual(platforms.clean_rooms([{'plat': 'douyin', 'room': 'https://live.douyin.com/721320032658'}])[0]['room'], '721320032658')
 
 if __name__ == '__main__':
     unittest.main()

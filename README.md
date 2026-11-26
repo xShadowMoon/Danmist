@@ -24,7 +24,7 @@
 **最简单：安装版**（v0.9.6 起）。在 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) 下载 `Danmist-Setup-vX.Y.Z.exe`，双击就装好（不用管理员，装在 `%LOCALAPPDATA%\Programs\Danmist`），开始菜单和桌面都会有「雾幕」。第一次打开会问直播间号。以后有新版本在软件里点「下载更新」就行；不要了在「设置 → 应用」里卸载（会问要不要连存档一起删）。Windows 可能提示「已保护你的电脑」，点「更多信息 → 仍要运行」（安装包没有花钱买签名）。
 
 **免安装版**：
-1. 打开 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest)，下载 `bili-danmaku-board-vX.Y.Z-windows-x64.zip`（自带 Python，不用另外安装）。
+1. 打开 [Releases](https://github.com/xShadowMoon/Danmist/releases/latest)，下载 `Danmist-vX.Y.Z-windows-x64.zip`（自带 Python，不用另外安装）。
 2. 解压到一个固定的文件夹（不要直接在压缩包里双击运行），比如 `D:\雾幕\`。
 3. 双击 `start.bat`。第一次会问你的**直播间号**（直播间网址 `live.bilibili.com/` 后面那串数字），再问**打开方式**：
    - **软件窗口**（推荐，v0.9.5 起）：雾幕像一个软件一样单独开一个窗口，没有黑色窗口；桌面上会多一个「雾幕」图标，以后双击它就行。关掉窗口，雾幕就停了。
@@ -79,7 +79,7 @@ v0.9.4 及以前，或者想手动更新，按下面做：
 | 历史 | 每场完整保存弹幕、礼物、SC 和上舰，概览里有收益、送礼榜、礼物和上舰统计 |
 | OBS 弹幕 | `/obs` 6 种样式（月见、雾凇、星扣、雾月、气泡、票根），10 款开源字体，描边阴影、按身份配色、屏蔽词，全部在 `/obs-setup` 里点选 |
 | OBS 歌单 | `/obs-songs` 3 种样式（卡片、细条、唱片） |
-| 斗鱼、虎牙 | 同时在斗鱼、虎牙开播时，把那边的弹幕、礼物、进房也收进来，每条标上平台（设置 → 弹幕 → 其他平台；抖音暂不支持） |
+| 斗鱼、虎牙、抖音 | 同时在斗鱼、虎牙、抖音开播时，把那边的弹幕、礼物、进房也收进来，每条标上平台（设置 → 弹幕 → 其他平台）。抖音不碰它的接口：在这台电脑上开一个看不见的浏览器窗口正常打开直播间，从页面上读，所以只能在装了 Edge 或 Chrome 的 Windows 电脑上用；不登录抖音时名字会打码，点「显示窗口」在里面登录 |
 | 弹幕点歌直接放（试用） | 观众发「点歌 歌名」，从网易云 / QQ 音乐找到直接放；谁能点、每人几首、要不要你同意、谁能切歌都能设；OBS 加 `/obs-music` 浏览器源出声 |
 | 直播间 | 改标题和分区、常用标题一键切换、直播画面小窗、人气榜和小时榜、超管警告和切断提醒 |
 | 开播前自检 | 一键检查和 B 站的连接、登录、OBS 能不能收到；工作模式（唱歌 / 聊天 / 房管）一键换布局 |
@@ -282,7 +282,7 @@ Everything runs locally. No server, no account with us, nothing is uploaded anyw
 **Easiest: the installer** (from v0.9.6). Download `Danmist-Setup-vX.Y.Z.exe` from [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and double-click it. No admin rights needed; it installs to `%LOCALAPPDATA%\Programs\Danmist` and adds 雾幕 to the Start menu and desktop. The first launch asks for your room id. Later updates are one click inside the app; uninstall from Settings → Apps (it asks whether to delete your archives too). Windows SmartScreen may warn about an unknown publisher (the installer isn't code-signed): click "More info → Run anyway".
 
 **Portable zip**:
-1. Go to [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and download `bili-danmaku-board-vX.Y.Z-windows-x64.zip`. Python is bundled; nothing else to install.
+1. Go to [Releases](https://github.com/xShadowMoon/Danmist/releases/latest) and download `Danmist-vX.Y.Z-windows-x64.zip`. Python is bundled; nothing else to install.
 2. Unzip it to a normal folder (don't run it from inside the zip).
 3. Double-click `start.bat`. The first time, it asks for your **live room id** (the number after `live.bilibili.com/`) and how to open it:
    - **App window** (recommended, from v0.9.5): the board opens in its own window with no console; a 雾幕 shortcut appears on the desktop for next time. Closing the window stops the board.
@@ -337,7 +337,7 @@ Running from source: `git pull`, `pip install -r requirements.txt`, then restart
 | History | Every stream archived with full danmaku, gifts, SC and guards; per-stream summary with revenue and rankings |
 | OBS danmaku overlay | `/obs` with 6 styles (moon, rime, clip, luna, bubble, ticket), 10 open-source fonts, outline and shadow, colours by guard level, blocked words, all configured visually at `/obs-setup` |
 | OBS song overlay | `/obs-songs` with 3 styles (card, strip, vinyl) |
-| Douyu and Huya | Also streaming on Douyu or Huya? Their danmaku, gifts and entries come in too, tagged by platform (Settings → Danmaku → Other platforms; Douyin isn't supported) |
+| Douyu, Huya and Douyin | Also streaming on Douyu, Huya or Douyin? Their danmaku, gifts and entries come in too, tagged by platform (Settings → Danmaku → Other platforms). Douyin doesn't use its APIs: an off-screen browser window on this PC opens the live room normally and reads the page, so it needs Windows with Edge or Chrome; names are masked until you log in to Douyin via "Show window" |
 | Song requests that play (preview) | Viewers send 「点歌 song name」 and it plays from NetEase Cloud Music or QQ Music; set who may request, how many each, whether you approve, and who may skip; add `/obs-music` as an OBS browser source for the audio |
 | Live room | Change title and area, saved title presets, live video pop-out, popularity and hourly ranks, warnings from Bilibili moderators |
 | Pre-stream check | One click to check the Bilibili connection, login and OBS; work modes (singing / chatting / moderating) switch layouts |

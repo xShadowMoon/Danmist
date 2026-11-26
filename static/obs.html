@@ -288,7 +288,7 @@ body { font: 400 var(--size)/var(--lh, 1.5) var(--ff, "HarmonyOS Sans SC", "Ping
 .it .name { max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
 /* 其他平台的标签（2026-11-25） */
 .plat { display: inline-block; font-size: .55em; font-weight: 700; line-height: 1.6; padding: 0 .45em; margin-left: .3em; border-radius: .4em; color: #fff; text-shadow: none; vertical-align: middle; flex: none; }
-.plat.p-douyu { background: #ff7a1f; } .plat.p-huya { background: #f6a609; }
+.plat.p-douyu { background: #ff7a1f; } .plat.p-huya { background: #f6a609; } .plat.p-douyin { background: #1c1c28; }
 /* 刷屏时（一秒超过 6 条）不放进场动画，省电脑（2026-11-25） */
 .flood .it, .flood .it * { animation: none !important; }
 /* 荣耀等级（wealth=1，2026-11-21）：B 站的等级勋章图，名字旁边 */
@@ -777,7 +777,7 @@ function checkVer(v) {
   if (n !== myVer) location.reload();
 }
 let curUid = 0, curPlat = '';  // curPlat：其他平台（斗鱼 / 虎牙）的，名字后面标一下（2026-11-25）
-const PLAT_LABEL = { douyu: '斗鱼', huya: '虎牙' };  // 正在上屏的这条是谁的：没头像的话，后台查到会推 face 过来补（2026-11-25）
+const PLAT_LABEL = { douyu: '斗鱼', huya: '虎牙', douyin: '抖音' };  // 正在上屏的这条是谁的：没头像的话，后台查到会推 face 过来补（2026-11-25）
 function handle(type, data) {
   if (type === 'emots') { Object.assign(EMO, data); return; }
   if (type === 'face') {

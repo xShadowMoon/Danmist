@@ -3,7 +3,7 @@
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Version 0.9.0
 #
-# Output: dist\bili-danmaku-board-v<Version>-windows-x64.zip
+# Output: dist\Danmist-v<Version>-windows-x64.zip (renamed in 0.9.12; in-app update matches the -windows-x64.zip suffix, so old versions still find it)
 # Needs: git, and any Python 3 with pip on this machine (only used to download wheels).
 param(
   [Parameter(Mandatory = $true)][string]$Version,
@@ -11,7 +11,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$name = "bili-danmaku-board-v$Version-windows-x64"
+$name = "Danmist-v$Version-windows-x64"
 $dist = Join-Path $root 'dist'
 $out = Join-Path $dist $name
 $cache = Join-Path $dist '_cache'

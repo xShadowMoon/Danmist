@@ -182,7 +182,7 @@ COMMAND_FIELDS = {
     'music_rules': {'on', 'mode', 'src', 'need_ok', 'skip', 'max', 'medal', 'guard', 'wealth', 'follow', 'maxdur'},
     'music_next': set(), 'music_ok': {'id'}, 'music_del': {'id'}, 'music_top': {'id'},
     'music_qr': {'src'}, 'music_poll': {'src', 'key'}, 'music_logout': {'src'}, 'music_cookie': {'src', 'cookie'},
-    'plat_set': {'rooms'},
+    'plat_set': {'rooms'}, 'plat_show': {'plat', 'room', 'show'},
 }
 
 TITLE_PRESETS_MAX = 12
@@ -260,6 +260,10 @@ def validate_command(c, clean_rules):
         boolean(c.get('done'), '已感谢')
     elif cmd == 'tpre_set':
         title_presets(c.get('list'))
+    elif cmd == 'plat_show':
+        if c.get('plat') != 'douyin' or not re.fullmatch(r'\d{1,20}', str(c.get('room') or '')):
+            raise InputError('只有抖音的直播间能显示窗口')
+        boolean(c.get('show'), '显示窗口')
     elif cmd == 'open_mode':
         if c.get('mode') not in ('app', 'web'):
             raise InputError('打开方式只能是软件窗口或浏览器')
@@ -408,7 +412,7 @@ def validate_http(kind, query, match):
         value = query.get('u', '')
         url(value)
         parsed = urlsplit(value)
-        other = parsed.scheme == 'https' and (parsed.hostname or '').endswith(('.douyucdn.cn', '.msstatic.com', '.huya.com'))  # 斗鱼、虎牙的头像和礼物图（2026-11-25）
+        other = parsed.scheme == 'https' and (parsed.hostname or '').endswith(('.douyucdn.cn', '.msstatic.com', '.huya.com', '.douyinpic.com'))  # 斗鱼、虎牙的头像和礼物图（2026-11-25）
         if (parsed.hostname not in ('i0.hdslb.com', 'i1.hdslb.com', 'i2.hdslb.com', 's1.hdslb.com') and not other) or parsed.netloc != parsed.hostname:
             raise InputError('不支持这个图片地址')
         return {'u': value}
@@ -501,7 +505,7 @@ def event_row(kind, row):
         integer(result['days'], '陪伴天数', 1, 99999)
     if 'id' in result and kind != 'sc':
         text(result['id'], '记录编号', 80, True)
-    if 'plat' in result and result['plat'] not in ('douyu', 'huya'):
+    if 'plat' in result and result['plat'] not in ('douyu', 'huya', 'douyin'):
         result.pop('plat')
     if 'recovered' in result:
         boolean(result['recovered'], '补录状态')
