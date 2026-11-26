@@ -5,6 +5,25 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.11 · 2026-11-26
+
+### 新功能 · New
+
+- 换看板娘：设置 → 更多 → 看板娘，上传自己的图，软件里的图标、窗口和任务栏图标都换成它（不是正方形会从中间裁），随时能换回默认。「关于」里不变；桌面快捷方式的图标换不了。
+  Custom mascot: Settings → More → Mascot. Upload your own picture to replace the in-app, window and taskbar icons (non-square images are center-cropped); you can switch back any time. The desktop shortcut icon is not changed.
+
+### 修复 · Fixes
+
+- 鼠标停在弹幕栏上时，用键盘或拖滚动条往上翻，2 秒后会被拽回最底下。现在只要是自己往上翻（PageUp / ↑ / Home、拖滚动条、滚轮、手指），就一直停在那里，赶上进房提示弹出也一样。
+  Scrolling up with the keyboard or scrollbar while the mouse rested on the list snapped back to the bottom after 2 seconds. Manual scrolling now always holds, even while an entry notice pops up.
+
+### 怎么更新 · How to update
+
+v0.9.5 起：顶栏点「下载更新」→「重启生效」。更早的版本见 README「更新到新版本」。
+From v0.9.5: click **download update** → **restart**. Older versions: see "Updating to a new version" in the README.
+
+---
+
 ## v0.9.10 · 2026-11-25
 
 ### 修复 · Fixes
