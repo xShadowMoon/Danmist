@@ -209,6 +209,19 @@ body.resizing.ry { cursor: row-resize; }
 .tag.admin { background: #f0a14a; }
 .tag.mute { background: #8d9aa8; }
 .tag.bot { background: #6fa892; }
+/* 身份标签（2026-11-26）：自己的标签、观众卡片里加标签、设置里改标签 */
+.tag.ct { background: #8a7cc8; }
+.cardtags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 2px 2px; }
+.cardtags .ctl { font-size: 12px; color: var(--ink3); display: inline-flex; align-items: center; gap: 3px; }
+.cardtags .chip { border: 1px solid var(--line); background: var(--chip); color: var(--ink2); border-radius: 999px; padding: 2px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.cardtags .chip.on { color: #fff; border-color: transparent; background: var(--mist-d); }
+.cardtags small { color: var(--ink3); font-size: 11px; }
+#tagset .tagrow { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+#tagset .tagrow .tag { min-width: 44px; text-align: center; flex: none; }
+#tagset .tagrow input:not([type=color]) { width: 84px; min-width: 0; height: 26px; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; background: var(--input); color: var(--ink); font: inherit; font-size: 12.5px; }
+#tagset .tagrow input[type=color] { width: 30px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; }
+#tagset .tagsub { margin: 10px 0 4px; font-size: 12.5px; font-weight: 600; }
+#tagset .tagsub small { font-weight: 400; color: var(--ink3); margin-left: 6px; }
 #banner { display: none; background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--money-line); border-radius: 10px; padding: 7px 12px; font-size: 13px; }
 #banner.show { display: block; }
 .dm.hl { background: var(--gift-big); box-shadow: inset 3px 0 0 var(--money-ink); }

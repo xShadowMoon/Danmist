@@ -32,10 +32,11 @@ function openUser(uid) {
   const nt = noteOf(uid);
   $('card').innerHTML = `
     <div class="head">${avatar(face, name, guard)}<div style="min-width:0"><div class="nm">${esc(name)}</div>
-      <div class="sub">${guard ? `<span class="tag g${guard}" title="${GN[guard]}">${GS[guard]}</span>` : ''}${medal}<span>UID ${uid}</span>${u.first ? `<span>本场 ${hhmm(u.first)} 第一次出现</span>` : ''}</div></div></div>
+      <div class="sub">${guard ? `<span class="tag g${guard}" title="${GN[guard]}">${GS[guard]}</span>` : ''}${medal}${customTagsHtml(uid)}<span>UID ${uid}</span>${u.first ? `<span>本场 ${hhmm(u.first)} 第一次出现</span>` : ''}</div></div></div>
     <div class="nums"><div><b>${dms.length || u.dm || 0}</b><span>本场弹幕</span></div>${S.admin ? `<div><b>${yuan(u.spend || spend || 0)}</b><span>本场送出</span></div>` : ''}<div><b>${u.enter || pick(S.enters).filter(e => e.kind === 'enter').length}</b><span>进房次数</span></div></div>
     ${S.admin && !side ? `<div class="noteedit" title="只有你看得到；回车保存，清空就是删掉">${icon('p-note')}<input id="cardnote" maxlength="60" placeholder="写个备注" value="${esc(nt)}"></div>
     <div class="ctabs"><button data-ct="now" class="on">本场</button><button data-ct="past">以前</button></div>` : ''}
+    ${S.admin && !side ? '<div class="cardtags" id="cardtags"></div>' : ''}
     <div class="hist" id="chist">${histHtml(hist)}</div>
     <div class="acts"><a class="btn" href="https://space.bilibili.com/${uid}" target="_blank" rel="noopener" title="打开 B 站主页">${icon('link')} 主页</a>
       ${side ? '<span class="cside">这是别的直播间的观众</span>' : `<button class="btn${isMuted(uid) ? ' on' : ''}" id="cardmute" title="${isMuted(uid) ? '现在朗读会跳过他，点一下恢复' : '朗读时跳过他'}">${icon('mute')} 不读</button>`}
@@ -50,6 +51,7 @@ function openUser(uid) {
     if (!$('card').querySelector('[data-ct=past].on')) $('chist').innerHTML = histHtml(nowHist);
   }).catch(() => {});
   $('card').dataset.uid = uid;
+  if (S.admin && !side) drawCardTags(uid);
   if (S.admin && !side) {
     const saveNote = () => {
       const v = $('cardnote').value.trim();
@@ -316,4 +318,56 @@ $('obsbtn').onclick = () => { closeAll(); $('obsframe').src = 'obs-setup'; $('ob
 $('obsclose').onclick = closeAll;
 $('hback').onclick = loadHistList;
 $('hclose').onclick = closeAll;
-
+// 观众卡片里的标签（2026-11-26）：自己的标签点一下加上 / 去掉；「机器人」把这个号当成机器人（不朗读、可以筛掉）
+function drawCardTags(uid) {
+  const box = $('cardtags');
+  if (!box) return;
+  const mine = new Set(S.tags?.users?.[uid] || []), bot = (S.tags?.bots || []).includes(uid);
+  box.innerHTML = `<span class="ctl">${icon('tag')} 标签</span>`
+    + (S.tags?.custom || []).map(t => `<button class="chip ct-${t.id}${mine.has(t.id) ? ' on' : ''}" data-ctag="${t.id}">${esc(t.name)}</button>`).join('')
+    + `<button class="chip${bot ? ' on' : ''}" data-cbot="1" title="当成${esc(tagName('bot'))}：不朗读，弹幕筛选里能筛掉">${esc(tagName('bot'))}</button>`
+    + (S.tags?.custom?.length ? '' : '<small>设置 → 弹幕 → 身份标签 里可以新建自己的标签</small>');
+  box.onclick = e => {
+    const b = e.target.closest('[data-ctag],[data-cbot]');
+    if (!b) return;
+    if (b.dataset.cbot) { window._ws?.send(JSON.stringify({ cmd: 'tag_user', uid, bot: !bot })); return; }
+    const next = new Set(mine);
+    next.has(b.dataset.ctag) ? next.delete(b.dataset.ctag) : next.add(b.dataset.ctag);
+    window._ws?.send(JSON.stringify({ cmd: 'tag_user', uid, tags: [...next] }));
+  };
+}
+// 设置 → 弹幕 → 身份标签（2026-11-26）：自带的改名字 / 简称 / 颜色，自己的标签新建 / 删掉，改完点保存
+let tagDraft = null;
+function drawTagSet(keep = false) {
+  const box = $('tagset');
+  if (!box || !S.admin) return;
+  if (!keep && tagDraft && box.contains(document.activeElement)) return;  // 正在改，别被推送打断
+  if (!keep || !tagDraft) tagDraft = JSON.parse(JSON.stringify({ builtin: S.tags?.builtin || {}, custom: S.tags?.custom || [] }));
+  const B = tagDraft.builtin;
+  const row = k => `<div class="tagrow" data-bk="${k}"><span class="tag ${k}" style="${B[k]?.color ? `background:${B[k].color}` : ''}">${esc(B[k]?.short || B[k]?.name || TAG_DEF[k][1])}</span>`
+    + `<input data-f="name" maxlength="6" placeholder="${TAG_DEF[k][0]}" value="${esc(B[k]?.name || '')}" title="名字">`
+    + `<input data-f="short" maxlength="4" placeholder="${TAG_DEF[k][1]}" value="${esc(B[k]?.short || '')}" title="弹幕里显示的简称">`
+    + `<input type="color" data-f="color" value="${B[k]?.color || '#888888'}" title="颜色"><button class="rs" data-f="reset" title="恢复默认">↺</button></div>`;
+  box.innerHTML = Object.keys(TAG_DEF).map(row).join('')
+    + `<div class="tagsub">自己的标签<small>在观众卡片里给人加上</small></div>`
+    + tagDraft.custom.map((t, i) => `<div class="tagrow" data-ci="${i}"><span class="tag ct" style="${t.color ? `background:${t.color}` : ''}">${esc(t.name || '标签')}</span><input data-f="name" maxlength="6" value="${esc(t.name)}" placeholder="名字"><input type="color" data-f="color" value="${t.color || '#8a7cc8'}"><button class="rs" data-f="del" title="删掉">✕</button></div>`).join('')
+    + `<div class="chips"><button class="btn sm" id="tagadd"${tagDraft.custom.length >= 20 ? ' disabled' : ''}>＋ 新建标签</button><button class="btn sm go" id="tagsave">保存</button></div>`;
+}
+document.addEventListener('input', e => {
+  const r = e.target.closest('#tagset .tagrow'); if (!r || !tagDraft) return;
+  const f = e.target.dataset.f;
+  if (r.dataset.bk) { const k = r.dataset.bk; tagDraft.builtin[k] = { name: '', short: '', color: '', ...tagDraft.builtin[k], [f]: e.target.value.trim() }; }
+  else tagDraft.custom[Number(r.dataset.ci)][f] = e.target.value.trim();
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('#tagset') || !tagDraft) return;
+  const r = e.target.closest('.tagrow'), f = e.target.dataset.f;
+  if (r && f === 'reset') { delete tagDraft.builtin[r.dataset.bk]; drawTagSet(true); return; }
+  if (r && f === 'del') { tagDraft.custom.splice(Number(r.dataset.ci), 1); drawTagSet(true); return; }
+  if (e.target.closest('#tagadd')) { tagDraft.custom.push({ id: 'c' + Date.now().toString(36), name: '新标签', color: '#8a7cc8' }); drawTagSet(true); return; }
+  if (e.target.closest('#tagsave')) {
+    const builtin = Object.fromEntries(Object.entries(tagDraft.builtin).map(([k, v]) => [k, { name: v.name || '', short: v.short || '', color: v.color || '' }]).filter(([, v]) => v.name || v.short || v.color));
+    window._ws?.send(JSON.stringify({ cmd: 'tags_set', builtin, custom: tagDraft.custom.filter(t => t.name) }));
+    tagDraft = null;
+  }
+});

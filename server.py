@@ -43,6 +43,7 @@ import history_maintenance
 from ai_voice import AIVoice, Busy as VoiceBusy, VoiceError
 from music import MusicService
 import platforms
+import tags as tag_store
 from platforms import Platforms, PLATS as PLAT_NAMES
 import updates
 from backend_limits import OperationError, OperationRate, WS_IMPORT_LIMIT, WS_NORMAL_LIMIT, operation_info, parse_operation
@@ -801,6 +802,10 @@ class Hub:
                 self.sc_icons = {k: validation.safe_url(v) for k, v in raw.items() if k in ('500', '1000', '2000') and isinstance(v, str)} if isinstance(raw, dict) else {}
             except (OSError, ValueError):
                 self.sc_icons = {}
+        # 身份标签（2026-11-26）：自带标签改名字 / 颜色、自己的标签、手动标的机器人
+        self.tags = tag_store.Tags(os.path.join(DIR, 'data', 'tags.json') if persist else None, write_json)
+        state.manual_bots = list(self.tags.bots)
+        set_bots(state)
         # 普通链接能切到哪些直播间（2026-11-21）：管理链接里增删、随时开关，最多 XROOMS_MAX 个
         self.xrooms_file = os.path.join(DIR, 'data', 'xrooms.json') if persist else None
         self.xrooms = {'open': True, 'rooms': []}
@@ -1639,6 +1644,11 @@ class Hub:
             self.need_face(uid)
         self.emit('gift', {'item': item, 'flow': s.flow, 'user': self.user(uid)})
 
+    def tags_changed(self):
+        self.state.manual_bots = list(self.tags.bots)
+        set_bots(self.state)
+        self.emit('tags', {'tags': self.tags.view(), 'bot_uids': self.state.bot_uids})
+
     def xrooms_set(self, c):
         self.xrooms = validation.xrooms({'open': c.get('open', False), 'rooms': c.get('rooms', [])})
         if self.xrooms_file:
@@ -2138,6 +2148,13 @@ async def poll_room(hub, session, room_id):
             pass
 
 
+def set_bots(state, base=None):
+    """哪些号算机器人：连直播间用的那个号（接了 bot_say_url 时）+ 主播自己在观众卡片里标的（2026-11-26）"""
+    if base is not None:
+        state.base_bots = list(base)
+    state.bot_uids = sorted(set(getattr(state, 'base_bots', None) or []) | set(getattr(state, 'manual_bots', None) or []))
+
+
 async def watch_login(session, state):
     """机器人重新登录后（登录文件变了），这边也换上新的登录信息。"""
     mtime = 0
@@ -2147,7 +2164,7 @@ async def watch_login(session, state):
             if mtime and m != mtime:
                 cookie = load_cookie()
                 session.cookie_jar.update_cookies(make_cookies(cookie))
-                state.bot_uids = [u for u in [uid_of(cookie)] if u] if BOT_SAY_URL else []  # 2026-11-25：只有另外接了机器人（bot_say_url）才算机器人
+                set_bots(state, [u for u in [uid_of(cookie)] if u] if BOT_SAY_URL else [])  # 2026-11-25：只有另外接了机器人（bot_say_url）才算机器人
                 log.info('机器人的登录信息更新了，已换上')
             mtime = m
         except OSError:
@@ -3413,6 +3430,7 @@ async def main():
                     snap = obs_view('snapshot', snap, o['gm'])
             snap['admin'] = admin
             snap['sc_icons'] = hub.sc_icons
+            snap['tags'] = hub.tags.view()  # 身份标签（2026-11-26）：名字、颜色、谁有什么标签
             # 主播专属链接（2026-11-18）：页面藏掉后台的东西；记下这次打开
             host = bool(link_id and links.is_host(link_id))
             snap['host'] = host
@@ -3491,6 +3509,19 @@ async def main():
                         await ws.send_json({'type': 'result', 'data': {'cmd': 'reset', 'ok': False, 'msg': '存档失败，本场未清零，请查看自检'}})
                 else:
                     try:
+                        if cmd in ('tags_set', 'tag_user'):  # 身份标签（2026-11-26）
+                            try:
+                                if cmd == 'tags_set':
+                                    hub.tags.set_config(c)
+                                    msg = '身份标签已保存'
+                                else:
+                                    hub.tags.set_user(c.get('uid'), c.get('tags'), c.get('bot'))
+                                    msg = '已经改好了'
+                                hub.tags_changed()
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': msg}})
+                            except (ValueError, OSError) as e:
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': str(e)}})
+                            continue
                         if cmd == 'xrooms_set':
                             note = hub.xrooms_set(c)
                             await kick_side_viewers()
@@ -4697,7 +4728,7 @@ async def main():
             log.warning('没读到 B 站登录信息（%s），用户名会打码', LOGIN_FILE)
         # 2026-11-25 用户：连直播间的号多半是主播自己扫码登录的号，不能当成机器人（以前自己发的弹幕都标「机器人」、还不朗读）。
         # 只有在 config.json 里接了单独的机器人（bot_say_url）时，连直播间的这个号才算机器人
-        state.bot_uids = [u for u in [uid_of(load_cookie())] if u] if BOT_SAY_URL else []
+        set_bots(state, [u for u in [uid_of(load_cookie())] if u] if BOT_SAY_URL else [])
         state.enters = [e for e in state.enters if e.get('uid') not in state.bot_uids]  # 以前记下的机器人「进房」清掉
         client = TrackedClient(hub, args.room, session)
         client.set_reconnect_policy(connection_recovery.retry_delay)

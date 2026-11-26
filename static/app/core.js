@@ -306,6 +306,21 @@ function medalHtml(name, lv, guard, dim) {  // dim：牌子是灰的（没点亮
   return `<span class="medal" style="--m:${c[1]}${guard ? ';--mb:' + c[2] : ''}"><b>${esc(name)}</b><i>${lv}</i></span>`;
 }
 const GS = { 1: '总', 2: '提', 3: '舰' };
+// 身份标签（2026-11-26 用户要的）：自带的名字、简称、颜色能在 设置 → 弹幕 → 身份标签 里改；自己的标签在观众卡片里给人加上
+const TAG_DEF = { g1: ['总督', '总'], g2: ['提督', '提'], g3: ['舰长', '舰'], admin: ['房管', '房'], bot: ['机器人', '机器人'], anchor: ['主播', '主播'] };
+const tagName = k => S.tags?.builtin?.[k]?.name || TAG_DEF[k][0];
+const tagShort = k => S.tags?.builtin?.[k]?.short || S.tags?.builtin?.[k]?.name || TAG_DEF[k][1];
+function applyTags() {
+  for (const n of [1, 2, 3]) { GN[n] = tagName('g' + n); GS[n] = tagShort('g' + n); }
+  const B = S.tags?.builtin || {};
+  const css = Object.entries(B).filter(([, v]) => v.color).map(([k, v]) => `.tag.${k}{background:${v.color}!important}`).join('')
+    + (S.tags?.custom || []).filter(t => t.color).map(t => `.tag.ct-${t.id}{background:${t.color}}`).join('');
+  let el = document.getElementById('tagcss');
+  if (!el) { el = document.createElement('style'); el.id = 'tagcss'; document.head.append(el); }
+  el.textContent = css;
+}
+const userTags = uid => (S.tags?.users?.[uid] || []).map(id => (S.tags.custom || []).find(t => t.id === id)).filter(Boolean);
+const customTagsHtml = uid => userTags(uid).map(t => `<span class="tag ct ct-${t.id}" title="${esc(t.name)}">${esc(t.name)}</span>`).join('');
 // 荣耀等级（B 站的财富等级，2026-11-19）：小圆角块 + 等级，颜色按段分，跟 B 站差不多
 const WEALTH_TIERS = [[50, '#ff6a3d'], [40, '#e85bd0'], [30, '#8d6cf0'], [20, '#3f8cf4'], [10, '#27b0a0'], [1, '#8fa2b5']];
 // 有 B 站官方的等级勋章图（1–80 级每级一张）就用官方的，没拿到再用自己画的小块

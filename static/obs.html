@@ -596,6 +596,8 @@ for (const n of ['guard1', 'guard2', 'guard3', 'banner1', 'banner2', 'banner3'])
 const $list = document.getElementById('list');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const GN = { 1: '总督', 2: '提督', 3: '舰长' };
+// 主播在设置里改了舰长 / 提督 / 总督的名字（2026-11-26），OBS 上也跟着改
+const obsTags = t => { for (const n of [1, 2, 3]) GN[n] = t?.builtin?.['g' + n]?.name || { 1: '总督', 2: '提督', 3: '舰长' }[n]; };
 const COLORS = ['#7fb3dd', '#9cc4e4', '#f2a7bf', '#a7c8a1', '#c3a6e0', '#e8b77a', '#88b9c9'];
 let botUids = [], realRoom = 0;
 function avatar(face, name) {
@@ -816,11 +818,13 @@ function handle(type, data) {
     checkVer(data.ver);
     Object.assign(EMO, data.emots || {});
     botUids = data.bot_uids || [];
+    obsTags(data.tags);
     realRoom = data.room?.room_real || data.room_id || 0;
     // 刚打开（或 OBS 刷新）时先把最近几条弹幕摆上，不做动画
     $list.innerHTML = ''; recent.clear();
     (data.dm || []).slice(-Math.min(opt.max, 8)).forEach(d => showDm(d, true));
   } else if (type === 'room') realRoom = data.room_real || realRoom;
+  else if (type === 'tags') { botUids = data.bot_uids || []; obsTags(data.tags); }
   else if (type === 'dm') showDm(data);
   else if (type === 'gift') showGift(data.item);
   else if (type === 'sc') showSc(data.item);

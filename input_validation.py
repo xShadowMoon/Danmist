@@ -183,6 +183,7 @@ COMMAND_FIELDS = {
     'music_next': set(), 'music_ok': {'id'}, 'music_del': {'id'}, 'music_top': {'id'},
     'music_qr': {'src'}, 'music_poll': {'src', 'key'}, 'music_logout': {'src'}, 'music_cookie': {'src', 'cookie'},
     'plat_set': {'rooms'}, 'plat_show': {'plat', 'room', 'show'},
+    'tags_set': {'builtin', 'custom'}, 'tag_user': {'uid', 'tags', 'bot'},
 }
 
 TITLE_PRESETS_MAX = 12
@@ -271,6 +272,18 @@ def validate_command(c, clean_rules):
     elif cmd == 'open_mode':
         if c.get('mode') not in ('app', 'web'):
             raise InputError('打开方式只能是软件窗口或浏览器')
+    elif cmd == 'tags_set':  # 身份标签（2026-11-26）
+        from tags import clean_config
+        try:
+            clean_config({'builtin': c.get('builtin') or {}, 'custom': c.get('custom') or []})
+        except (ValueError, AttributeError) as e:
+            raise InputError(str(e))
+    elif cmd == 'tag_user':
+        integer(c.get('uid'), '观众 uid', 1, MAX_UID)
+        if 'tags' in c and (not isinstance(c['tags'], list) or len(c['tags']) > 20 or not all(isinstance(t, str) and len(t) <= 13 for t in c['tags'])):
+            raise InputError('标签不对')
+        if 'bot' in c:
+            boolean(c['bot'], '机器人')
     elif cmd == 'plat_set':  # 其他平台的直播间名单（2026-11-26 起在这里先查一遍，以前到了后台才查）
         from platforms import clean_rooms
         try:
