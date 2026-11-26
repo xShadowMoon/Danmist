@@ -102,9 +102,9 @@ v0.9.4 及以前，或者想手动更新，按下面做：
 
 ![OBS 设置页：左边点选，右边实时预览](docs/screenshots/06-obs-setup.webp)
 
-![OBS 弹幕的 8 种样式](docs/screenshots/07-obs-styles.webp)
+![OBS 弹幕的 6 种样式](docs/screenshots/07-obs-styles.webp)
 
-![OBS 歌单的 5 种样式](docs/screenshots/08-obs-songs.webp)
+![OBS 歌单的 3 种样式](docs/screenshots/08-obs-songs.webp)
 
 > 截图都来自演示模式（`demo.bat`），里面的观众和弹幕是随机生成的。
 
@@ -116,7 +116,7 @@ v0.9.4 及以前，或者想手动更新，按下面做：
 
 ```sh
 git clone https://github.com/xShadowMoon/Danmist.git
-cd bili-danmaku-board
+cd Danmist
 pip install -r requirements.txt
 cp config.example.json config.json   # 把 room 改成你的直播间号
 python server.py                     # 然后打开 http://127.0.0.1:8373
@@ -370,9 +370,9 @@ Running from source: `git pull`, `pip install -r requirements.txt`, then restart
 
 ![OBS setup page with live preview](docs/screenshots/06-obs-setup.webp)
 
-![The 8 OBS danmaku styles](docs/screenshots/07-obs-styles.webp)
+![The 6 OBS danmaku styles](docs/screenshots/07-obs-styles.webp)
 
-![The 5 OBS song list styles](docs/screenshots/08-obs-songs.webp)
+![The 3 OBS song list styles](docs/screenshots/08-obs-songs.webp)
 
 > All screenshots are from demo mode (`demo.bat`); viewers and messages are randomly generated.
 
@@ -384,7 +384,7 @@ Requires Python 3.11 or newer.
 
 ```sh
 git clone https://github.com/xShadowMoon/Danmist.git
-cd bili-danmaku-board
+cd Danmist
 pip install -r requirements.txt
 cp config.example.json config.json   # then set room to your live room id
 python server.py                     # then open http://127.0.0.1:8373
