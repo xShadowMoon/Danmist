@@ -627,8 +627,7 @@ body.pip .ptools, body.pip .pinfo { display: none; }
 .empty::before { content: "❄"; display: block; font-size: 22px; line-height: 1; margin-bottom: 8px; opacity: .3; color: var(--mist-d); }
 .empty { line-height: 1.6; }
 /* 主播元素：SC、礼物、上舰、点歌、歌单空着的时候显示趴在纸箱旁的主播 */
-.empty.xw::before { content: ""; width: 92px; height: 92px; margin: 0 auto 6px; opacity: 1; background: url(../art/xw-empty.webp) center / contain no-repeat; }
-.compact .empty.xw::before { width: 64px; height: 64px; }
+/* 空列表上方的看板娘小图（xw-empty.webp）2026-11-26 挪进包里（static/ext/index.css）：没有这张图的就不留空白 */
 /* 断线重连：顶上细线之外，中间偏上出来一个举天线的主播（断了 1.5 秒以上才出来，免得一闪） */
 #reconn { position: fixed; left: 50%; top: 14px; z-index: 71; display: none; align-items: center; gap: 8px; padding: 4px 14px 4px 4px; transform: translateX(-50%);
   border-radius: 999px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--warn-ink); font-size: 13px; font-weight: 600; pointer-events: none; }
