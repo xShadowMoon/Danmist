@@ -13,7 +13,7 @@ const EDGE = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C
 if (!EDGE) { console.log('SKIP 没有 Edge / Chrome'); process.exit(0); }
 const dir = mkdtempSync(join(tmpdir(), 'edgeshot-ui-'));
 const port = 9300 + Math.floor(Math.random() * 400);
-const edge = spawn(EDGE, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, '--no-first-run', '--window-size=1400,900', 'about:blank'], { stdio: 'ignore' });
+const edge = spawn(EDGE, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, '--no-first-run', '--disable-sync', '--no-default-browser-check', '--window-size=1400,900', 'about:blank'], { stdio: 'ignore' });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fails = [];
 const ok = (cond, what) => { console.log((cond ? 'ok   ' : 'FAIL ') + what); if (!cond) fails.push(what); };
@@ -23,7 +23,20 @@ const OPTIONAL = /\/(static\/art\/|art\/)(xw-|banner|guard\d|frame|mist-|diary-)
 try {
   let tabs;
   for (let k = 0; k < 60; k++) { try { tabs = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); break; } catch { await sleep(250); } }
-  const ws = new WebSocket(tabs.find(t => t.type === 'page').webSocketDebuggerUrl);
+  const mine = tabs.find(t => t.type === 'page' && !t.url.startsWith('edge://'));
+  // Edge 有时自己弹一个 edge://sync-confirmation-dialog 页盖在上面，我们的页面就成了「后台」，计时器一秒才走一次、画面不刷新，
+  // 检查会像卡住一样（2026-11-26 查出来的）：一直把这种页关掉、把我们的页放回前面
+  const tidy = async () => {
+    try {
+      let closed = 0;
+      for (const t of await (await fetch(`http://127.0.0.1:${port}/json`)).json()) {
+        if (t.type === 'page' && t.url.startsWith('edge://')) { await fetch(`http://127.0.0.1:${port}/json/close/${t.id}`); closed++; }
+      }
+      if (closed) await fetch(`http://127.0.0.1:${port}/json/activate/${mine.id}`);  // 只在真有东西盖上来时才切回来（切窗口会打断鼠标悬停那项检查）
+    } catch {}
+  };
+  const tidyT = setInterval(tidy, 1500);
+  const ws = new WebSocket(mine.webSocketDebuggerUrl);
   await new Promise(r => ws.onopen = r);
   let id = 0; const pend = {}; let probs = [];
   ws.onmessage = e => {
@@ -107,6 +120,7 @@ try {
   console.log('FAIL ' + e.message);
   if (!fails.length) fails.push(e.message);
 } finally {
+  if (typeof tidyT !== 'undefined') clearInterval(tidyT);
   edge.kill(); await sleep(800);
   try { rmSync(dir, { recursive: true, force: true }); } catch {}
   console.log(fails.length ? `\n${fails.length} 项没过` : '\n全部通过');
