@@ -79,7 +79,7 @@ function connect() {
         scRead = new Set([...have, ...mine]);
       }
       renderLayout(); drawBanner(); drawConn(); drawSayAs(); drawPsets(); drawLinks(); drawUpd();
-      if (S.admin && acct) window._ws.send(JSON.stringify({ cmd: 'acct_info', acct: acct.token }));  // 看看之前登录的号还在不在
+      if (S.admin) acctCheckAll();  // 看看之前登录的号还在不在
       renderAll(); musicSync(); drawMusicSet(); drawPlats();
     } else if (type === 'dm') {
       S.dm.push(data); if (S.dm.length > 300) S.dm.shift();
@@ -122,7 +122,7 @@ function connect() {
       // 看过人数、点赞这些一直在变，高能榜真变了才重画，免得列表一直闪
       const topKey = JSON.stringify(data.top || []), changed = topKey !== S.topKey;
       S.room = data; S.topKey = topKey; renderStats(); drawSayAs(); if (userTab === 'top' && changed) renderUsers(); tick();
-      drawBanner(); drawConn();
+      drawBanner(); drawConn(); if (!S.side && $('xroomlbl')) $('xroomlbl').textContent = mainName();  // 主播名字查到了就换上（2026-11-26）
     } else if (type === 'req') {
       (S.reqs ??= []).push(data); renderReqs(); window.mobPing?.('req');
     } else if (type === 'songs') {

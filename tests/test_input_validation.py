@@ -25,7 +25,7 @@ BAD_COMMANDS = {
     'req_rules': {'max': True}, 'req_done': {'id': []}, 'req_del': {'id': 'x', 'kind': []}, 'req_clear': {},
     'note_set': {'uid': 1, 'name': '观众', 'text': ['备注']}, 'say': {'text': '字' * 41},
     'mute': {'uid': -1}, 'room_edit': {'acct': 'a' * 32, 'area_id': '123'},
-    'acct_poll': {'key': []}, 'acct_info': {'acct': 123}, 'acct_logout': {},
+    'acct_poll': {'key': []}, 'acct_info': {'acct': 123}, 'acct_logout': {}, 'acct_connect': {'acct': 5}, 'acct_guest': {'x': 1},
     'gift_thank': {'id': [], 'done': True}, 'tpre_set': {'list': [{'title': '字' * 41}]},
     'xrooms_set': {'open': True, 'rooms': [{'room': i} for i in range(1, 12)]},
     'live_start': {'acct': 'a' * 32, 'area_id': '371'}, 'live_stop': {},

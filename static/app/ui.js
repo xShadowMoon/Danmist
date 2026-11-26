@@ -119,6 +119,7 @@ if (!pwaAsked && !POP && !pwaInstalled()) setTimeout(() => {
     if (pwaAsked) return clearInterval(tw);
     // 浏览器的安装提示事件有时不来（Chrome 有冷却期、已经装过、不是 Chrome/Edge）：最多等 6 秒，之后照样弹卡片，点「安装」改成教怎么手动装
     if ((!pwaPrompt && Date.now() - t0 < 6000) || !S.admin || document.body.classList.contains('viewer')) return;
+    if (S.desktop?.launcher) { clearInterval(tw); return; }  // 桌面版（双击「雾幕」打开的）：本来就有桌面快捷方式，不用再装（2026-11-26）
     if (!$('tour').hidden || document.querySelector('#guide.open, #settings.open, #card.open, #hist.open, #laydlg.open, #mask.show, dialog[open]')) return;
     clearInterval(tw); $('pwatip').hidden = false;
   }, 1000);
@@ -134,6 +135,8 @@ $('pwayes').onclick = () => {
 
 /* ---------- 新手引导：第一次打开时圈出最常用的三个按钮，可以跳过；设置 → 显示 → 引导 能再看 ---------- */
 const TOUR = [
+  ['#sayas', '没登录时观众名字会打码：点这里扫码登录 B 站号'],
+  ['#xroombtn', '切换直播间：看别的直播间的弹幕'],
   ['#setbtn', '设置都在这里，顶上能搜索'],
   ['#layoutbtn', '布局：加减模块；按住面板标题能挪，缝隙能拖宽窄'],
   ['#newsbtn', '功能一览：每个功能在哪，点一下带你过去'],
@@ -305,12 +308,10 @@ function xroomMenu() {
     + a.map(x => `<div class="xrrow"><button data-xr="${esc(xrKey(x))}"${SIDE_ROOM === xrKey(x) || String(S.side?.room) === xrKey(x) ? ' class="on"' : ''}>${icon('tv')}<span class="xrn">${esc(x.name)}</span>${x.plat ? platTag(x.plat) : '<span class="tag plat p-bili">B 站</span>'}<small>${x.room}</small></button>${adm ? `<button class="xrdel" data-xrdel="${esc(xrKey(x))}" title="从名单里删掉">${icon('close')}</button>` : ''}</div>`).join('')
     + (S.admin ? `<div class="xrnew"><select id="xrplat" title="哪个平台">${plats.map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select><input id="xrinput" inputmode="numeric" placeholder="房间号" maxlength="20"><button class="btn sm" id="xrgo" title="只是自己看一下，不加进名单">看</button>${adm ? `<button class="btn sm" id="xradd" title="加进名单，普通链接也能切过去"${a.length >= XR_MAX ? ' disabled' : ''}>加到名单</button>` : ''}</div>`
       + `<div class="xrtip">抖音填 live.douyin.com/ 后面的数字；斗鱼、虎牙填房间号</div>` : '')
-    + (adm ? `<label class="xropen"><span>普通链接也能切<small>名单 ${a.length}/${XR_MAX}</small></span><span class="switch"><input type="checkbox" id="xropen"${S.xrooms?.open ? ' checked' : ''}><i></i></span></label>` : '');
+    + (adm ? `<div class="xrtip">名单 ${a.length}/${XR_MAX}，在「设置 → 直播间」里管</div>` : '');
   m.hidden = false;
   const r = $('xroombtn').getBoundingClientRect();  // 标题栏会裁掉超出的部分，菜单用 fixed 定位贴在按钮下面
   Object.assign(m.style, { position: 'fixed', left: Math.min(r.left, innerWidth - m.offsetWidth - 8) + 'px', top: r.bottom + 6 + 'px', right: 'auto' });
-  const op = $('xropen');
-  if (op) op.onchange = () => xrSend(op.checked, xrList());
 }
 $('xroombtn').onclick = e => { e.stopPropagation(); if ($('xroommenu').hidden) xroomMenu(); else $('xroommenu').hidden = true; };
 $('xroommenu').addEventListener('click', e => {
@@ -462,7 +463,7 @@ function rmKey() {
   return v ? { v, pl, k: pl ? `${pl}:${v}` : v } : null;
 }
 document.addEventListener('click', e => {
-  if (e.target.closest('[data-st="room"]')) drawRoomList();
+  if (e.target.closest('[data-st="room"], [data-st="link"]')) drawRoomList();
   const g = e.target.closest('[data-rmgo]');
   if (g) return xroomGo(g.dataset.rmgo);
   const d = e.target.closest('[data-rmdel]');

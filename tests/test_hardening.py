@@ -103,3 +103,24 @@ class ShortcutIconTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class DesktopSettingsTests(unittest.TestCase):
+    """2026-11-26 桌面版：AI 音色在设置里加、打开文件夹、选文件"""
+    def test_voice_rows(self):
+        rows = server.clean_voice_rows([{'name': ' 我的声音 ', 'ref_audio': 'D:/v/a.wav', 'ref_text': '你好', 'ref_lang': 'xx', 'gpt': '', 'sovits': ''}])
+        self.assertEqual(rows, [{'id': '我的声音', 'name': '我的声音', 'ref_audio': 'D:/v/a.wav', 'ref_text': '你好', 'ref_lang': 'zh'}])
+        for bad in ([{'name': '', 'ref_audio': 'a'}], [{'name': 'a'}], [{'name': 'a', 'ref_audio': 'x'}, {'name': 'a', 'ref_audio': 'y'}],
+                    [{'name': 'a', 'ref_audio': 'x', 'evil': 1}], [{'name': 'a', 'ref_audio': 'x\ny'}], 'no', [{'name': 'a', 'ref_audio': 'x'}] * 21):
+            with self.assertRaises(ValueError):
+                server.clean_voice_rows(bad)
+
+    def test_open_dir_and_pick_file_kinds(self):
+        self.assertEqual(validation.validate_http('open_dir', {'d': 'data'}, {}), {'d': 'data'})
+        self.assertEqual(validation.validate_http('pick_file', {'kind': 'gpt'}, {}), {'kind': 'gpt'})
+        for kind, q in (('open_dir', {'d': '..'}), ('open_dir', {}), ('pick_file', {'kind': 'exe'})):
+            with self.assertRaises(validation.InputError):
+                validation.validate_http(kind, q, {})
+
+    def test_room_keeps_anchor_name_and_bot_uid(self):
+        self.assertEqual(validation.room_values({'anchor_name': '雾冬', 'bot_uid': 12}), {'anchor_name': '雾冬', 'bot_uid': 12})

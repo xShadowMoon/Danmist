@@ -21,6 +21,7 @@ import os
 import random
 import re
 import shutil
+import subprocess
 import sys
 import time
 import zipfile
@@ -134,7 +135,8 @@ def sc_seconds(price):
 
 
 def write_json(path, data):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if os.path.dirname(path):  # 只给了文件名（比如 --config config.json）时就是当前文件夹
+        os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = path + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False)
@@ -1870,8 +1872,9 @@ async def watch_bili(hub, session):
                                        timeout=aiohttp.ClientTimeout(total=15)) as r:
                     d = (await r.json(content_type=None)).get('data') or {}
                 login = bool(d.get('isLogin'))
-                if login and (hub.state.room.get('bot_name') != d.get('uname') or hub.state.room.get('bot_face') != d.get('face')):
-                    hub.room_update(bot_name=d.get('uname', ''), bot_face=d.get('face', ''))
+                if login and (hub.state.room.get('bot_name') != d.get('uname') or hub.state.room.get('bot_face') != d.get('face')
+                              or hub.state.room.get('bot_uid') != int(d.get('mid') or 0)):
+                    hub.room_update(bot_name=d.get('uname', ''), bot_face=d.get('face', ''), bot_uid=int(d.get('mid') or 0))
                 if hub.state.room.get('login_ok') != login:
                     if not login:
                         log.warning('机器人的 B 站登录失效了，弹幕用户名会被打码')
@@ -2431,6 +2434,53 @@ def demo_history(history):
 PROXY_HEADERS = ('CF-Connecting-IP', 'Cf-Ray', 'X-Forwarded-For', 'X-Real-IP', 'Forwarded', 'Via', 'X-Forwarded-Host')
 
 
+VOICE_KEYS = ('name', 'ref_audio', 'ref_text', 'ref_lang', 'gpt', 'sovits')
+VOICE_LANGS = ('zh', 'ja', 'en', 'ko', 'yue')
+PICK_FILTERS = {'audio': '参考音频 (*.wav;*.mp3;*.flac;*.ogg)|*.wav;*.mp3;*.flac;*.ogg|所有文件|*.*',
+                'gpt': 'GPT 模型 (*.ckpt)|*.ckpt|所有文件|*.*', 'sovits': 'SoVITS 模型 (*.pth)|*.pth|所有文件|*.*'}
+
+
+def clean_voice_rows(rows):
+    """AI 音色列表（设置里改的）：最多 20 个，名字不能重复，参考音频必填"""
+    if not isinstance(rows, list) or len(rows) > 20:
+        raise ValueError('音色最多 20 个')
+    out, names = [], set()
+    for r in rows:
+        if not isinstance(r, dict) or set(r) - set(VOICE_KEYS):
+            raise ValueError('音色格式不对')
+        v = {k: str(r.get(k) or '').strip() for k in VOICE_KEYS}
+        if not v['name'] or len(v['name']) > 20 or any(c in v['name'] for c in '<>"&'):
+            raise ValueError('每个音色要有名字（20 个字以内）')
+        if v['name'] in names:
+            raise ValueError(f'有两个音色都叫「{v["name"]}」')
+        names.add(v['name'])
+        if not v['ref_audio']:
+            raise ValueError(f'「{v["name"]}」还没选参考音频')
+        for k in ('ref_audio', 'gpt', 'sovits'):
+            if len(v[k]) > 400 or any(c in v[k] for c in '\r\n\0'):
+                raise ValueError('文件路径太长或者不对')
+        if len(v['ref_text']) > 200:
+            raise ValueError('参考音频的文字最多 200 个字')
+        if v['ref_lang'] not in VOICE_LANGS:
+            v['ref_lang'] = 'zh'
+        out.append({'id': v['name'], **{k: v[k] for k in VOICE_KEYS if v[k]}})
+    return out
+
+
+def windows_pick_file(kind):
+    """弹 Windows 自己的「打开文件」窗口（放在最上面），选了就回完整路径，取消回空"""
+    ps = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8;Add-Type -AssemblyName System.Windows.Forms;"
+          "$o=New-Object System.Windows.Forms.Form -Property @{TopMost=$true;ShowInTaskbar=$false;WindowState='Minimized'};$o.Show();$o.Hide();"
+          "$d=New-Object System.Windows.Forms.OpenFileDialog;$d.Filter='" + PICK_FILTERS[kind].replace("'", "''") + "';"
+          "if($d.ShowDialog($o) -eq 'OK'){[Console]::Out.Write($d.FileName)}")
+    try:
+        r = subprocess.run(['powershell', '-NoProfile', '-STA', '-Command', ps], capture_output=True, timeout=600,
+                           creationflags=0x08000000)
+        return r.stdout.decode('utf-8', 'replace').strip()
+    except (OSError, subprocess.SubprocessError):
+        return ''
+
+
 def via_proxy(headers):
     return any(h in headers for h in PROXY_HEADERS)
 
@@ -2765,6 +2815,7 @@ async def main():
         demo_history(history)
     IMG_CACHE_READY = clean_img_cache()
     hub = Hub(state, history, persist=not args.demo)
+    hub.anchor_fixed = bool(args.anchor_name)  # config.json 写了主播名字就用写的；没写就去 B 站查（bili.poll_room，2026-11-26）
     hub.music = MusicService(os.path.join(DIR, 'data'), not args.demo, write_json, log, hub.emit, hub.emit_admin)
     hub.platforms = Platforms(hub, os.path.join(DIR, 'data'), not args.demo, write_json, log, lambda: bare)
     hub.admin_links, hub.public_limits = links, limits
@@ -2974,7 +3025,8 @@ async def main():
     def desktop_info():
         v, _ = updates.staged(DIR)
         return {'launcher': launcher, 'open': load_config(args.config).get('open', 'web') if not args.demo else 'web',
-                'staged': v or '', 'win': sys.platform == 'win32'}
+                'staged': v or '', 'win': sys.platform == 'win32',
+                'app_dir': os.path.abspath(DIR), 'data_dir': os.path.abspath(os.path.join(DIR, 'data'))}  # 设置 → 更多 → 文件夹（2026-11-26）
 
     async def desktop_cmd(c):
         cmd = c['cmd']
@@ -3152,6 +3204,7 @@ async def main():
             if admin:
                 snap['notes'] = hub.notes.data
                 snap['public_url'] = args.public_url  # 「复制普通链接」用
+                snap['login_readonly'] = LOGIN_READONLY  # 连直播间的号是别的程序管的：设置 → 账号 里不给换
                 snap['lan'] = {'on': lan['on'], 'url': lan_url()}
                 if local:
                     snap['desktop'] = desktop_info()
@@ -3196,7 +3249,7 @@ async def main():
                 if link_id and links.is_host(link_id) and (cmd.startswith('admin_link_') or cmd == 'reset'):
                     await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': '这个链接不能做这个操作'}})
                     continue
-                if args.demo and cmd in ('say', 'mute', 'room_edit', 'live_start', 'live_stop', 'areas', 'acct_qr', 'acct_poll', 'acct_info', 'acct_logout', 'news_set', 'music_qr', 'music_poll'):
+                if args.demo and cmd in ('say', 'mute', 'room_edit', 'live_start', 'live_stop', 'areas', 'acct_qr', 'acct_poll', 'acct_info', 'acct_logout', 'acct_connect', 'acct_guest', 'news_set', 'music_qr', 'music_poll'):
                     await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': '演示模式不连接真实直播间或账号'}})
                     continue
                 if cmd == 'reset':
@@ -3381,9 +3434,14 @@ async def main():
                             ok, note, extra = await qr_poll(str(c.get('key', '')))
                         elif cmd == 'acct_info':
                             ok, note, extra = await acct_info(str(c.get('acct', '')), acct)
+                            extra = {**extra, 'acct': str(c.get('acct', ''))}
                         elif cmd == 'acct_logout':
                             accounts.delete(str(c.get('acct', '')))
                             ok, note = True, '已退出登录'
+                        elif cmd == 'acct_connect':  # 设置 → 账号：用这个号连直播间（2026-11-26）
+                            ok, note = await connect_as(acct) if acct else (False, '这个号的登录失效了，重新扫码')
+                        elif cmd == 'acct_guest':  # 设置 → 账号：改成游客连（不登录，名字打码）
+                            ok, note = await connect_as(None)
                         else:
                             continue
                         await ws.send_str(json.dumps({'type': 'result', 'data': {'cmd': cmd, 'ok': ok, 'msg': note, **extra}}, ensure_ascii=False))
@@ -3510,9 +3568,28 @@ async def main():
         try:
             async with session.get('https://api.bilibili.com/x/web-interface/nav', timeout=aiohttp.ClientTimeout(total=15)) as r:
                 d = (await r.json(content_type=None)).get('data') or {}
-            hub.room_update(login_ok=bool(d.get('isLogin')), bot_name=d.get('uname', ''), bot_face=d.get('face', ''))
+            hub.room_update(login_ok=bool(d.get('isLogin')), bot_name=d.get('uname', ''), bot_face=d.get('face', ''), bot_uid=int(d.get('mid') or 0))
         except Exception:
             pass
+
+    async def connect_as(acct):
+        """换连直播间用的号（acct=None 就是游客），存进登录文件，马上重连"""
+        if args.demo:
+            return False, '演示模式不能换'
+        if LOGIN_READONLY:
+            return False, '连直播间的号是别的程序管的（config.json 里 login_readonly），这里换不了'
+        try:
+            if acct:
+                write_json(LOGIN_FILE, {'cookie': acct.get('cookie', '')})
+            elif os.path.exists(LOGIN_FILE):
+                os.remove(LOGIN_FILE)
+        except OSError as e:
+            return False, f'没存上：{e}'
+        session.cookie_jar.clear(lambda ck: ck.key in Accounts.KEEP)
+        if acct:
+            session.cookie_jar.update_cookies(make_cookies(acct.get('cookie', '')))
+        asyncio.get_event_loop().create_task(reconnect_with_login())
+        return True, f'正在用 {acct.get("uname") or "这个号"} 重新连直播间' if acct else '正在用游客重新连直播间（观众名字会打码）'
 
     async def acct_info(token, acct):
         """打开网页时查一下这个号：还登着没有，顺便拿最新的昵称和头像。"""
@@ -4108,6 +4185,17 @@ async def main():
             os.startfile(backup_dir())
         return web.json_response({'ok': True})
 
+    async def open_dir(request):
+        """设置 → 更多 → 文件夹：在这台电脑上打开程序文件夹 / 存档文件夹（2026-11-26，只在本机打开的页面能用）"""
+        if not is_admin(request, links, args.port) or not local_request(request):
+            raise web.HTTPForbidden()
+        which = validation.validate_http('open_dir', request.query, request.match_info)['d']
+        path = os.path.abspath(DIR if which == 'app' else os.path.join(DIR, 'data'))
+        os.makedirs(path, exist_ok=True)
+        if hasattr(os, 'startfile') and not args.demo:
+            os.startfile(path)
+        return web.json_response({'ok': True, 'path': path})
+
     def local_request(request):
         return request.remote in ('127.0.0.1', '::1') and not via_proxy(request.headers)
 
@@ -4414,7 +4502,46 @@ async def main():
         av = voice_box[0]
         rows, online = await av.voices(bare)
         return web.json_response({'ok': True, 'enabled': av.enabled, 'online': online, 'voices': rows,
-                                  'url': av.url, 'api': av.api}, headers={'Cache-Control': 'no-store'})
+                                  'url': av.url, 'api': av.api, 'local': local_request(request),
+                                  'conf_voices': [{k: v.get(k, '') for k in VOICE_KEYS} for v in av.conf_voices]},
+                                 headers={'Cache-Control': 'no-store'})
+
+    async def tts_voices_set(request):
+        """设置 → 朗读 → AI 音色 → 音色列表（2026-11-26 桌面版：不用再改 config.json）。
+        每个音色：名字、参考音频（3~10 秒的 wav）、参考音频里说的话、语言、可选的 GPT / SoVITS 模型文件"""
+        if not is_admin(request, links, args.port):
+            raise web.HTTPForbidden()
+        try:
+            body = await request.json()
+        except ValueError:
+            body = None
+        try:
+            voices = clean_voice_rows(body.get('voices') if isinstance(body, dict) else None)
+        except ValueError as e:
+            return web.json_response({'ok': False, 'msg': str(e)})
+        if args.demo:
+            return web.json_response({'ok': False, 'msg': '演示模式不改设置'})
+        conf = load_config(args.config)
+        av_conf = dict(conf.get('ai_voice') or {}) if isinstance(conf.get('ai_voice'), dict) else {}
+        av_conf['voices'] = voices
+        conf['ai_voice'] = av_conf
+        write_json(args.config, conf)
+        voice_box[0] = AIVoice(av_conf)
+        log.info('AI 音色列表改了：%d 个', len(voices))
+        missing = [v['name'] for v in voices if not os.path.isfile(v['ref_audio'])]
+        msg = f'已保存 {len(voices)} 个音色' + (f'；这几个的参考音频在这台电脑上找不到：{"、".join(missing)}' if missing else '')
+        return web.json_response({'ok': True, 'msg': msg})
+
+    async def pick_file(request):
+        """在这台电脑上弹一个「选文件」窗口，把选中的完整路径告诉网页（2026-11-26，只在本机打开的页面能用）。
+        AI 音色的参考音频、模型文件是给本机的 GPT-SoVITS 读的，要的是路径，不用把文件传上来"""
+        if not is_admin(request, links, args.port) or not local_request(request):
+            raise web.HTTPForbidden()
+        kind = validation.validate_http('pick_file', request.query, request.match_info)['kind']
+        if sys.platform != 'win32' or args.demo:
+            return web.json_response({'ok': False, 'msg': '只有 Windows 桌面版能直接选文件，手动填路径也行'})
+        path = await asyncio.to_thread(windows_pick_file, kind)
+        return web.json_response({'ok': bool(path), 'path': path})
 
     async def tts_config(request):
         """设置 → 朗读 → AI 音色：填地址、选接口，存进 config.json 的 ai_voice，马上换上并测一下连不连得上（2026-11-26）"""
@@ -4484,6 +4611,7 @@ async def main():
     app.router.add_post('/api/backup', backup_now)
     app.router.add_post('/api/backup/restore', backup_restore)
     app.router.add_post('/api/backup/open', backup_open)
+    app.router.add_post('/api/open_dir', open_dir)
     app.router.add_post('/api/mascot/reset', mascot_reset)
     app.router.add_get('/api/history', hist_list)
     app.router.add_get('/api/offline', offline_list)
@@ -4503,6 +4631,8 @@ async def main():
     app.router.add_get('/api/tts/voices', tts_voices)
     app.router.add_get('/api/tts', tts_speak)
     app.router.add_post('/api/tts/config', tts_config)
+    app.router.add_post('/api/tts/voices', tts_voices_set)
+    app.router.add_post('/api/pick_file', pick_file)
     app.router.add_get('/api/music/url', music_url)
     app.router.add_get('/obs-music', page('obs-music'))
     app.router.add_get('/obs-lyrics', page('obs-lyrics'))  # OBS 歌词源（2026-11-26）

@@ -175,7 +175,7 @@ COMMAND_FIELDS = {
     'req_rules': {'max', 'medal'}, 'req_done': {'id', 'kind'}, 'req_del': {'id', 'kind'}, 'req_clear': {'id', 'kind'},
     'note_set': {'uid', 'name', 'text'}, 'say': {'text', 'acct', 'reply_uid', 'reply_dmid'}, 'mute': {'uid', 'name', 'acct'},
     'news_get': set(), 'news_set': {'acct', 'text'},
-    'room_edit': {'acct', 'title', 'area_id'}, 'acct_poll': {'key'}, 'acct_info': {'acct'}, 'acct_logout': {'acct'},
+    'room_edit': {'acct', 'title', 'area_id'}, 'acct_poll': {'key'}, 'acct_info': {'acct'}, 'acct_logout': {'acct'}, 'acct_connect': {'acct'}, 'acct_guest': set(),
     'tpre_set': {'list'}, 'xrooms_set': {'open', 'rooms'}, 'live_start': {'acct', 'area_id', 'title'}, 'live_stop': {'acct'},
     'lan_set': {'on'},
     'update_download': set(), 'update_restart': set(), 'open_mode': {'mode'}, 'make_shortcut': set(),
@@ -406,7 +406,7 @@ def validate_command(c, clean_rules):
         text(c.get('key'), '二维码标识', 128, True)
         if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', c['key']):
             raise InputError('二维码标识格式不对')
-    elif cmd in ('acct_info', 'acct_logout'):
+    elif cmd in ('acct_info', 'acct_logout', 'acct_connect'):
         text(c.get('acct'), '账号标识', 128, True)
     return c
 
@@ -436,6 +436,14 @@ def validate_http(kind, query, match):
         if not re.fullmatch(r'data-\d{8}(?:-\d{6}-[\w-]{1,12})?\.zip', name or ''):
             raise InputError('备份名字不对')
         return {'name': name}
+    if kind == 'pick_file':  # 选什么文件（2026-11-26）
+        if query.get('kind') not in ('audio', 'gpt', 'sovits'):
+            raise InputError('文件种类不对')
+        return {'kind': query['kind']}
+    if kind == 'open_dir':  # 打开哪个文件夹（2026-11-26）
+        if query.get('d') not in ('app', 'data'):
+            raise InputError('文件夹不对')
+        return {'d': query['d']}
     if kind == 'mascot_put':  # 看板娘图标（2026-11-26）
         size = query_integer(query.get('size'), '图标尺寸', 32, 512)
         if size not in (32, 64, 192, 256, 512):
@@ -783,14 +791,14 @@ def room_values(values):
             out[key] = boolean(value, key)
         elif key == 'live':
             out[key] = integer(value, key, 0, 2)
-        elif key in ('uid', 'room_real', 'area_id', 'pop_rank', 'area_rank'):
+        elif key in ('uid', 'room_real', 'area_id', 'pop_rank', 'area_rank', 'bot_uid'):
             out[key] = integer(value, key, 0)
         elif key in ('down_at', 'up_at'):
             out[key] = number(value, key, 0, MAX_TIME)
         elif key in ('watched', 'online', 'likes'):
             out[key] = number(value, key)
-        elif key in ('title', 'area', 'watched_text', 'live_time', 'bot_name', 'area_rank_name'):
-            out[key] = text(value, key, 64 if key == 'bot_name' else 256)
+        elif key in ('title', 'area', 'watched_text', 'live_time', 'bot_name', 'area_rank_name', 'anchor_name'):
+            out[key] = text(value, key, 64 if key in ('bot_name', 'anchor_name') else 256)
         elif key in ('cover', 'bot_face'):
             out[key] = url(value)
         elif key == 'top':

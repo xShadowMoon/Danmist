@@ -343,3 +343,60 @@ document.addEventListener('click', e => {
   if (e.target.closest('#outdevask')) listOutDevs(true);
   if (e.target.closest('[data-st="tts"], #setbtn')) listOutDevs(false);
 });
+
+// 设置 → 朗读 → AI 音色 → 音色列表（2026-11-26 桌面版：不用改 config.json）。
+// 参考音频、模型文件是给这台电脑上的 GPT-SoVITS 读的，要的是文件路径：在本机打开的雾幕里点「选…」弹 Windows 的选文件窗口
+let aiVoices = null, aiLocal = false;
+const AI_LANGS = [['zh', '中文'], ['ja', '日语'], ['en', '英语'], ['ko', '韩语'], ['yue', '粤语']];
+function drawAiVoices() {
+  const box = $('aivlist');
+  if (!box || !aiVoices) return;
+  const pick = (i, f, kind, ph) => `<div class="aiv-f"><input data-av="${f}" value="${esc(aiVoices[i][f] || '')}" placeholder="${ph}" title="${esc(aiVoices[i][f] || '')}">${aiLocal ? `<button class="btn sm" data-avpick="${kind}" data-f="${f}">选…</button>` : ''}</div>`;
+  box.innerHTML = aiVoices.length ? aiVoices.map((v, i) => `<div class="aiv" data-ai="${i}">
+    <div class="aiv-h"><input data-av="name" value="${esc(v.name || '')}" placeholder="音色名字，比如 我的声音" maxlength="20"><button class="btn sm" data-avdel="${i}">删掉</button></div>
+    <label>参考音频</label>${pick(i, 'ref_audio', 'audio', '3~10 秒的 wav 文件')}
+    <label>它说的是</label><div class="aiv-f"><input data-av="ref_text" value="${esc(v.ref_text || '')}" placeholder="参考音频里说的话，一字不差" maxlength="200"><select data-av="ref_lang">${AI_LANGS.map(([k, n]) => `<option value="${k}"${(v.ref_lang || 'zh') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></div>
+    <label>GPT 模型</label>${pick(i, 'gpt', 'gpt', '可以不填（.ckpt）')}
+    <label>SoVITS 模型</label>${pick(i, 'sovits', 'sovits', '可以不填（.pth）')}
+  </div>`).join('') : '<div class="note">还没有音色，点「加一个音色」。</div>';
+}
+async function loadAiVoices() {
+  try {
+    const j = await (await fetch('api/tts/voices', { cache: 'no-store' })).json();
+    aiLocal = !!j.local;
+    $('aivoices').hidden = !(j.url && (j.api || 'api_v2') === 'api_v2');
+    if (!$('aivlist').contains(document.activeElement)) { aiVoices = (j.conf_voices || []).map(v => ({ ...v })); drawAiVoices(); }
+  } catch {}
+}
+document.addEventListener('input', e => {
+  const r = e.target.closest('#aivlist .aiv'); if (!r || !aiVoices) return;
+  aiVoices[Number(r.dataset.ai)][e.target.dataset.av] = e.target.value;
+  $('aivtip').textContent = '有改动，记得点「保存音色」';
+});
+document.addEventListener('change', e => { if (e.target.closest('#aivlist') && e.target.tagName === 'SELECT') e.target.dispatchEvent(new Event('input', { bubbles: true })); });
+document.addEventListener('click', async e => {
+  if (e.target.closest('[data-st="tts"], #setbtn, #aisave')) setTimeout(loadAiVoices, e.target.closest('#aisave') ? 1500 : 0);
+  if (!e.target.closest('#aivoices') || !aiVoices) return;
+  if (e.target.closest('#aivadd')) { aiVoices.push({ name: '', ref_audio: '', ref_text: '', ref_lang: 'zh', gpt: '', sovits: '' }); drawAiVoices(); $('aivlist').querySelector('.aiv:last-child [data-av="name"]')?.focus(); return; }
+  const d = e.target.closest('[data-avdel]');
+  if (d) { aiVoices.splice(Number(d.dataset.avdel), 1); drawAiVoices(); $('aivtip').textContent = '有改动，记得点「保存音色」'; return; }
+  const p = e.target.closest('[data-avpick]');
+  if (p) {
+    const r = p.closest('.aiv'), i = Number(r.dataset.ai);
+    $('aivtip').textContent = '在弹出来的窗口里选文件…';
+    try {
+      const j = await (await fetch('api/pick_file?kind=' + p.dataset.avpick, { method: 'POST' })).json();
+      if (j.path) { aiVoices[i][p.dataset.f] = j.path; drawAiVoices(); $('aivtip').textContent = '有改动，记得点「保存音色」'; }
+      else $('aivtip').textContent = j.msg || '没选';
+    } catch { $('aivtip').textContent = '选文件的窗口没打开'; }
+    return;
+  }
+  if (e.target.closest('#aivsave')) {
+    $('aivtip').textContent = '正在保存…';
+    try {
+      const j = await (await fetch('api/tts/voices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voices: aiVoices }) })).json();
+      $('aivtip').textContent = j.msg || (j.ok ? '已保存' : '没保存上');
+      if (j.ok && typeof loadVoices === 'function') loadVoices();
+    } catch { $('aivtip').textContent = '没保存上'; }
+  }
+});

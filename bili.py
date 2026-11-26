@@ -223,6 +223,17 @@ async def poll_room(hub, session, room_id):
                 if not isinstance(d, dict) or payload.get('code', 0) != 0 or type(d.get('live_status')) is not int or d.get('live_status') not in (0, 1, 2):
                     raise ValueError('房间信息无效，保留当前直播状态')
             ruid = d.get('uid', ruid)
+            if ruid and not getattr(hub, 'anchor_fixed', True) and getattr(hub, 'anchor_uid', 0) != ruid:
+                # 主播名字（2026-11-26）：顶栏「切换直播间」上显示的，以前要在 config.json 写，没写就一直叫「主播」
+                try:
+                    async with session.get(f'https://api.live.bilibili.com/live_user/v1/Master/info?uid={ruid}',
+                                           timeout=aiohttp.ClientTimeout(total=10)) as r2:
+                        uname = str((((await r2.json(content_type=None)).get('data') or {}).get('info') or {}).get('uname') or '').strip()[:40]
+                    if uname:
+                        hub.anchor_uid = ruid
+                        hub.room_update(anchor_name=uname)
+                except Exception as e:
+                    log.info('查主播名字失败：%s', e)
             live = 1 if d.get('live_status') == 1 else 0
             start = live_ts(d.get('live_time', ''))
             s, prev = hub.state, hub.state.room.get('live')

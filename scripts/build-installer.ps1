@@ -15,6 +15,7 @@ if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
 New-Item -ItemType Directory -Force $stage | Out-Null
 Copy-Item $zip (Join-Path $stage 'app.zip')
 Copy-Item (Join-Path $PSScriptRoot 'install.ps1') (Join-Path $stage 'install.ps1')
+Copy-Item (Join-Path $root 'static\art\icon.ico') (Join-Path $stage 'icon.ico')  # 安装窗口的图标
 Set-Content (Join-Path $stage 'version.txt') -Value $Version -Encoding ascii
 $exe = Join-Path $dist "Danmist-Setup-v$Version.exe"
 if (Test-Path $exe) { Remove-Item -Force $exe }
@@ -46,12 +47,14 @@ SourceFiles=SourceFiles
 FILE0="app.zip"
 FILE1="install.ps1"
 FILE2="version.txt"
+FILE3="icon.ico"
 [SourceFiles]
 SourceFiles0=$stage\
 [SourceFiles0]
 %FILE0%=
 %FILE1%=
 %FILE2%=
+%FILE3%=
 "@ | Set-Content $sed -Encoding ascii
 $p = Start-Process -FilePath "$env:WINDIR\System32\iexpress.exe" -ArgumentList '/N', '/Q', $sed -Wait -PassThru -WindowStyle Hidden
 if (-not (Test-Path $exe)) { throw "IExpress 没生成安装包（退出码 $($p.ExitCode)）" }

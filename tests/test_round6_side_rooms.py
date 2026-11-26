@@ -199,7 +199,7 @@ class SideWebsocketTests(RoundSixTest):
             'req_done': {'id': 'r'}, 'req_del': {'id': 'r'}, 'req_clear': {'kind': 'song'},
             'note_set': {'uid': 7, 'text': '备注'}, 'say': {'text': '你好'}, 'mute': {'uid': 7},
             'news_set': {'acct': token, 'text': '公告'}, 'room_edit': {'acct': token, 'title': '标题'},
-            'acct_poll': {'key': 'fake'}, 'acct_info': {'acct': token}, 'acct_logout': {'acct': token},
+            'acct_poll': {'key': 'fake'}, 'acct_info': {'acct': token}, 'acct_logout': {'acct': token}, 'acct_connect': {'acct': token},
             'tpre_set': {'list': []}, 'live_start': {'acct': token}, 'live_stop': {'acct': token},
             'lan_set': {'on': True}, 'open_mode': {'mode': 'app'}, 'music_cookie': {'src': '163', 'cookie': 'MUSIC_U=x'},
             'music_del': {'id': 'm'}, 'music_logout': {'src': '163'}, 'music_ok': {'id': 'm'}, 'music_poll': {'src': '163', 'key': 'k'},

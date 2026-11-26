@@ -417,69 +417,121 @@ function sendSay() {
 $('saybtn').onclick = sendSay;
 $('sayinput').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) sendSay(); });
 
-/* ---------- 用自己的 B 站号发（每个浏览器各登各的；浏览器里只存一串口令，登录信息在电脑上） ---------- */
-let acct = null;  // { token, uname, uid, use }，use = true 表示用自己的号发
-try { acct = JSON.parse(localStorage.getItem('xw-acct') || 'null'); } catch {}
-const saveAcct = () => { try { acct ? localStorage.setItem('xw-acct', JSON.stringify(acct)) : localStorage.removeItem('xw-acct'); } catch {} };
+/* ---------- B 站账号（2026-11-26 改成可以登多个号，设置 → 账号 统一管）----------
+   - 连直播间用的号：决定观众名字打不打码。没登录就是「游客」
+   - 发弹幕用的号：这台电脑上登录过的号里选一个，或者用连直播间的号（机器人）
+   浏览器里只存每个号的一串口令，登录信息在电脑上（data/accounts） */
+let accts = [], acctUseTok = '';
+try {
+  const j = JSON.parse(localStorage.getItem('xw-accts') || 'null');
+  if (j && Array.isArray(j.list)) { accts = j.list; acctUseTok = j.use || ''; }
+  else {  // 以前只能登一个号（xw-acct），搬过来
+    const old = JSON.parse(localStorage.getItem('xw-acct') || 'null');
+    if (old?.token) { accts = [{ token: old.token, uname: old.uname, uid: old.uid, face: old.face }]; acctUseTok = old.use ? old.token : ''; }
+  }
+} catch {}
+let acct = null;  // 现在选中的自己的号（发弹幕、禁言用它）；acct.use = 真的在用它发
+function acctPick() {
+  const a = accts.find(x => x.token === acctUseTok) || accts[0] || null;
+  acct = a ? { ...a, use: !!acctUseTok && a.token === acctUseTok } : null;
+}
+const saveAcct = () => {
+  acctPick();
+  try { localStorage.setItem('xw-accts', JSON.stringify({ list: accts, use: acctUseTok })); localStorage.removeItem('xw-acct'); } catch {}
+};
+acctPick();
 const sayAcct = () => acct?.use ? acct.token : '';
+const anchorAcct = () => accts.find(a => a.uid && a.uid === S.room?.uid) || null;  // 主播本人的号（改标题、开播、公告要用）
+const connName = () => S.room?.login_ok !== false && S.room?.bot_name ? S.room.bot_name : '游客';
 function drawSayAs() {
   const me = acct?.use, r = S.room || {};
-  const name = me ? acct.uname || '我的号' : r.bot_name || '默认账号', face = me ? acct.face : r.bot_face;
+  const name = me ? acct.uname || '我的号' : connName(), face = me ? acct.face : (connName() === '游客' ? '' : r.bot_face);
   const k = name + '|' + (face || ''), b = $('sayas');
-  if (b.dataset.k === k) return;
-  b.dataset.k = k; b.title = '换账号';
-  b.innerHTML = `${avatar(face, name, 0, 20)}<span class="sn">${esc(name)}</span>`;
+  if (b.dataset.k !== k) {
+    b.dataset.k = k;
+    b.innerHTML = `${avatar(face, name, 0, 20)}<span class="sn">${esc(name)}</span>`;
+  }
+  b.title = name === '游客' ? '没登录：观众名字会打码。点这里扫码登录' : '换账号';
+  drawAcctPage();
+}
+// 设置 → 账号
+function drawAcctPage() {
+  const box = $('acclist');
+  if (!box || !S.admin) return;
+  const r = S.room || {}, guest = connName() === '游客';
+  $('accconn').innerHTML = `<div class="lkrow"><div>${avatar(guest ? '' : r.bot_face, connName(), 0, 28)} <b>${esc(connName())}</b><small>${guest ? '没登录，观众名字会打码' : '观众名字正常显示'}</small></div>`
+    + (!guest && !S.login_readonly ? '<button class="btn sm" id="accguest" title="不用登录的号连直播间（观众名字会打码）">改成游客</button>' : '') + '</div>';
+  box.innerHTML = accts.length ? accts.map(a => {
+    const conn = !guest && a.uid && (r.bot_uid ? a.uid === r.bot_uid : a.uname === r.bot_name), send = acct?.use && acct.token === a.token;
+    return `<div class="lkrow"><div>${avatar(a.face, a.uname, 0, 28)} <b>${esc(a.uname || '我的号')}</b><small>UID ${a.uid || '?'}${conn ? ' · 连直播间用' : ''}${send ? ' · 发弹幕用' : ''}${a.uid && a.uid === r.uid ? ' · 主播本人' : ''}</small></div>`
+      + (conn || S.login_readonly ? "" : `<button class="btn sm" data-acconn="${esc(a.token)}" title="用这个号连直播间，观众名字不打码">用它连直播间</button>`)
+      + (send ? '' : `<button class="btn sm" data-acsend="${esc(a.token)}">用它发弹幕</button>`)
+      + `<button class="btn sm" data-acout="${esc(a.token)}">退出</button></div>`;
+  }).join('') : '<div class="note">还没有登录过的号。</div>';
+  const useConn = !acct?.use;
+  $('accsend').innerHTML = `<label class="chip"><input type="radio" name="accsend" value=""${useConn ? ' checked' : ''}><span>${guest ? '游客（发不了弹幕，先扫码添加账号）' : esc(r.bot_name) + '（连直播间用的那个号）'}</span></label>`
+    + accts.map(a => `<label class="chip"><input type="radio" name="accsend" value="${esc(a.token)}"${!useConn && acct.token === a.token ? ' checked' : ''}><span>${esc(a.uname || '我的号')}</span></label>`).join('');
 }
 let qrKey = '', qrTimer = 0;
-function acctDialog(state = {}) {
+function qrClose() { clearInterval(qrTimer); $('card').classList.remove('open'); $('mask').classList.remove('show'); }
+function acctDialog(state = {}) {  // 只剩扫码这一步用弹窗，别的都在设置 → 账号
   clearInterval(qrTimer);
   const box = $('card');
-  box.innerHTML = `<div class="head"><span class="av" style="background:#7fb3dd">${icon('key')}</span><div><div class="nm">发弹幕的账号</div><div class="sub">仅此浏览器</div></div></div>
+  box.innerHTML = `<div class="head"><span class="av" style="background:#7fb3dd">${icon('key')}</span><div><div class="nm">扫码登录 B 站</div><div class="sub">登录后可以用它连直播间（观众名字不打码）、发弹幕</div></div></div>
     <div class="hist" style="padding:14px 18px">
-      ${acct ? `<div class="opt"><span>已登录：<b>${esc(acct.uname)}</b>（UID ${acct.uid}）</span></div>
-        <label class="opt"><input type="radio" name="sayas" value="me"${acct.use ? ' checked' : ''}><span>我的号</span></label>
-        <label class="opt"><input type="radio" name="sayas" value="bot"${acct.use ? '' : ' checked'}><span>用 ${esc(S.room?.bot_name || '默认账号')}</span></label>`
-      : state.svg ? `<div style="text-align:center"><div style="width:220px;margin:0 auto;background:#fff;border-radius:12px;padding:6px">${state.svg}</div>
-        <div id="qrstate" style="margin-top:8px;color:var(--ink2)">${esc(state.msg || '用 B 站 App 扫码')}</div></div>`
-      : `<p style="margin:0 0 10px">现在用 ${esc(S.room?.bot_name || '默认账号')} 发。</p>`}
-      ${!acct && S.room?.login_ok === false ? '<p class="disc" style="color:var(--ink2)">现在连直播间没登录，观众名字会打码。扫码登录后，也会用这个号连直播间。</p>' : ''}
-      ${acct ? '' : '<p class="disc">登录后用你的账号发弹幕。B 站可能限制或封禁用第三方工具的账号，风险自负，作者不承担责任。</p>'}
-      
+      ${state.svg ? `<div style="text-align:center"><div style="width:220px;margin:0 auto;background:#fff;border-radius:12px;padding:6px">${state.svg}</div>
+        <div id="qrstate" style="margin-top:8px;color:var(--ink2)">${esc(state.msg || '用 B 站 App 扫码')}</div></div>` : '<p>正在要二维码…</p>'}
+      <p class="disc">B 站可能限制或封禁用第三方工具的账号，风险自负，作者不承担责任。</p>
     </div>
-    <div class="acts">${acct ? '<button class="btn danger" id="acctout">退出登录</button>' : `<button class="btn" id="acctqr">${state.svg ? '换一张二维码' : icon('phone') + ' 扫码登录'}</button>`}
-      <button class="btn" id="acctclose" style="margin-left:auto">关闭</button></div>`;
-  $('acctclose').onclick = () => { clearInterval(qrTimer); box.classList.remove('open'); $('mask').classList.remove('show'); };
-  if (acct) {
-    box.querySelectorAll('[name=sayas]').forEach(r => r.onchange = () => { acct.use = r.value === 'me'; saveAcct(); drawSayAs(); });
-    let arm = 0;
-    $('acctout').onclick = () => {
-      if (Date.now() - arm > 3000) { arm = Date.now(); $('acctout').textContent = '再点一次'; return; }
-      window._ws?.send(JSON.stringify({ cmd: 'acct_logout', acct: acct.token }));
-      acct = null; saveAcct(); drawSayAs(); acctDialog();
-    };
-  } else {
-    $('acctqr').onclick = () => window._ws?.send(JSON.stringify({ cmd: 'acct_qr' }));
-    if (state.svg) qrTimer = setInterval(() => window._ws?.send(JSON.stringify({ cmd: 'acct_poll', key: qrKey })), 2000);
-  }
+    <div class="acts"><button class="btn" id="acctqr">换一张二维码</button><button class="btn" id="acctclose" style="margin-left:auto">关闭</button></div>`;
+  $('acctclose').onclick = qrClose;
+  $('acctqr').onclick = () => window._ws?.send(JSON.stringify({ cmd: 'acct_qr' }));
+  if (state.svg) qrTimer = setInterval(() => window._ws?.send(JSON.stringify({ cmd: 'acct_poll', key: qrKey })), 2000);
   box.classList.add('open'); $('mask').classList.add('show');
 }
+function acctAdd() { acctDialog(); window._ws?.send(JSON.stringify({ cmd: 'acct_qr' })); }
 function acctResult(d) {
   if (d.cmd === 'acct_qr') {
-    if (!d.ok) { note(d.msg, false); return; }
+    if (!d.ok) { note(d.msg, false); qrClose(); return; }
     qrKey = d.key; acctDialog({ svg: d.svg });
   } else if (d.cmd === 'acct_poll') {
     if (d.state === 'done') {
       clearInterval(qrTimer);
-      acct = { token: d.token, uname: d.uname, face: d.face, uid: d.uid, use: true }; saveAcct(); drawSayAs(); acctDialog();
-      note(`已登录 ${d.uname}`);
+      accts = accts.filter(a => a.uid !== d.uid);
+      accts.push({ token: d.token, uname: d.uname, face: d.face, uid: d.uid });
+      acctUseTok = d.token; saveAcct(); drawSayAs(); qrClose();
+      note(d.msg || `已登录 ${d.uname}`);
     } else if (d.state === 'expired') { clearInterval(qrTimer); const s = $('qrstate'); if (s) s.textContent = d.msg; }
     else { const s = $('qrstate'); if (s) s.textContent = d.msg; }
   } else if (d.cmd === 'acct_info') {
-    if (acct && !d.ok) { acct = null; saveAcct(); drawSayAs(); note('登录失效，重新扫码', false); }
-    else if (acct && d.ok) { acct.uname = d.msg || acct.uname; acct.face = d.face || ''; saveAcct(); drawSayAs(); }
+    const a = accts.find(x => x.token === d.acct);
+    if (!a) return;
+    if (!d.ok) { accts = accts.filter(x => x !== a); if (acctUseTok === a.token) acctUseTok = ''; saveAcct(); drawSayAs(); note(`${a.uname || '一个号'} 的登录失效了，要用的话重新扫码`, false); }
+    else { a.uname = d.msg || a.uname; a.face = d.face || a.face; saveAcct(); drawSayAs(); }
+  } else if (d.cmd === 'acct_connect' || d.cmd === 'acct_guest') {
+    note(d.msg, d.ok);
   }
 }
-$('sayas').onclick = () => acctDialog();
+function acctCheckAll() { if (S.admin) accts.forEach(a => window._ws?.send(JSON.stringify({ cmd: 'acct_info', acct: a.token }))); }
+// 发送框左边的头像：直接打开设置 → 账号
+$('sayas').onclick = () => { $('setbtn').click(); setTimeout(() => document.querySelector('[data-st="acct"]')?.click(), 50); };
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-st="acct"]')) drawAcctPage();
+  if (e.target.closest('#accadd')) return acctAdd();
+  if (e.target.closest('#accguest')) return window._ws?.send(JSON.stringify({ cmd: 'acct_guest' }));
+  const c = e.target.closest('[data-acconn]');
+  if (c) return window._ws?.send(JSON.stringify({ cmd: 'acct_connect', acct: c.dataset.acconn }));
+  const s = e.target.closest('[data-acsend]');
+  if (s) { acctUseTok = s.dataset.acsend; saveAcct(); drawSayAs(); return; }
+  const o = e.target.closest('[data-acout]');
+  if (o) {
+    if (o.dataset.arm !== '1') { o.dataset.arm = '1'; o.textContent = '再点一次'; setTimeout(() => { o.dataset.arm = ''; o.textContent = '退出'; }, 3000); return; }
+    window._ws?.send(JSON.stringify({ cmd: 'acct_logout', acct: o.dataset.acout }));
+    accts = accts.filter(a => a.token !== o.dataset.acout); if (acctUseTok === o.dataset.acout) acctUseTok = '';
+    saveAcct(); drawSayAs();
+  }
+});
+document.addEventListener('change', e => { if (e.target.name === 'accsend') { acctUseTok = e.target.value; saveAcct(); drawSayAs(); } });
 drawSayAs();
 
 /* ---------- 自定义：主题色、背景图、方案、导出导入 ---------- */
@@ -637,7 +689,7 @@ $('monreload').onclick = () => { $('monframe').src = 'about:blank'; setTimeout((
 
 /* ---------- 改直播间标题 / 分区（只有主播本人登录了自己的号才出现） ---------- */
 let areaList = null;
-const isAnchor = () => !!(S.admin && acct && acct.uid && acct.uid === S.room.uid);
+const isAnchor = () => !!(S.admin && anchorAcct());
 // 直播间公告（2026-11-21）：标题旁「公告」按钮，读现在的公告，改了点保存（要主播本人的号）
 function newsOpen() {
   let p = $('tnews');
@@ -649,9 +701,9 @@ function newsOpen() {
     $('tnewstext').addEventListener('input', cnt);
     $('tnewsclose').onclick = () => { p.hidden = true; };
     $('tnewssave').onclick = () => {
-      if (!acct?.token) { note(`先在发送框左边扫码登录${ANCHOR()}的号`, false); return; }
+      if (!anchorAcct()?.token) { note(`先在发送框左边扫码登录${ANCHOR()}的号`, false); return; }
       $('tnewssave').disabled = true;
-      window._ws?.send(JSON.stringify({ cmd: 'news_set', acct: acct.token, text: $('tnewstext').value.trim() }));
+      window._ws?.send(JSON.stringify({ cmd: 'news_set', acct: anchorAcct().token, text: $('tnewstext').value.trim() }));
     };
     document.addEventListener('click', e => { if (!p.hidden && !e.target.closest('#tnews, #tnewsbtn')) p.hidden = true; });
   }
@@ -705,7 +757,7 @@ $('tarea').addEventListener('change', () => { $('tarea').dataset.dirty = '1'; dr
 $('tedit').addEventListener('submit', e => {
   e.preventDefault();
   if ($('tsave').disabled || !acct) return;
-  window._ws?.send(JSON.stringify({ cmd: 'room_edit', acct: acct.token, title: $('tinput').value, area_id: areaList ? Number($('tarea').value) : 0 }));
+  window._ws?.send(JSON.stringify({ cmd: 'room_edit', acct: anchorAcct().token, title: $('tinput').value, area_id: areaList ? Number($('tarea').value) : 0 }));
 });
 $('tinput').addEventListener('keydown', e => { if (e.key === 'Escape') { delete $('tinput').dataset.dirty; $('tinput').blur(); drawRoomBtns(); e.stopPropagation(); } });
 /* ---------- 常用标题 + 分区（2026-11-18）：存几组（歌回、杂谈…），点一下直接换上；存在电脑上，各设备同一份 ---------- */
@@ -734,7 +786,7 @@ $('tpremenu').addEventListener('click', e => {
   if (!row || !acct) return;
   const p = (S.title_presets || [])[+row.dataset.tpi];
   if (!p) return;
-  window._ws?.send(JSON.stringify({ cmd: 'room_edit', acct: acct.token, title: p.title || S.room.title || '', area_id: p.area_id || 0 }));
+  window._ws?.send(JSON.stringify({ cmd: 'room_edit', acct: anchorAcct().token, title: p.title || S.room.title || '', area_id: p.area_id || 0 }));
   $('tpremenu').hidden = true;
 });
 $('tpremenu').addEventListener('submit', e => {
@@ -858,7 +910,7 @@ $('lpgo').onclick = async () => {
   if (!live) {
     const area_id = areaList ? Number($('tarea').value) : (S.room.area_id || 0);
     lpBusy = true; lpDraw(); lpMsg('正在让 B 站开播…'); $('lpkey').hidden = true;
-    window._ws?.send(JSON.stringify({ cmd: 'live_start', acct: acct.token, area_id, title: $('tinput').value.trim() }));
+    window._ws?.send(JSON.stringify({ cmd: 'live_start', acct: anchorAcct().token, area_id, title: $('tinput').value.trim() }));
     return;
   }
   if (lpConfirm < Date.now()) { lpConfirm = Date.now() + 4000; lpDraw(); setTimeout(lpDraw, 4100); return; }
@@ -868,7 +920,7 @@ $('lpgo').onclick = async () => {
     try { const [st] = await obsCall(lp.url, lp.pw, [['StopStream']]); if (!obsOk(st, [501])) lpMsg('OBS 没停下来（' + esc(st.comment || st.code || '') + '），先让 B 站下播…', false); }
     catch (err) { lpMsg(esc(err.message) + '，先让 B 站下播，记得自己停 OBS', false); }
   }
-  window._ws?.send(JSON.stringify({ cmd: 'live_stop', acct: acct.token }));
+  window._ws?.send(JSON.stringify({ cmd: 'live_stop', acct: anchorAcct().token }));
 };
 function roomResult(d) {
   if (d.cmd === 'areas') { if (d.ok) { areaList = d.areas; drawRoomBtns(); } return; }

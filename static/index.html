@@ -31,7 +31,7 @@
     <div class="brand">
       <div class="logo"><img src="/art/icon-256.png" alt=""></div>
       <div>
-        <h1>雾幕<small id="roomid"></small></h1>
+        <h1>雾幕<small id="roomid"></small><span class="xrwrap" hidden><button class="xrbtn" id="xroombtn" title="切换直播间：看别的直播间的弹幕（不影响主播这边的记录）。名单在 设置 → 直播间 里管"><i class="ic" data-ic="tv"></i><span id="xroomlbl">主播</span><svg class="wcaret" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button><div class="wmenu xrmenu" id="xroommenu" hidden></div></span></h1>
         <div class="titlerow"><div class="title" id="title">连接中…</div><form id="tedit" hidden><input id="tinput" maxlength="40" title="直播间标题：直接改，回车或点 ✓ 确认" placeholder="直播间标题"><select id="tarea" title="分区"></select><button class="btn sm" id="tsave" title="确认修改" disabled>✓</button><button type="button" class="btn sm" id="tprebtn" title="常用标题：点一下换成存好的标题和分区"><i class="ic" data-ic="pin"></i></button><button type="button" class="btn sm" id="tnewsbtn" title="直播间公告"><i class="ic" data-ic="notice"></i></button><button type="button" class="btn sm" id="golive" title="一键开播 / 下播"><i class="ic" data-ic="live"></i> <span>开播</span></button></form><div id="tpremenu" hidden></div>
 <div id="livepanel" hidden>
   <div class="lphead"><b id="lptitle">一键开播</b><button type="button" class="lpx" id="lpclose" title="关上"><i class="ic" data-ic="close"></i></button></div>
@@ -96,7 +96,7 @@
 <!-- 面板先放在这里，按布局搬到 #main 里 -->
 <div id="pool">
   <section class="panel" id="p-dm" data-id="dm">
-    <header><span class="ttl"><i class="ic" data-ic="p-dm"></i>弹幕</span> <span class="xrwrap" hidden><button class="xrbtn" id="xroombtn" title="切换直播间：看别的直播间的弹幕（不影响主播这边的记录）"><i class="ic" data-ic="tv"></i><span id="xroomlbl">主播</span><svg class="wcaret" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button><div class="wmenu xrmenu" id="xroommenu" hidden></div></span> <span class="count" id="dmn"></span><select class="dmfilter" id="dmfilter" title="只看哪些弹幕"><option value="all">全部</option><option value="guard">舰长</option><option value="medal">粉丝牌</option><option value="hl">高亮</option><option value="nobot">不看机器人弹幕</option></select><input class="search" id="dmsearch" placeholder="" title="搜本场全部弹幕"><button class="btn sm" id="dmpop" title="弹幕小窗：浮在最上面"><i class="ic" data-ic="popout"></i></button><span class="ptools"><button class="btn sm" data-hide="dm" title="移除这个模块">✕ 移除</button></span></header>
+    <header><span class="ttl"><i class="ic" data-ic="p-dm"></i>弹幕</span> <span class="count" id="dmn"></span><select class="dmfilter" id="dmfilter" title="只看哪些弹幕"><option value="all">全部</option><option value="guard">舰长</option><option value="medal">粉丝牌</option><option value="hl">高亮</option><option value="nobot">不看机器人弹幕</option></select><input class="search" id="dmsearch" placeholder="" title="搜本场全部弹幕"><button class="btn sm" id="dmpop" title="弹幕小窗：浮在最上面"><i class="ic" data-ic="popout"></i></button><span class="ptools"><button class="btn sm" data-hide="dm" title="移除这个模块">✕ 移除</button></span></header>
     <div class="list" id="dmlist"></div><div class="entbar" id="entertip" aria-live="polite"></div>
     <div class="newbar" id="newbar">↓ 新弹幕</div>
     <div class="saybar admin-only"><button class="btn sm" id="sayas" title="换账号"></button><input id="sayinput" maxlength="40" placeholder="发弹幕"><button class="btn sm" id="saybtn">发送</button></div>
@@ -171,7 +171,7 @@
     <div class="snavg">各栏</div>
     <button data-st="dm"><i class="ic" data-ic="p-dm"></i>弹幕</button><button data-st="sc"><i class="ic" data-ic="p-sc"></i>SC</button><button data-st="gift"><i class="ic" data-ic="p-gift"></i>礼物</button><button data-st="enter"><i class="ic" data-ic="p-enter"></i>进房</button><button data-st="users"><i class="ic" data-ic="p-users"></i>观众</button><button data-st="req"><i class="ic" data-ic="music"></i>点歌</button>
     <div class="snavg">其它</div>
-    <button data-st="room" class="admin-only"><i class="ic" data-ic="tv"></i>直播间</button><button data-st="pset"><i class="ic" data-ic="save"></i>设置方案</button><button data-st="link" class="admin-only"><i class="ic" data-ic="link"></i>链接</button><button data-st="more"><i class="ic" data-ic="grid"></i>更多</button>
+    <button data-st="room" class="admin-only"><i class="ic" data-ic="tv"></i>直播间</button><button data-st="acct" class="admin-only"><i class="ic" data-ic="key"></i>账号</button><button data-st="pset"><i class="ic" data-ic="save"></i>设置方案</button><button data-st="link" class="admin-only"><i class="ic" data-ic="link"></i>链接</button><button data-st="more"><i class="ic" data-ic="grid"></i>更多</button>
   </div>
   <div class="body">
     <div class="spage on" data-sp="tts">
@@ -192,7 +192,13 @@
       <fieldset class="admin-only" id="aibox"><legend>AI 音色（GPT-SoVITS）</legend>
         <div class="opt"><input type="text" id="aiurl" maxlength="200" placeholder="地址，比如 http://127.0.0.1:9880（空着就不用）" style="flex:1;min-width:0"><select id="aiapi" title="接口" style="flex:none;width:auto"><option value="api_v2">GPT-SoVITS api_v2</option><option value="folder">说话服务（folder）</option></select></div>
         <div class="chips"><button class="btn sm" id="aisave">保存并测试</button><span class="mtip" id="aitip"></span></div>
-        <div class="note">要先在电脑上开好 GPT-SoVITS（怎么开见 README「AI 音色」）。音色列表（参考音频、模型）还是写在 config.json 的 ai_voice.voices 里。</div>
+        <div class="note">用你自己训练的声音（或者一段 3~10 秒的录音）来念。先在这台电脑上打开 GPT-SoVITS 的接口：在 GPT-SoVITS 文件夹里运行 <code>api_v2.py</code>（整合包是 <code>runtime\python.exe api_v2.py</code>），地址一般是 http://127.0.0.1:9880，填上点「保存并测试」。</div>
+        <div id="aivoices" hidden>
+          <div class="tagsub">音色</div>
+          <div id="aivlist"></div>
+          <div class="chips"><button class="btn sm" id="aivadd">＋ 加一个音色</button><button class="btn sm go" id="aivsave">保存音色</button><span class="mtip" id="aivtip"></span></div>
+          <div class="note">参考音频：一段 3~10 秒、说话清楚的录音，下面填它说的是什么。训练过模型的话再选 GPT（.ckpt）和 SoVITS（.pth）模型文件，不填就用 GPT-SoVITS 现在装着的。保存后在上面「声音」里选。</div>
+        </div>
       </fieldset>
       <fieldset class="ckg"><legend>读什么</legend>
         <div class="chips">
@@ -414,9 +420,11 @@
 
     <div class="spage admin-only" data-sp="link">
       <h2 class="ptitle">链接</h2>
+      <div class="note">只在自己电脑上用雾幕的话，这一页不用管。想让房管、朋友或者手机也打开雾幕时才用得到：普通链接只能看，管理链接能管。</div>
       <fieldset><legend>普通链接</legend>
         <div class="opt" title="发给别人看的网址"><input type="text" id="lk-public" readonly style="flex:1;min-width:0"><button class="btn sm" id="lk-copy">复制</button></div>
         <div class="opt"><span>现在在看</span><b id="lk-online">-</b></div>
+        <label class="chip" id="rmopenrow"><input type="checkbox" id="rmopen"><span>拿普通链接的人也能切到「设置 → 直播间 → 切换直播间」名单里的直播间</span></label>
       </fieldset>
       <fieldset id="lk-lanbox"><legend>手机打开</legend>
         <div class="chips"><label class="chip" title="同一个 Wi-Fi 的手机、平板也能打开雾幕。只有拿到管理链接的人才能管理"><input type="checkbox" id="lk-lan"><span><i class="ic" data-ic="phone"></i> 同一个 Wi-Fi 能打开</span></label></div>
@@ -442,12 +450,26 @@
         <div class="note">加几个常去的直播间，点「看」就切过去看那边的弹幕（只是看，朗读和提示音先停着，回到主直播间自动恢复）。弹幕栏标题上的直播间名字也能切。</div>
         <div id="rmlist"></div>
         <div class="opt"><select id="rmplat" style="flex:none;width:auto"><option value="">B 站</option><option value="douyu">斗鱼</option><option value="huya">虎牙</option><option value="douyin">抖音</option></select><input type="text" id="rminput" maxlength="200" placeholder="房间号，或者粘贴直播间网址" style="flex:1;min-width:0"><button class="btn sm" id="rmgo" title="只是自己看一下，不加进名单">看</button><button class="btn sm go" id="rmadd">加到名单</button></div>
-        <label class="chip" id="rmopenrow"><input type="checkbox" id="rmopen"><span>普通链接也能切到名单里的直播间</span></label>
       </fieldset>
       <fieldset class="admin-only" id="platbox" hidden><legend>同时收其他平台的弹幕</legend>
         <div class="note">同时在斗鱼、虎牙、抖音开播时，把那边的弹幕、礼物、进房也收进来，每条标上平台。</div>
         <div id="platlist"></div>
         <div class="opt" title="同时在斗鱼、虎牙、抖音开播时，把那边的弹幕、礼物、进房也收进来，每条标上平台。抖音要在这台电脑上开一个看不见的浏览器窗口读直播间网页"><select id="platsel" style="flex:none;width:auto"><option value="douyu">斗鱼</option><option value="huya">虎牙</option></select><input type="text" id="platroom" maxlength="200" placeholder="房间号，或者粘贴直播间网址" style="flex:1;min-width:0"><button class="btn sm" id="platadd">添加</button></div>
+      </fieldset>
+    </div>
+    <div class="spage" data-sp="acct">
+      <h2 class="ptitle">账号</h2>
+      <fieldset><legend>连直播间用的号</legend>
+        <div id="accconn"></div>
+        <div class="note">用登录的号连直播间，观众的名字才是完整的；没登录（游客）时 B 站会给名字打码。</div>
+      </fieldset>
+      <fieldset><legend>这台电脑上登录过的号</legend>
+        <div id="acclist"></div>
+        <div class="chips"><button class="btn sm go" id="accadd"><i class="ic" data-ic="phone"></i> 扫码添加账号</button></div>
+        <div class="note">用 B 站 App 扫码。可以登好几个号（比如主播本人的号和小号），随时换。改直播间标题、开播、改公告要主播本人的号。B 站可能限制或封禁用第三方工具的账号，风险自负。</div>
+      </fieldset>
+      <fieldset><legend>发弹幕用哪个号</legend>
+        <div class="chips" id="accsend"></div>
       </fieldset>
     </div>
     <div class="spage" data-sp="more">
@@ -465,9 +487,11 @@
         <div class="about"><img src="/static/art/icon-64.png" alt=""><div><b>雾幕 Danmist</b><small id="aboutver"></small><span>看板娘 <a href="https://live.bilibili.com/373317" target="_blank" rel="noopener">雾冬Hanaki</a> · <a href="https://github.com/xShadowMoon/Danmist" target="_blank" rel="noopener">GitHub</a></span></div></div>
         <div class="chips admin-only"><a class="btn sm" href="api/diag" download title="版本、系统、设置（密钥会藏掉）和最近的日志，反馈问题时把这个文件发过来"><i class="ic" data-ic="download"></i> 导出诊断信息</a></div>
       </fieldset>
-      <fieldset id="dkbox" hidden><legend>桌面版</legend>
-        <div class="opt r" title="下次打开雾幕时用哪种（双击 start.bat 或桌面上的「雾幕」）"><span>打开方式</span><div class="ctl"><span class="seg" id="dkmode"><button type="button" data-val="app">软件窗口</button><button type="button" data-val="web">浏览器</button></span></div><span></span></div>
-        <div class="chips"><button class="btn sm" id="dkshortcut"><i class="ic" data-ic="download"></i> 桌面快捷方式</button><button class="btn sm" id="dkcheck" title="去 GitHub 看有没有新版本">检查更新</button><span class="mtip" id="dkver"></span></div>
+      <fieldset id="dkbox" hidden><legend>软件</legend>
+        <div class="dkdir"><span>程序装在</span><code id="dkapp"></code><button class="btn sm" data-opendir="app">打开</button></div>
+        <div class="dkdir"><span>存档、设置在</span><code id="dkdata"></code><button class="btn sm" data-opendir="data">打开</button></div>
+        <div class="opt r" title="下次双击桌面上的「雾幕」时，是开软件窗口，还是在平时用的浏览器里打开"><span>打开方式</span><div class="ctl"><span class="seg" id="dkmode"><button type="button" data-val="app">软件窗口</button><button type="button" data-val="web">浏览器</button></span></div><span></span></div>
+        <div class="chips"><button class="btn sm" id="dkshortcut" title="桌面上没有「雾幕」的话，点这个建一个"><i class="ic" data-ic="download"></i> 建桌面快捷方式</button><button class="btn sm" id="dkcheck" title="去 GitHub 看有没有新版本">检查更新</button><span class="mtip" id="dkver"></span></div>
       </fieldset>
       <fieldset><legend>其它</legend>
         <div class="chips"><button class="btn" id="touropen" title="再看一遍新手引导"><i class="ic" data-ic="book"></i> 引导</button><button class="btn" id="layoutopen"><i class="ic" data-ic="grid"></i> 布局</button><a class="btn" href="obs-setup" target="_blank"><i class="ic" data-ic="video"></i> OBS 弹幕</a><button class="btn" id="pwabtn" title="把雾幕装成电脑上的应用：独立窗口、桌面和任务栏有图标（数据还是连这台电脑）"><i class="ic" data-ic="download"></i> 装到桌面</button></div>
