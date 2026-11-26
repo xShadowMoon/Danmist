@@ -143,6 +143,12 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 | `bot_say_url` | 可选：用机器人账号发弹幕的本地接口（POST `{"text": ...}`，请求头 `X-Local-Token` 读自 `bot.token`）。 |
 | `update_check` | 是否检查有没有新版本，默认 `true`。写 `false` 就不检查（也可以加命令行参数 `--no-update-check`）。 |
 | `ai_voice` | 可选：朗读用的 AI 音色（GPT-SoVITS），见下面「AI 音色」。`url` 留空就不用。 |
+| `brand` | 可选：`{"name": "软件叫什么", "short": "网页里怎么称呼你", "medal": "粉丝牌名字"}`，默认「雾幕 / 主播 / 粉丝团」。 |
+| `pack` | 可选：你自己的「包」文件夹。包里 `static/` 下的同名文件优先（自己的图、公告、manifest），`static/ext/{页面}.css`、`.js` 会自动加进对应页面（比如额外的 OBS 样式）。不进 git，可以放私有的东西。 |
+| `host_path` | 可选：主播专属链接的地址，默认 `/host`。 |
+| `login_readonly` | 可选：`true` 时只读登录文件、不往里写（登录文件是别的程序的时候用）。 |
+| `discord_webhook_file`、`alert_port` | 可选：从别的程序的 JSON 配置里读 `discord_webhook`；只有这个端口的那份发掉线提醒（同一个文件夹里另开的测试直播间不发）。 |
+| `gequ_dir` | 可选：把一个文件夹里的 `index.html`、`songs.json` 公开成 `/gequ.html`、`/gequ.json`（给粉丝站读歌切合集）。 |
 
 其他本地文件（都不会进 git，也不会打进 Release 压缩包）：
 
@@ -210,7 +216,7 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 
 ### 自己的图片
 
-除了应用图标，不带任何美术图。舰长徽章、头像框、上舰横幅和看板娘用到的文件名见 [`static/art/README.md`](static/art/README.md)，放进去刷新就生效。
+除了应用图标，不带任何美术图。舰长徽章、头像框、上舰横幅和看板娘用到的文件名见 [`static/art/README.md`](static/art/README.md)，放进去刷新就生效。也可以放进自己的包（`config.json` 的 `pack`）里的 `static/art/`，升级时不会被覆盖。
 
 ---
 
@@ -245,8 +251,10 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 ## 测试
 
 ```sh
-python tests/run_tests.py     # 离线后端测试
-python tests/smoke_demo.py    # 在 8390 端口启动演示服务器，检查页面和 WebSocket
+python -m unittest discover -s tests   # 离线后端测试（240 多项）
+python tests/run_ui.py                 # 开一个演示服务，用无头 Edge / Chrome 查每个页面有没有报错、弹幕跟随对不对
+python tests/run_ui.py --config 你的config.json   # 带上自己的包一起查
+python tests/smoke_demo.py             # 在 8390 端口启动演示服务器，检查页面和 WebSocket
 ```
 
 打 Windows 包：`powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Version 0.9.0`，输出在 `dist\`。
@@ -403,6 +411,12 @@ The danmaku connection uses [blivedm](https://github.com/xfgryujk/blivedm) by xf
 | `bot_say_url` | Optional local endpoint that sends danmaku from a bot account (POST `{"text": ...}`, header `X-Local-Token` read from `bot.token`). |
 | `update_check` | Check GitHub for new versions, default `true`. Set `false` to turn it off (or pass `--no-update-check`). |
 | `ai_voice` | Optional AI voices for text-to-speech (GPT-SoVITS), see "AI voices" below. Leave `url` empty to turn it off. |
+| `brand` | Optional `{"name": app name, "short": what pages call you, "medal": fan medal name}`. Defaults: 雾幕 / 主播 / 粉丝团. |
+| `pack` | Optional folder with your own files. Files under its `static/` override the built-in ones (artwork, announcements, manifests); `static/ext/{page}.css` / `.js` are added to that page automatically (e.g. extra OBS styles). Kept out of git, so private things can live there. |
+| `host_path` | Optional path for the streamer-only link, default `/host`. |
+| `login_readonly` | Optional: `true` to only read the login file, never write it (when another program owns it). |
+| `discord_webhook_file`, `alert_port` | Optional: read `discord_webhook` from another program's JSON config; only the instance on this port sends alerts (test rooms in the same folder stay quiet). |
+| `gequ_dir` | Optional: publish `index.html` and `songs.json` from a folder as `/gequ.html` and `/gequ.json`. |
 
 Other local files (ignored by git and never included in release zips):
 
@@ -505,8 +519,10 @@ No artwork is included apart from the app icon. See [`static/art/README.md`](sta
 ## Tests
 
 ```sh
-python tests/run_tests.py     # offline backend tests
-python tests/smoke_demo.py    # starts a demo server on port 8390 and checks the pages and WebSocket
+python -m unittest discover -s tests   # offline backend tests (240+)
+python tests/run_ui.py                 # starts a demo server and checks every page for errors plus danmaku auto-follow, in headless Edge / Chrome
+python tests/run_ui.py --config your-config.json   # same, with your own pack
+python tests/smoke_demo.py             # starts a demo server on port 8390 and checks the pages and WebSocket
 ```
 
 Build the Windows package: `powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Version 0.9.0`; output goes to `dist\`.
