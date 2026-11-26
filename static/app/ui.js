@@ -301,7 +301,7 @@ function xroomMenu() {
   const m = $('xroommenu'), a = xrList(), adm = !!S.admin && !S.host;
   // 2026-11-26 用户：做大一点，在这里就能选平台。每个房间前面标平台；新加的先选平台再填房间号
   const plats = XR_PLATS.filter(([k]) => k !== 'douyin' || S.platforms?.douyin);
-  m.innerHTML = `<div class="xrhead">切换直播间</div><button data-xr="0"${!SIDE_ROOM ? ' class="on"' : ''}>${icon('mic')}<span class="xrn">${esc(mainName())}</span><span class="tag plat p-bili">B 站</span><small>${S.room?.room_real || ''}</small></button>`
+  m.innerHTML = `<div class="xrhead">切换直播间</div><button data-xr="0"${!SIDE_ROOM ? ' class="on"' : ''}>${icon('mic')}<span class="xrn">${esc(mainName())}</span>${S.main_plat && S.main_plat !== 'bili' ? platTag(S.main_plat) : '<span class="tag plat p-bili">B 站</span>'}<small>${S.room?.room_real || ''}</small></button>`
     + a.map(x => `<div class="xrrow"><button data-xr="${esc(xrKey(x))}"${SIDE_ROOM === xrKey(x) || String(S.side?.room) === xrKey(x) ? ' class="on"' : ''}>${icon('tv')}<span class="xrn">${esc(x.name)}</span>${x.plat ? platTag(x.plat) : '<span class="tag plat p-bili">B 站</span>'}<small>${x.room}</small></button>${adm ? `<button class="xrdel" data-xrdel="${esc(xrKey(x))}" title="从名单里删掉">${icon('close')}</button>` : ''}</div>`).join('')
     + (S.admin ? `<div class="xrnew"><select id="xrplat" title="哪个平台">${plats.map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select><input id="xrinput" inputmode="numeric" placeholder="房间号" maxlength="20"><button class="btn sm" id="xrgo" title="只是自己看一下，不加进名单">看</button>${adm ? `<button class="btn sm" id="xradd" title="加进名单，普通链接也能切过去"${a.length >= XR_MAX ? ' disabled' : ''}>加到名单</button>` : ''}</div>`
       + `<div class="xrtip">抖音填 live.douyin.com/ 后面的数字；斗鱼、虎牙填房间号</div>` : '')
@@ -439,3 +439,43 @@ function mobPing(id) {
   mobTabs();
   MOB.addEventListener?.('change', () => { mobTabs(); if (typeof stick !== 'undefined' && stick) toBottom(); });
 }
+
+/* ---------- 设置 → 直播间 → 切换直播间（2026-11-26 用户：多个直播间、切换都放到这里）：和弹幕栏标题上的菜单是同一份名单 ---------- */
+function drawRoomList() {
+  const box = $('rmlist');
+  if (!box) return;
+  const a = xrList(), adm = !!S.admin && !S.host, cur = SIDE_ROOM || String(S.side?.room || '');
+  const row = (key, name, plat, room, del) => `<div class="lkrow"><div>${plat ? platTag(plat) : '<span class="tag plat p-bili">B 站</span>'} <b>${esc(name)}</b><small>${esc(String(room))}${(key === '0' ? !cur : cur === key) ? ' · 正在看' : ''}</small></div><button class="btn sm" data-rmgo="${esc(key)}">${key === '0' ? '回到这里' : '看'}</button>${del && adm ? `<button class="btn sm" data-rmdel="${esc(key)}">删掉</button>` : ''}</div>`;
+  box.innerHTML = row('0', mainName() + '（主直播间）', S.main_plat && S.main_plat !== 'bili' ? S.main_plat : '', S.room?.room_real || S.room_id || '', false)
+    + a.map(x => row(xrKey(x), x.name, x.plat, x.room, true)).join('')
+    + (a.length ? '' : '<div class="note">名单里还没有别的直播间。</div>');
+  $('rmadd').disabled = !adm || a.length >= XR_MAX;
+  $('rmadd').title = a.length >= XR_MAX ? `名单最多 ${XR_MAX} 个` : '加进名单，以后在这里或弹幕栏标题上点一下就切过去';
+  $('rmopenrow').hidden = !adm;
+  $('rmopen').checked = !!S.xrooms?.open;
+  const dy = $('rmplat').querySelector('[value="douyin"]');
+  if (dy) dy.hidden = !S.platforms?.douyin;
+}
+function rmKey() {
+  const v = parseRoom($('rminput').value, $('rmplat')), pl = $('rmplat').value;
+  if (v) $('rminput').value = v;
+  return v ? { v, pl, k: pl ? `${pl}:${v}` : v } : null;
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-st="room"]')) drawRoomList();
+  const g = e.target.closest('[data-rmgo]');
+  if (g) return xroomGo(g.dataset.rmgo);
+  const d = e.target.closest('[data-rmdel]');
+  if (d) return xrSend(S.xrooms?.open, xrList().filter(x => xrKey(x) !== d.dataset.rmdel));
+  if (e.target.closest('#rmgo')) { const r = rmKey(); if (r) xroomGo(r.k); else note('先填房间号', false); }
+  if (e.target.closest('#rmadd')) {
+    const r = rmKey(), a = xrList();
+    if (!r) return note('先填房间号', false);
+    if (a.some(x => xrKey(x) === r.k)) return note('名单里已经有了', false);
+    if (a.length >= XR_MAX) return note(`名单最多 ${XR_MAX} 个`, false);
+    xrSend(S.xrooms?.open, [...a, { room: Number(r.v), name: r.pl ? `${XR_PLATS.find(p => p[0] === r.pl)[1]} ${r.v}` : '', plat: r.pl }]);
+    $('rminput').value = '';
+  }
+});
+document.addEventListener('change', e => { if (e.target.id === 'rmopen') xrSend(e.target.checked, xrList()); });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'rminput') { const r = rmKey(); if (r) xroomGo(r.k); } });

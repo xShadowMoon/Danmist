@@ -13,7 +13,7 @@ const EDGE = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C
 if (!EDGE) { console.log('SKIP 没有 Edge / Chrome'); process.exit(0); }
 const dir = mkdtempSync(join(tmpdir(), 'edgeshot-ui-'));
 const port = 9300 + Math.floor(Math.random() * 400);
-const edge = spawn(EDGE, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, '--no-first-run', '--disable-sync', '--no-default-browser-check', '--window-size=1400,900', 'about:blank'], { stdio: 'ignore' });
+const edge = spawn(EDGE, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, '--no-first-run', '--disable-sync', '--disable-extensions', '--disable-features=msImplicitSignin', '--no-default-browser-check', '--window-size=1400,900', 'about:blank'], { stdio: 'ignore' });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fails = [];
 const ok = (cond, what) => { console.log((cond ? 'ok   ' : 'FAIL ') + what); if (!cond) fails.push(what); };

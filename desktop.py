@@ -103,6 +103,9 @@ def find_browser():
     return None
 
 
+QUIET_BROWSER = ['--disable-extensions', '--disable-sync', '--disable-features=Translate,msImplicitSignin']
+
+
 def open_window(url):
     """Edge / Chrome 的应用窗口；都没有就用默认浏览器（这时没法知道窗口什么时候关）"""
     b = find_browser()
@@ -111,8 +114,10 @@ def open_window(url):
         webbrowser.open(url)
         return None
     prof = os.path.join(APP, 'data', 'desktop-browser')
+    # 不装扩展、不登录同步（2026-11-26）：Edge 会自己把电脑上的微软账号登进这个窗口，再把你平时装的扩展同步过来，
+    # 每次打开雾幕那些扩展就弹欢迎页、弹窗。雾幕的窗口用不到扩展，全关掉
     return subprocess.Popen([b, f'--app={url}', f'--user-data-dir={prof}', '--no-first-run', '--no-default-browser-check',
-                             '--window-size=1400,900', '--disable-features=Translate'], creationflags=NO_WINDOW)
+                             '--window-size=1400,900', *QUIET_BROWSER], creationflags=NO_WINDOW)
 
 
 def window_open():

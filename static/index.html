@@ -292,10 +292,6 @@
     <div class="spage" data-sp="dm">
       <h2 class="ptitle">弹幕<small>弹幕栏标题上的齿轮也是打开这一页</small></h2>
       <fieldset class="admin-only" id="tagbox"><legend>身份标签</legend><div id="tagset"></div></fieldset>
-      <fieldset class="admin-only" id="platbox" hidden><legend>其他平台</legend>
-        <div id="platlist"></div>
-        <div class="opt" title="同时在斗鱼、虎牙、抖音开播时，把那边的弹幕、礼物、进房也收进来，每条标上平台。抖音要在这台电脑上开一个看不见的浏览器窗口读直播间网页"><select id="platsel"><option value="douyu">斗鱼</option><option value="huya">虎牙</option></select><input type="text" id="platroom" maxlength="40" placeholder="房间号" style="flex:1;min-width:0"><button class="btn sm" id="platadd">添加</button></div>
-      </fieldset>
       <fieldset><legend>文字</legend>
         <div class="opt r"><span>字号</span><div class="ctl"><input type="range" min="13" max="28" step="0.5" data-k="dmSize" data-u="px"></div><button class="rs" title="恢复默认">↺</button></div>
         <div class="opt r"><span>名字大小</span><div class="ctl"><input type="range" min="10" max="20" step="0.5" data-k="dm.name" data-u="px"></div><button class="rs" title="恢复默认">↺</button></div>
@@ -437,17 +433,27 @@
 
     <div class="spage" data-sp="room">
       <h2 class="ptitle">直播间</h2>
-      <fieldset><legend>连哪个直播间</legend>
+      <fieldset><legend>主直播间（你自己的）</legend>
         <div class="note" id="roomnow"></div>
-        <div class="opt"><select id="roomplat"><option value="bili">B 站</option><option value="douyu">斗鱼</option><option value="huya">虎牙</option><option value="douyin">抖音</option></select><input type="text" id="roomnum" maxlength="200" placeholder="房间号，或者粘贴直播间网址" style="flex:1;min-width:0"><button class="btn sm go" id="roomsave">保存并重启</button></div>
+        <div class="opt"><select id="roomplat" style="flex:none;width:auto"><option value="bili">B 站</option><option value="douyu">斗鱼</option><option value="huya">虎牙</option><option value="douyin">抖音</option></select><input type="text" id="roomnum" maxlength="200" placeholder="房间号，或者粘贴直播间网址" style="flex:1;min-width:0"><button class="btn sm go" id="roomsave">保存并重启</button></div>
         <div class="note">B 站填直播间网址 live.bilibili.com/ 后面那串数字；斗鱼、虎牙填房间号；抖音填 live.douyin.com/ 后面的数字。保存后雾幕会重启，几秒后自己连回来。以前的存档都还在，换回来就接着用。</div>
-        <div class="note">同时在别的平台开播？那边的弹幕在「设置 → 弹幕 → 其他平台」里加，这里只管主直播间。</div>
+      </fieldset>
+      <fieldset class="admin-only" id="rmbox"><legend>切换直播间</legend>
+        <div class="note">加几个常去的直播间，点「看」就切过去看那边的弹幕（只是看，朗读和提示音先停着，回到主直播间自动恢复）。弹幕栏标题上的直播间名字也能切。</div>
+        <div id="rmlist"></div>
+        <div class="opt"><select id="rmplat" style="flex:none;width:auto"><option value="">B 站</option><option value="douyu">斗鱼</option><option value="huya">虎牙</option><option value="douyin">抖音</option></select><input type="text" id="rminput" maxlength="200" placeholder="房间号，或者粘贴直播间网址" style="flex:1;min-width:0"><button class="btn sm" id="rmgo" title="只是自己看一下，不加进名单">看</button><button class="btn sm go" id="rmadd">加到名单</button></div>
+        <label class="chip" id="rmopenrow"><input type="checkbox" id="rmopen"><span>普通链接也能切到名单里的直播间</span></label>
+      </fieldset>
+      <fieldset class="admin-only" id="platbox" hidden><legend>同时收其他平台的弹幕</legend>
+        <div class="note">同时在斗鱼、虎牙、抖音开播时，把那边的弹幕、礼物、进房也收进来，每条标上平台。</div>
+        <div id="platlist"></div>
+        <div class="opt" title="同时在斗鱼、虎牙、抖音开播时，把那边的弹幕、礼物、进房也收进来，每条标上平台。抖音要在这台电脑上开一个看不见的浏览器窗口读直播间网页"><select id="platsel" style="flex:none;width:auto"><option value="douyu">斗鱼</option><option value="huya">虎牙</option></select><input type="text" id="platroom" maxlength="200" placeholder="房间号，或者粘贴直播间网址" style="flex:1;min-width:0"><button class="btn sm" id="platadd">添加</button></div>
       </fieldset>
     </div>
     <div class="spage" data-sp="more">
       <h2 class="ptitle">更多</h2>
       <fieldset id="mascotbox" class="admin-only"><legend>看板娘</legend>
-        <div class="about"><img id="mascotpv" src="/art/icon-256.png" alt=""><div><b id="mascotname">默认：雾冬Hanaki</b><span>换成你自己的图，软件里的图标、窗口和任务栏的图标都会跟着换。正方形的图最好，不是正方形会从中间裁。桌面快捷方式的图标换不了。</span></div></div>
+        <div class="about"><img id="mascotpv" src="/art/icon-256.png" alt=""><div><b id="mascotname">默认：雾冬Hanaki</b><span>换成你自己的图，软件里的图标、窗口和任务栏的图标都会跟着换。正方形的图最好，不是正方形会从中间裁。桌面和开始菜单的快捷方式图标也会跟着换。</span></div></div>
         <div class="chips"><label class="btn sm" id="mascotpick"><i class="ic" data-ic="upload"></i> 换成我的图<input type="file" id="mascotfile" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label><button class="btn sm" id="mascotreset" hidden>换回默认</button><span class="mtip" id="mascottip"></span></div>
       </fieldset>
       <fieldset class="admin-only" id="bakbox"><legend>备份</legend>

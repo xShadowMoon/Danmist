@@ -232,6 +232,14 @@ body.resizing.ry { cursor: row-resize; }
 #tagset .tagrow input[type=color] { width: 30px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; }
 #tagset .tagsub { margin: 10px 0 4px; font-size: 12.5px; font-weight: 600; }
 #tagset .tagsub small { font-weight: 400; color: var(--ink3); margin-left: 6px; }
+#tagset .tagfix { width: 64px; flex: none; font-size: 13px; color: var(--ink2); }
+#tagset .tagfix.wide { width: auto; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#tagset .tagrow input.tagname { width: 120px; }
+#tagset .tagn { color: var(--ink3); font-size: 12px; min-width: 34px; }
+#tagset .taghead { display: flex; gap: 6px; font-size: 11.5px; color: var(--ink3); padding: 4px 0 0; }
+#tagset .taghead span:nth-child(1) { width: 44px; } #tagset .taghead span:nth-child(2) { width: 64px; } #tagset .taghead span:nth-child(3) { width: 84px; }
+#tagset .tagsub { margin-top: 14px; }
+#tagset .tagsub small { display: block; margin: 2px 0 0; }
 #banner { display: none; background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--money-line); border-radius: 10px; padding: 7px 12px; font-size: 13px; }
 #banner.show { display: block; }
 .dm.hl { background: var(--gift-big); box-shadow: inset 3px 0 0 var(--money-ink); }

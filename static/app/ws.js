@@ -140,7 +140,7 @@ function connect() {
       const was = new Set((S.platforms?.rooms || []).filter(r => r.warn).map(r => r.plat + r.room));
       const bad = (data?.rooms || []).find(r => r.warn && !was.has(r.plat + r.room));
       S.platforms = data; drawPlats();
-      if (bad) note(`${bad.label || bad.plat} ${bad.room}：${bad.state}（设置 → 弹幕 → 其他平台）`, false);
+      if (bad) note(`${bad.label || bad.plat} ${bad.room}：${bad.state}（设置 → 直播间）`, false);
     } else if (type === 'music_rules') {
       S.music_rules = data; drawMusicSet();
     } else if (type === 'result') {
@@ -194,7 +194,7 @@ function connect() {
     } else if (type === 'tpre') {
       S.title_presets = data; if (!$('tpremenu').hidden) drawTpre();
     } else if (type === 'xrooms') {  // 切直播间的名单、开关（2026-11-21）
-      S.xrooms = data; xrShow(); if (!$('xroommenu').hidden) xroomMenu();
+      S.xrooms = data; xrShow(); if (!$('xroommenu').hidden) xroomMenu(); drawRoomList();
       if (!S.admin && S.side && !(data.open && data.rooms.some(x => xrKey(x) === String(S.side.room) || xrKey(x) === SIDE_ROOM))) xroomGo(0);
     } else if (type === 'guardlist') {
       S.guardlist = data; renderUsers();

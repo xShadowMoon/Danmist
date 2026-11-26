@@ -470,6 +470,8 @@ class Douyin(Source):
             pass
         args = [exe, '--remote-debugging-port=0', '--remote-debugging-address=127.0.0.1', '--remote-allow-origins=http://127.0.0.1', f'--user-data-dir={self.profile()}',
                 '--no-first-run', '--no-default-browser-check', '--new-window', '--mute-audio',
+                # 不装扩展、不登录同步：不然 Edge 会把电脑上的账号和你平时的扩展同步进来，扩展会弹窗（2026-11-26）
+                '--disable-extensions', '--disable-sync', '--disable-features=msImplicitSignin',
                 f"--window-position={self.OFF['left']},{self.OFF['top']}", f"--window-size={self.OFF['width']},{self.OFF['height']}",
                 # 窗口在屏幕外也要照常刷新，不然页面不往下走
                 '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',

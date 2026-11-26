@@ -129,7 +129,7 @@ function drawPlats() {
 }
 function sendPlats(rooms) { window._ws?.send(JSON.stringify({ cmd: 'plat_set', rooms: rooms.map(r => ({ plat: r.plat, room: r.room, on: r.on })) })); }
 $('platadd')?.addEventListener('click', () => {
-  const room = $('platroom').value.trim(); if (!room) return;
+  const room = typeof parseRoom === 'function' ? parseRoom($('platroom').value, $('platsel')) : $('platroom').value.trim(); if (!room) return;  // 能粘网址（2026-11-26）
   sendPlats([...(S.platforms?.rooms || []), { plat: $('platsel').value, room, on: true }]); $('platroom').value = '';
 });
 $('platlist')?.addEventListener('change', e => { const i = e.target.dataset.plon; if (i == null) return; const R = [...(S.platforms?.rooms || [])]; R[i] = { ...R[i], on: e.target.checked }; sendPlats(R); });

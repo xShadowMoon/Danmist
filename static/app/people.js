@@ -336,38 +336,81 @@ function drawCardTags(uid) {
     window._ws?.send(JSON.stringify({ cmd: 'tag_user', uid, tags: [...next] }));
   };
 }
-// 设置 → 弹幕 → 身份标签（2026-11-26）：自带的改名字 / 简称 / 颜色，自己的标签新建 / 删掉，改完点保存
-let tagDraft = null;
+// 设置 → 弹幕 → 身份标签（2026-11-26，同日按用户反馈重做）：
+// - B 站自带的身份（总督、提督、舰长、房管）和机器人、主播：名字是固定的，只能改「弹幕里显示成什么字」和颜色
+// - 自己的标签：随时新建、改名、换色、删掉；每个标签现在给了几个人
+// - 标成机器人的号：列出来，能取消
+// 改了马上保存（不用再找保存按钮）
+let tagDraft = null, tagSaveT = 0;
+const TAG_TIP = { g1: 'B 站大航海最高一档', g2: 'B 站大航海第二档', g3: 'B 站大航海第三档', admin: '直播间房管', bot: '机器人发的弹幕（不朗读，可以筛掉）', anchor: '主播自己发的弹幕' };
+function whoName(uid) {
+  uid = Number(uid);
+  const u = (S.users || []).find(x => x.uid === uid) || [...(S.dm || [])].reverse().find(x => x.uid === uid);
+  return u?.name || `uid ${uid}`;
+}
+function tagSave(now) {
+  clearTimeout(tagSaveT);
+  const go = () => {
+    if (!tagDraft) return;
+    const builtin = Object.fromEntries(Object.entries(tagDraft.builtin).map(([k, v]) => [k, { name: '', short: v.short || '', color: v.color || '' }]).filter(([, v]) => v.short || v.color));
+    window._ws?.send(JSON.stringify({ cmd: 'tags_set', builtin, custom: tagDraft.custom.map(t => ({ ...t, name: t.name || '标签' })) }));
+    const tip = $('tagtip'); if (tip) tip.textContent = '已保存';
+  };
+  if (now) go(); else { const tip = $('tagtip'); if (tip) tip.textContent = '正在保存…'; tagSaveT = setTimeout(go, 700); }
+}
 function drawTagSet(keep = false) {
   const box = $('tagset');
   if (!box || !S.admin) return;
-  if (!keep && tagDraft && box.contains(document.activeElement)) return;  // 正在改，别被推送打断
+  if (!keep && tagDraft && box.contains(document.activeElement)) return;  // 正在打字，别被推送打断
   if (!keep || !tagDraft) tagDraft = JSON.parse(JSON.stringify({ builtin: S.tags?.builtin || {}, custom: S.tags?.custom || [] }));
-  const B = tagDraft.builtin;
-  const row = k => `<div class="tagrow" data-bk="${k}"><span class="tag ${k}" style="${B[k]?.color ? `background:${B[k].color}` : ''}">${esc(B[k]?.short || B[k]?.name || TAG_DEF[k][1])}</span>`
-    + `<input data-f="name" maxlength="6" placeholder="${TAG_DEF[k][0]}" value="${esc(B[k]?.name || '')}" title="名字">`
-    + `<input data-f="short" maxlength="4" placeholder="${TAG_DEF[k][1]}" value="${esc(B[k]?.short || '')}" title="弹幕里显示的简称">`
-    + `<input type="color" data-f="color" value="${B[k]?.color || '#888888'}" title="颜色"><button class="rs" data-f="reset" title="恢复默认">↺</button></div>`;
-  box.innerHTML = Object.keys(TAG_DEF).map(row).join('')
-    + `<div class="tagsub">自己的标签<small>在观众卡片里给人加上</small></div>`
-    + tagDraft.custom.map((t, i) => `<div class="tagrow" data-ci="${i}"><span class="tag ct" style="${t.color ? `background:${t.color}` : ''}">${esc(t.name || '标签')}</span><input data-f="name" maxlength="6" value="${esc(t.name)}" placeholder="名字"><input type="color" data-f="color" value="${t.color || '#8a7cc8'}"><button class="rs" data-f="del" title="删掉">✕</button></div>`).join('')
-    + `<div class="chips"><button class="btn sm" id="tagadd"${tagDraft.custom.length >= 20 ? ' disabled' : ''}>＋ 新建标签</button><button class="btn sm go" id="tagsave">保存</button></div>`;
+  const B = tagDraft.builtin, users = S.tags?.users || {}, bots = S.tags?.bots || [];
+  const count = id => Object.values(users).filter(l => l.includes(id)).length;
+  const brow = k => {
+    const v = B[k] || {}, changed = !!(v.short || v.color);
+    return `<div class="tagrow" data-bk="${k}"><span class="tag ${k}" style="${v.color ? `background:${v.color}` : ''}">${esc(v.short || TAG_DEF[k][1])}</span>`
+      + `<span class="tagfix" title="${esc(TAG_TIP[k])}">${TAG_DEF[k][0]}</span>`
+      + `<input data-f="short" maxlength="4" placeholder="${TAG_DEF[k][1]}" value="${esc(v.short || '')}" title="弹幕里那个小标签上写什么，空着就是「${TAG_DEF[k][1]}」">`
+      + `<input type="color" data-f="color" value="${v.color || '#888888'}" title="标签颜色">`
+      + `<button class="btn sm" data-f="reset"${changed ? '' : ' hidden'}>恢复默认</button></div>`;
+  };
+  const crow = (t, i) => `<div class="tagrow" data-ci="${i}"><span class="tag ct" style="${t.color ? `background:${t.color}` : ''}">${esc(t.name || '标签')}</span>`
+    + `<input data-f="name" maxlength="6" value="${esc(t.name)}" placeholder="标签名字" class="tagname">`
+    + `<input type="color" data-f="color" value="${t.color || '#8a7cc8'}" title="标签颜色">`
+    + `<small class="tagn">${count(t.id)} 人</small><button class="btn sm" data-f="del" title="删掉这个标签（已经加了它的人也一起去掉）">删掉</button></div>`;
+  box.innerHTML = `<div class="note">弹幕前面的小标签。左边是固定的身份，不能改；「显示成」是标签上写的字（最多 4 个字，空着用默认），颜色也能换。</div>`
+    + `<div class="taghead"><span>预览</span><span>身份</span><span>显示成</span><span>颜色</span></div>`
+    + Object.keys(TAG_DEF).map(brow).join('')
+    + `<div class="tagsub">自己的标签<small>比如「老粉」「歌切组」。建好后，点弹幕里的名字打开观众卡片，在「标签」那一行给这个人加上</small></div>`
+    + (tagDraft.custom.length ? tagDraft.custom.map(crow).join('') : '<div class="note">还没有自己的标签。</div>')
+    + `<div class="chips"><button class="btn sm" id="tagadd"${tagDraft.custom.length >= 20 ? ' disabled' : ''}>＋ 新建标签</button><small class="mtip">最多 20 个</small></div>`
+    + `<div class="tagsub">标成${esc(tagName('bot'))}的号<small>在观众卡片里点「${esc(tagName('bot'))}」标上；连直播间用的号自动算</small></div>`
+    + (bots.length ? bots.map(u => `<div class="tagrow"><span class="tag bot">${esc(tagShort('bot'))}</span><span class="tagfix wide">${esc(whoName(u))}</span><button class="btn sm" data-unbot="${u}">不算${esc(tagName('bot'))}了</button></div>`).join('') : '<div class="note">没有手动标的。</div>')
+    + `<div class="mtip" id="tagtip"></div>`;
+  // 没改过颜色的，颜色块显示现在真正用的颜色（不是一块灰）
+  const hex = c => { const m = String(c).match(/\d+/g); return m && m.length >= 3 ? '#' + m.slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join('') : ''; };
+  box.querySelectorAll('[data-bk]').forEach(r => { if (!B[r.dataset.bk]?.color) { const h = hex(getComputedStyle(r.querySelector('.tag')).backgroundColor); if (h) r.querySelector('[data-f="color"]').value = h; } });
 }
 document.addEventListener('input', e => {
   const r = e.target.closest('#tagset .tagrow'); if (!r || !tagDraft) return;
-  const f = e.target.dataset.f;
-  if (r.dataset.bk) { const k = r.dataset.bk; tagDraft.builtin[k] = { name: '', short: '', color: '', ...tagDraft.builtin[k], [f]: e.target.value.trim() }; }
-  else tagDraft.custom[Number(r.dataset.ci)][f] = e.target.value.trim();
+  const f = e.target.dataset.f; if (!f) return;
+  if (r.dataset.bk) { const k = r.dataset.bk; tagDraft.builtin[k] = { short: '', color: '', ...tagDraft.builtin[k], [f]: e.target.value.trim() }; }
+  else if (r.dataset.ci) tagDraft.custom[Number(r.dataset.ci)][f] = e.target.value.trim();
+  // 预览跟着变
+  const pv = r.querySelector('.tag'), v = r.dataset.bk ? tagDraft.builtin[r.dataset.bk] : tagDraft.custom[Number(r.dataset.ci)];
+  if (pv && v) { pv.textContent = (r.dataset.bk ? v.short || TAG_DEF[r.dataset.bk][1] : v.name) || '标签'; pv.style.background = v.color || ''; }
+  const rs = r.querySelector('[data-f="reset"]'); if (rs) rs.hidden = false;
+  tagSave(false);
 });
 document.addEventListener('click', e => {
   if (!e.target.closest('#tagset') || !tagDraft) return;
   const r = e.target.closest('.tagrow'), f = e.target.dataset.f;
-  if (r && f === 'reset') { delete tagDraft.builtin[r.dataset.bk]; drawTagSet(true); return; }
-  if (r && f === 'del') { tagDraft.custom.splice(Number(r.dataset.ci), 1); drawTagSet(true); return; }
-  if (e.target.closest('#tagadd')) { tagDraft.custom.push({ id: 'c' + Date.now().toString(36), name: '新标签', color: '#8a7cc8' }); drawTagSet(true); return; }
-  if (e.target.closest('#tagsave')) {
-    const builtin = Object.fromEntries(Object.entries(tagDraft.builtin).map(([k, v]) => [k, { name: v.name || '', short: v.short || '', color: v.color || '' }]).filter(([, v]) => v.name || v.short || v.color));
-    window._ws?.send(JSON.stringify({ cmd: 'tags_set', builtin, custom: tagDraft.custom.filter(t => t.name) }));
-    tagDraft = null;
+  if (r && f === 'reset') { delete tagDraft.builtin[r.dataset.bk]; drawTagSet(true); tagSave(true); return; }
+  if (r && f === 'del') { tagDraft.custom.splice(Number(r.dataset.ci), 1); drawTagSet(true); tagSave(true); return; }
+  const ub = e.target.closest('[data-unbot]');
+  if (ub) { window._ws?.send(JSON.stringify({ cmd: 'tag_user', uid: Number(ub.dataset.unbot), bot: false })); return; }
+  if (e.target.closest('#tagadd')) {
+    tagDraft.custom.push({ id: 'c' + Date.now().toString(36), name: '新标签', color: '#8a7cc8' });
+    drawTagSet(true); tagSave(true);
+    const inp = [...$('tagset').querySelectorAll('.tagname')].pop(); if (inp) { inp.focus(); inp.select(); }
   }
 });
