@@ -41,6 +41,7 @@ from daily_health import DailyHealth
 from public_limits import PublicLimits, client_ip
 import history_maintenance
 from ai_voice import AIVoice, Busy as VoiceBusy, VoiceError
+from breaker import Breaker
 from music import MusicService
 import platforms
 import tags as tag_store
@@ -4840,8 +4841,11 @@ async def main():
 
     async def face_worker():
         """没头像的人去 B 站名片接口查（不带登录，慢慢查，一秒多一个），查到了补给网页（2026-11-25）"""
+        card = Breaker('B 站名片接口')  # 连着失败先歇一会（2026-11-26）
         while True:
             uid = await hub.face_q.get()
+            if not card.ready():
+                await asyncio.sleep(card.left())
             try:
                 async with bare.get('https://api.bilibili.com/x/web-interface/card', params={'mid': str(uid)},
                                     headers={'Referer': 'https://www.bilibili.com/'}, timeout=aiohttp.ClientTimeout(total=10)) as r:
@@ -4849,7 +4853,9 @@ async def main():
                 face = validation.safe_url(str((((j or {}).get('data') or {}).get('card') or {}).get('face') or '')) if isinstance(j, dict) else ''
                 if face and 'noface' not in face:
                     hub.got_face(uid, face)
+                card.ok()
             except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as e:
+                card.fail()
                 log.debug('名片没查到 %s：%s', uid, e)
             await asyncio.sleep(1.5)
 

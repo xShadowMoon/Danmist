@@ -14,6 +14,8 @@ import time
 
 import aiohttp
 
+from breaker import Breaker
+
 log = logging.getLogger('ai_voice')
 
 MAX_CHARS = 150      # 一句最多送多少字过去，太长的截掉（弹幕本来就截到 40 字左右）
@@ -49,6 +51,7 @@ class AIVoice:
         self.conf_voices = _clean_voices(conf.get('voices')) if self.api == 'api_v2' else []
         self.timeout = float(conf.get('timeout') or 60)  # 第一次要装模型，可能要半分钟以上
         self.lock = asyncio.Lock()
+        self.breaker = Breaker('AI 音色')  # 连着失败先歇一会，网页那边就直接用浏览器的声音（2026-11-26）
         self.waiting = 0
         self.cache = collections.OrderedDict()
         self.listed = (0.0, [], False)   # (什么时候查的, 音色, 服务在不在)
@@ -96,15 +99,22 @@ class AIVoice:
             return self.cache[key]
         if self.waiting >= MAX_WAITING:
             raise Busy('AI 音色忙不过来')
+        if not self.breaker.ready():
+            raise Busy(f'AI 音色刚才连着出错，先歇 {self.breaker.left()} 秒')
         self.waiting += 1
         try:
             async with self.lock:
                 if key in self.cache:
                     return self.cache[key]
-                if self.api == 'folder':
-                    wav = await self._folder(session, voice, text, speed)
-                else:
-                    wav = await self._api_v2(session, voice, text, speed)
+                try:
+                    if self.api == 'folder':
+                        wav = await self._folder(session, voice, text, speed)
+                    else:
+                        wav = await self._api_v2(session, voice, text, speed)
+                except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
+                    self.breaker.fail()  # 服务没开 / 卡住 / 断了才算；文字不对之类的（VoiceError）不算
+                    raise
+                self.breaker.ok()
         finally:
             self.waiting -= 1
         if wav[:4] != b'RIFF':

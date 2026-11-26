@@ -19,6 +19,8 @@ import uuid
 
 import aiohttp
 
+from breaker import Breaker, Resting
+
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 QUEUE_MAX = 60
 DEFAULTS = {
@@ -77,6 +79,7 @@ class NetEase:
 
     def __init__(self, svc):
         self.svc = svc
+        self.breaker = Breaker('网易云音乐')  # 连着失败先歇一会（2026-11-26）
 
     def cookie(self):
         return (self.svc.logins.get('163') or {}).get('cookie', '')
@@ -86,9 +89,16 @@ class NetEase:
         ck = self.cookie() if cookie is None else cookie
         if ck:
             h['Cookie'] = ck
-        async with self.svc.session.get('https://music.163.com' + path, params=params, headers=h,
-                                        timeout=aiohttp.ClientTimeout(total=12)) as r:
-            return await r.json(content_type=None), r
+        self.breaker.check()
+        try:
+            async with self.svc.session.get('https://music.163.com' + path, params=params, headers=h,
+                                            timeout=aiohttp.ClientTimeout(total=12)) as r:
+                out = await r.json(content_type=None), r
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            self.breaker.fail()
+            raise
+        self.breaker.ok()
+        return out
 
     async def search(self, q, n=8):
         j, _ = await self.get('/api/search/get', {'s': q, 'type': '1', 'limit': str(n)})
@@ -169,6 +179,7 @@ class QQMusic:
 
     def __init__(self, svc):
         self.svc = svc
+        self.breaker = Breaker('QQ 音乐')
 
     def login(self):
         return self.svc.logins.get('qq') or {}
@@ -178,9 +189,16 @@ class QQMusic:
         h = {'User-Agent': UA, 'Referer': 'https://y.qq.com/', 'Content-Type': 'application/json'}
         if cookie:
             h['Cookie'] = cookie
-        async with self.svc.session.post('https://u.y.qq.com/cgi-bin/musicu.fcg', data=json.dumps(body), headers=h,
-                                         timeout=aiohttp.ClientTimeout(total=12)) as r:
-            return (await r.json(content_type=None) or {}).get('req') or {}
+        self.breaker.check()
+        try:
+            async with self.svc.session.post('https://u.y.qq.com/cgi-bin/musicu.fcg', data=json.dumps(body), headers=h,
+                                             timeout=aiohttp.ClientTimeout(total=12)) as r:
+                out = (await r.json(content_type=None) or {}).get('req') or {}
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            self.breaker.fail()
+            raise
+        self.breaker.ok()
+        return out
 
     async def search(self, q, n=8):
         d = await self.mu({'module': 'music.search.SearchCgiService', 'method': 'DoSearchForQQMusicDesktop',
