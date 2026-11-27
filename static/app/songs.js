@@ -33,8 +33,8 @@ function musicHtml() {
   const acts = (x, i) => S.admin ? `${x.sid ? `<button class="btn sm" data-malt="${x.id}" title="放错版本了？换一首">换</button>` : ''}${x.state === 'wait' || (x.state === 'deny' && x.sid) ? `<button class="btn sm" data-mq="music_ok" data-id="${x.id}" title="同意，排进去">✓</button>` : ''}${x.state === 'ok' && i > 1 ? `<button class="btn sm" data-mq="music_top" data-id="${x.id}" title="下一首就放">↑</button>` : ''}<button class="btn sm" data-mq="music_del" data-id="${x.id}" title="不放了">✕</button>` : '';
   const row = (x, i) => `<div class="req mrow${x.state === 'deny' ? ' over' : ''}" data-k="m${x.id}${x.state}${malts?.id === x.id ? 'a' + malts.list.length : ''}">${x.cover ? `<img class="mcov" src="${esc(x.cover)}" alt="" loading="lazy">` : `<span class="sn">${i}</span>`}<div class="b"><div class="s">${esc(x.title)}${x.artist ? `<small class="mart"> · ${esc(x.artist)}</small>` : ''}</div><div class="w">${who(x)}${x.state === 'wait' ? ' · <b class="mwait">等你同意</b>' : ''}${x.why ? ' · ' + esc(x.why) : ''}</div>${alts(x)}</div>${acts(x, i)}</div>`;
   const pct = now && now.dur ? Math.max(0, Math.min(100, (Date.now() / 1000 + (m.skew || 0) - now.start) / now.dur * 100)) : 0;
-  const head = `<div class="mqh">${icon('music')}<b>${m.on ? (m.mode === 'app' ? '电脑上的网易云放' : '网页放') : '点歌姬没开'}</b><span class="sp"></span>`
-    + (S.admin ? `<label class="mvol" title="放歌音量（网页放、OBS 放歌源都跟着它）">${icon('volume')}<input type="range" min="0" max="100" step="5" id="mvol" value="${m.vol ?? 80}"></label><label class="chip mhere" title="这个页面也出声（不用 OBS 放歌源时开）"><input type="checkbox" id="mhere"${cfg.musicHere ? ' checked' : ''}><span>这页出声</span></label>${now ? `<button class="btn sm" data-mq="music_next" title="切歌">${icon('skip')}</button>` : ''}` : '') + '</div>';
+  const head = `<div class="mqh">${icon('music')}<b>${m.on ? (m.mode === 'app' ? '音乐客户端放' : '雾幕自己放') : '点歌姬没开'}</b><span class="sp"></span>`
+    + (S.admin ? `<label class="mvol" title="放歌音量（网页放、OBS 放歌源都跟着它）">${icon('volume')}<input type="range" min="0" max="100" step="5" id="mvol" value="${m.vol ?? 80}"></label>${m.mode !== 'app' ? `<label class="chip mhere" title="这个窗口放歌出声。在这台电脑上打开的雾幕默认就出声；手机、别的电脑上打开的默认不出声"><input type="checkbox" id="mhere"${musicHere() ? ' checked' : ''}><span>出声</span></label>` : ''}${now ? `<button class="btn sm" data-mq="music_next" title="切歌">${icon('skip')}</button>` : ''}` : '') + '</div>';
   const add = S.admin ? `<div class="songadd madd"><input id="maddinput" maxlength="60" placeholder="＋ 搜歌名（可以写「歌名 - 歌手」），回车加进去" autocomplete="off"></div>` : '';
   const nowRow = now ? `<div class="req mrow mnow" data-k="m${now.id}play${malts?.id === now.id ? 'a' + malts.list.length : ''}">${now.cover ? `<img class="mcov" src="${esc(now.cover)}" alt="">` : `<span class="sn">♪</span>`}<div class="b"><div class="s">${esc(now.title)}${now.artist ? `<small class="mart"> · ${esc(now.artist)}</small>` : ''}</div><div class="w">${who(now)}</div><div class="mbar"><i style="transform:scaleX(${pct / 100})"></i></div>${alts(now)}</div>${S.admin && now.sid ? `<button class="btn sm" data-malt="${now.id}" title="放错版本了？换一首">换</button>` : ''}</div>` : '';
   const empty = !now && !queue.length && !deny.length ? `<div class="empty xw">${m.on ? '还没有人点<br><small>观众发「点歌 歌名」就会排进来；发「取消点歌」能撤回</small>' : '点歌姬没开<br><small>设置 → 点歌 里选「点歌姬」</small>'}</div>` : '';
@@ -45,10 +45,13 @@ function musicTick() {
   if (now && bar && now.dur) bar.style.transform = `scaleX(${Math.max(0, Math.min(1, (Date.now() / 1000 + (m.skew || 0) - now.start) / now.dur))})`;
 }
 setInterval(musicTick, 1000);
+// 雾幕自己放（2026-11-26 用户：主播也要听到，别靠 OBS 放歌源）：在运行雾幕的这台电脑上打开的窗口默认出声；
+// 手机、别的电脑上打开的默认不出声（不然几处一起响）。自己点「出声」改过就按改的
+const musicHere = () => typeof cfg.musicHere === 'boolean' ? cfg.musicHere : !!S.desktop;
 function musicSync() {
   if (!S.music) return;
   if (!mplayer && typeof MusicPlayer === 'function') { mplayer = new MusicPlayer(); if (typeof sinkTo === 'function') sinkTo(mplayer.audio); mplayer.blocked = () => note('浏览器不让自动出声：点一下页面再开「这页出声」', false); }
-  if (mplayer) { mplayer.on = !!cfg.musicHere && !!S.admin; mplayer.setVolume((S.music.vol ?? 80) / 100); mplayer.update(S.music); }
+  if (mplayer) { mplayer.on = musicHere() && !!S.admin; mplayer.setVolume((S.music.vol ?? 80) / 100); mplayer.update(S.music); }
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-mq]'); if (!b) return;
@@ -104,7 +107,7 @@ function drawMusicSet() {
   const lg = R.login || {}, src = R.src;
   $('mlogin').innerHTML = lg[src] ? `<span class="mlg">${esc(lg[src])}</span><button class="btn sm" data-mlogout="${src}">退出</button>`
     : `<button class="btn sm" data-mlogin="${src}">${icon('phone')} 扫码登录${MSRC[src]}</button><button class="btn sm" data-mcookie="${src}" title="扫码登不上时用：在电脑浏览器登录${MSRC[src]}网页版，按 F12 → 应用/存储 → Cookie，复制${src === '163' ? ' MUSIC_U' : ' uin 和 qqmusic_key'}粘进来">粘贴登录信息</button>`
-      + `<small class="mtip">${R.mode === 'app' && src === '163' ? '「电脑上的网易云」用客户端自己的登录，这里可以不登' : '不登录只能放免费的歌'}</small>`;
+      + `<small class="mtip">${R.mode === 'app' ? `「音乐客户端」用${MSRC[src]}客户端自己的登录，这里可以不登` : '不登录只能放免费的歌'}</small>`;
   $('mobsurl').value = location.origin + location.pathname.replace(/[^/]*$/, '') + 'obs-music';
 }
 function sendRules(patch) { window._ws?.send(JSON.stringify({ cmd: 'music_rules', ...patch })); }

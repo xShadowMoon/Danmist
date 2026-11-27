@@ -93,6 +93,8 @@ def show(url, title="雾幕"):
     carry_over_storage()
     st = load_state()
     shown = threading.Event()
+    # 点歌姬由雾幕自己出声（2026-11-26 用户：主播也要听到）：不用先点一下页面也能放
+    os.environ.setdefault('WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS', '--autoplay-policy=no-user-gesture-required')
     try:
         webview.settings['ALLOW_DOWNLOADS'] = True                  # 导出诊断信息、导出设置这些要能下载
         webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = True   # GitHub、B 站这些链接用平时的浏览器开

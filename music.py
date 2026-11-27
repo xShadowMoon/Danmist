@@ -15,6 +15,7 @@ import random
 import re
 import sys
 import time
+import urllib.parse
 import uuid
 
 import aiohttp
@@ -327,7 +328,15 @@ class QQMusic:
                 self.svc.drop_flow(key)
 
     def app_play(self, sid):
-        raise OSError('QQ 音乐客户端不能从外面点歌，用「网页放」')
+        """叫电脑上的 QQ 音乐客户端放这首（2026-11-26 用户要的）：QQ 音乐自己的 qqmusic:// 链接，按歌的 mid 放。
+        没装 QQ 音乐客户端的电脑会报错，那首记成放不了"""
+        if sys.platform != 'win32':
+            raise OSError('只有 Windows 上能叫 QQ 音乐客户端')
+        p = json.dumps({'song': [{'type': '0', 'songmid': str(sid)}], 'action': 'play'}, separators=(',', ':'))
+        try:
+            os.startfile('qqmusic://qq.com/media/playSonglist?p=' + urllib.parse.quote(p, safe=''))  # noqa: S606 —— 只用来打开 QQ 音乐自己的链接
+        except OSError:
+            raise OSError('没找到 QQ 音乐客户端（要先装好、登录）')
 
 
 def qr_svg(text):
@@ -551,7 +560,7 @@ class MusicService:
             raise ValueError('这首已经不在了，或者先点「换」再选')
         s = dict(it['alts'][str(sid)])
         p = self.providers[it['src']]
-        if not (self.rules['mode'] == 'app' and it['src'] == '163') and not await p.url(s['sid']):
+        if self.rules['mode'] != 'app' and not await p.url(s['sid']):
             raise ValueError('这个版本放不了（可能要会员）')
         await p.detail(s)
         it.setdefault('ask', it['title'])
@@ -605,7 +614,7 @@ class MusicService:
         if not hits:
             return None, '没找到这首'
         for s in hits[:5]:
-            if (self.rules['mode'] == 'app' and self.rules['src'] == '163') or await p.url(s['sid']):
+            if self.rules['mode'] == 'app' or await p.url(s['sid']):  # 客户端放：用客户端自己的登录，这里不用拿地址
                 await p.detail(s)
                 return s, ''
         return None, '要登录（或会员）才能放' if not self.logins.get(self.rules['src']) else '这首放不了（可能要会员）'

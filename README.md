@@ -78,7 +78,7 @@ v0.9.4 及以前，或者想手动更新，按下面做：
 | OBS 弹幕 | `/obs` 6 种样式（月见、雾凇、星扣、雾月、气泡、票根），10 款开源字体，描边阴影、按身份配色、屏蔽词，全部在 `/obs-setup` 里点选 |
 | OBS 歌单 | `/obs-songs` 3 种样式（卡片、细条、唱片） |
 | 斗鱼、虎牙、抖音 | 同时在斗鱼、虎牙、抖音开播时，把那边的弹幕、礼物、进房也收进来，每条标上平台（设置 → 直播间 → 同时收其他平台的弹幕）。抖音不碰它的接口：在这台电脑上开一个看不见的浏览器窗口正常打开直播间，从页面上读，所以只能在装了 Edge 或 Chrome 的 Windows 电脑上用；不登录抖音时名字会打码，点「显示窗口」在里面登录 |
-| 弹幕点歌直接放（试用） | 观众发「点歌 歌名」，从网易云 / QQ 音乐找到直接放；谁能点、每人几首、要不要你同意、谁能切歌都能设；OBS 加 `/obs-music` 浏览器源出声 |
+| 点歌姬 / 歌回点歌 | 观众发「点歌 歌名」：歌回点歌记进点歌单你来唱；点歌姬从网易云 / QQ 音乐找到直接放（雾幕自己出声，或者叫电脑上的网易云 / QQ 音乐客户端放）。谁能点、每人几首、要不要你同意、谁能切歌、自动回观众一句、没人点时放什么都能设 |
 | 直播间 | 改标题和分区、常用标题一键切换、直播画面小窗、人气榜和小时榜、超管警告和切断提醒 |
 | 开播前自检 | 一键检查和 B 站的连接、登录、OBS 能不能收到；工作模式（唱歌 / 聊天 / 房管）一键换布局 |
 | 更新提醒 | GitHub 上出了新版本时，在顶栏提示（只有管理身份能看到），点开看更新内容和下载 |
@@ -181,13 +181,16 @@ Windows 上也可以直接双击 `start.bat`：它会自己找电脑上的 Pytho
 - **管理链接**：在「设置 → 链接」里新建，给房管用，可以随时作废或换新。
 - **主播专属链接**（`/host`）：给主播本人，界面更简单。
 
-### 弹幕点歌直接放（试用）
+### 点歌：歌回点歌 / 点歌姬
 
-设置 → 点歌 → 「弹幕点歌直接放」打开后，观众发「点歌 歌名」（或「点歌 歌名 - 歌手」）就会排进歌单最上面的「放歌」，按顺序放；发「切歌」按你设的规则切。
-- 曲库选网易云或 QQ 音乐，扫码登录后会员歌也能放（不登录只能放免费的）。登录信息只存在本机 `data/music-login.json`。
-- 网页放：OBS 里加一个浏览器源，网址填设置里给的 `/obs-music`（勾上「通过 OBS 控制音频」调音量）；不用 OBS 就在歌单的放歌栏点喇叭，让这个页面出声。
-- 电脑上的网易云：让这台电脑上装的网易云客户端放（只支持 Windows + 网易云）。
-- 谁能点：所有人 / 舰长以上，粉丝牌、荣耀等级门槛，每人同时排几首，要不要你先同意。
+设置 → 点歌，先选观众发「点歌 歌名」（或「点歌 歌名 - 歌手」）时是哪种（二选一）：
+- **歌回点歌**：记进点歌栏的「点歌」，你来唱；同一首多人点会合成一条。
+- **点歌姬**：从网易云或 QQ 音乐找到直接放，按顺序排；发「切歌」按你设的规则切。扫码登录后会员歌也能放（不登录只能放免费的），登录信息只存在本机 `data/music-login.json`。
+  - 雾幕自己放：雾幕的窗口直接出声，你自己也听得到，OBS 里捕获雾幕的声音就行。手机、别的电脑上打开的默认不出声。
+  - 音乐客户端：叫这台电脑上装的网易云 / QQ 音乐客户端放（只支持 Windows）。
+  - 点歌姬页上能调音量、自己搜歌加进去、给放错版本的歌「换」一首。
+
+两种都能设：谁能点（所有人 / 舰长以上、粉丝牌、荣耀等级）、每人几首、要不要你同意；观众发「取消点歌」撤回自己最后点的；「自动回观众一句」打开后会回复「已点…，前面还有几首」「没找到」这类话；点歌姬还能选没人点时从曲库或网易云歌单里随机放。
 
 ### 手机打开（同一个 Wi-Fi）
 
@@ -327,7 +330,7 @@ Running from source: `git pull`, `pip install -r requirements.txt`, then restart
 | OBS danmaku overlay | `/obs` with 6 styles (moon, rime, clip, luna, bubble, ticket), 10 open-source fonts, outline and shadow, colours by guard level, blocked words, all configured visually at `/obs-setup` |
 | OBS song overlay | `/obs-songs` with 3 styles (card, strip, vinyl) |
 | Douyu, Huya and Douyin | Also streaming on Douyu, Huya or Douyin? Their danmaku, gifts and entries come in too, tagged by platform (Settings → Live room → Other platforms). Douyin doesn't use its APIs: an off-screen browser window on this PC opens the live room normally and reads the page, so it needs Windows with Edge or Chrome; names are masked until you log in to Douyin via "Show window" |
-| Song requests that play (preview) | Viewers send 「点歌 song name」 and it plays from NetEase Cloud Music or QQ Music; set who may request, how many each, whether you approve, and who may skip; add `/obs-music` as an OBS browser source for the audio |
+| Song requests | Viewers send 「点歌 song name」: either it goes on your sing list, or (song bot mode) it plays from NetEase Cloud Music or QQ Music — through the app itself or the desktop NetEase / QQ Music client. Who may request, how many each, approval, skipping, auto replies and idle playlists are all configurable |
 | Live room | Change title and area, saved title presets, live video pop-out, popularity and hourly ranks, warnings from Bilibili moderators |
 | Pre-stream check | One click to check the Bilibili connection, login and OBS; work modes (singing / chatting / moderating) switch layouts |
 | Update reminder | Shows a tag at the top when a new version is on GitHub (admins only), linking to the release notes and download |
@@ -430,13 +433,16 @@ By default it only listens on `127.0.0.1` (see below for phones on the same Wi-F
 - **Admin links**: created under Settings → Links for moderators; revoke or rotate any time.
 - **Host link** (`/host`): for the streamer, with a simpler interface.
 
-### Song requests that play (preview)
+### Song requests: sing list or song bot
 
-Turn on Settings → Song requests → "Play song requests". Viewers send 「点歌 song name」 (or 「点歌 song - artist」) and the song joins the "Playing" queue at the top of the song list; 「切歌」 skips according to your rule.
-- Choose NetEase Cloud Music or QQ Music; log in by QR code to play VIP songs (without login only free songs play). Login data stays in `data/music-login.json` on your computer.
-- Web playback: add an OBS browser source with the `/obs-music` URL shown in settings (tick "Control audio via OBS"), or click the speaker in the queue to play on that page.
-- Desktop NetEase app: plays through the NetEase Cloud Music client on this computer (Windows only).
-- Rules: everyone or guards only, fan-medal and honor-level thresholds, songs per person, and whether you approve first.
+In Settings → Song requests, choose what 「点歌 song name」 (or 「点歌 song - artist」) does (one or the other):
+- **Sing list**: it goes on the "Requests" tab for you to sing; repeats are merged.
+- **Song bot**: the song is found on NetEase Cloud Music or QQ Music and played in order; 「切歌」 skips according to your rule. Log in by QR code to play VIP songs (login data stays in `data/music-login.json`).
+  - Played by the app: the app window itself plays the audio, so you hear it too; capture the app's audio in OBS. Pages opened on a phone or another PC stay silent by default.
+  - Music client: plays through the NetEase Cloud Music or QQ Music desktop client on this computer (Windows only).
+  - The song bot tab has a volume slider, a search box to add songs yourself, and a "swap" button when the wrong version was picked.
+
+Both modes: who may request (everyone / guards, fan medal, honor level), songs per person, approval; viewers send 「取消点歌」 to cancel their last request; "auto reply" answers in chat ("queued, 2 ahead", "not found"…); the song bot can also play random songs from your library or a NetEase playlist when nobody requests.
 
 ### Opening it on a phone (same Wi-Fi)
 

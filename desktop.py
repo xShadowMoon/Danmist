@@ -105,7 +105,8 @@ def find_browser():
     return None
 
 
-QUIET_BROWSER = ['--disable-extensions', '--disable-sync', '--disable-features=Translate,msImplicitSignin']
+QUIET_BROWSER = ['--disable-extensions', '--disable-sync', '--disable-features=Translate,msImplicitSignin',
+                 '--autoplay-policy=no-user-gesture-required']  # 点歌姬由雾幕窗口自己出声，不用先点一下页面
 
 
 def open_window(url):

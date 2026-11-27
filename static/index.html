@@ -391,7 +391,7 @@
         <div class="chips"><label class="chip" title="点上了、没找到、不合规则、取消了，都用连直播间的号（有机器人就用机器人）回那条弹幕一句。B 站发弹幕有频率限制，刷屏时会少回几句"><input type="checkbox" data-mr="reply"><span>自动回观众一句</span></label></div>
         <div id="mjirows">
         <div class="opt r"><span>曲库</span><div class="ctl"><span class="seg" data-mseg="src"><button type="button" data-val="163">网易云</button><button type="button" data-val="qq">QQ 音乐</button></span></div><span></span></div>
-        <div class="opt r" title="网页放：OBS 加「放歌」浏览器源（或者在歌单里开「这页出声」）；电脑上的网易云：叫这台电脑上装的网易云客户端放"><span>怎么放</span><div class="ctl"><span class="seg" data-mseg="mode"><button type="button" data-val="web">网页放</button><button type="button" data-val="app">电脑上的网易云</button></span></div><span></span></div>
+        <div class="opt r" title="雾幕自己放：雾幕（这台电脑上的窗口）直接出声，你自己也听得到，OBS 里捕获雾幕的声音就行；音乐客户端：叫这台电脑上装的网易云 / QQ 音乐客户端放"><span>怎么放</span><div class="ctl"><span class="seg" data-mseg="mode"><button type="button" data-val="web">雾幕自己放</button><button type="button" data-val="app">音乐客户端</button></span></div><span></span></div>
         <div class="opt r"><span>登录</span><div class="ctl" id="mlogin"></div><span></span></div>
         <div id="mqrbox" hidden></div>
         <div class="opt r"><span>谁能点</span><div class="ctl"><select data-mr="guard"><option value="0">所有人</option><option value="3">舰长以上</option><option value="2">提督以上</option><option value="1">只有总督</option></select></div><span></span></div>
@@ -405,7 +405,7 @@
         <div class="opt r" title="主播在页面上随时能切"><span>弹幕「切歌」</span><div class="ctl"><select data-mr="skip"><option value="host">只有我</option><option value="req">点这首的人</option><option value="guard">舰长以上</option></select></div><span></span></div>
         <div class="opt r" title="队列空了的时候放什么。观众一点歌，空闲时放的那首马上让位"><span>没人点时</span><div class="ctl"><span class="seg" data-mseg="idle"><button type="button" data-val="off">不放</button><button type="button" data-val="lib">曲库里随机</button><button type="button" data-val="list">网易云歌单</button></span></div><span></span></div>
         <div class="opt r" id="midlerow" hidden><span>歌单链接</span><div class="ctl"><input type="text" id="midlelist" maxlength="300" placeholder="粘网易云歌单的链接" style="flex:1;min-width:0"><button class="btn sm" id="midlesave">保存</button></div><span></span></div>
-        <div class="opt r"><span>OBS 放歌源</span><div class="ctl"><input type="text" id="mobsurl" readonly style="flex:1;min-width:0"><button class="btn sm" id="mobscopy">复制</button></div><span></span></div>
+        <div class="opt r" title="一般用不到：雾幕自己就会出声。只有想让 OBS 单独放一路歌（比如雾幕不在推流的电脑上）时才加这个浏览器源"><span>OBS 放歌源<small>（可选）</small></span><div class="ctl"><input type="text" id="mobsurl" readonly style="flex:1;min-width:0"><button class="btn sm" id="mobscopy">复制</button></div><span></span></div>
         </div>
       </fieldset>
       <fieldset><legend>显示</legend>
