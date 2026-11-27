@@ -2278,7 +2278,14 @@ async def demo_feed(hub):
         if i % 20 == 0:
             hub.room_update(watched=hub.state.room['watched'] + random.randint(1, 9),
                             online=max(60, hub.state.room['online'] + random.randint(-4, 5)))
-        await asyncio.sleep(random.uniform(0.4, 1.6))
+        await asyncio.sleep(random.uniform(0.4, 1.6) / DEMO_SPEED)
+
+
+# 演示模式造弹幕的速度倍数（压力测试用：环境变量 DANMIST_DEMO_SPEED=20 就是平时的 20 倍，2026-11-27）
+try:
+    DEMO_SPEED = max(0.1, min(200.0, float(os.environ.get('DANMIST_DEMO_SPEED') or 1)))
+except ValueError:
+    DEMO_SPEED = 1.0
 
 
 # 礼物动图（2026-11-18）：B 站礼物配置里每个礼物都有会动的 webp / gif。
@@ -4423,12 +4430,13 @@ async def main():
                     resp.headers[k] = up.headers[k]
             resp.headers['Cache-Control'] = 'no-store'
             await resp.prepare(request)
-            async for chunk in up.content.iter_chunked(64 * 1024):
-                await resp.write(chunk)
-            await resp.write_eof()
+            try:
+                async for chunk in up.content.iter_chunked(64 * 1024):
+                    await resp.write(chunk)
+                await resp.write_eof()
+            except ConnectionError:
+                pass  # 页面那边断开了（拖进度、切歌、关页面都会这样），不用记一大段报错
             return resp
-        except (ConnectionResetError, aiohttp.ClientError, asyncio.CancelledError):
-            raise
         finally:
             up.release()
 

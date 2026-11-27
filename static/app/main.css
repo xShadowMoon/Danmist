@@ -1580,3 +1580,4 @@ body.touring #spot { transition: opacity .3s, left .2s, top .2s, width .2s, heig
 #reqlist .mrow[draggable="true"] { cursor: grab; }
 #reqlist .mrow.mdragging { opacity: .45; }
 #reqlist .mrow.mdrop { box-shadow: inset 0 3px 0 var(--mist-d); }
+#sclist .scmore { display: block; margin: 6px auto 10px; }

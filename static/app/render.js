@@ -264,9 +264,16 @@ function renderSc() {
   const rd = s => scRead.has(String(s.id));
   // 置顶时间到了仅淡化外观，不改变已读或回应状态（可选）
   // 到时淡化仅影响外观，既不标为已读，也不标为已回应。
-  const list = S.scs.filter(s => !(cfg.sc.min > 0) || s.price >= cfg.sc.min).sort((a, b) => (cfg.sc.unreadTop ? rd(a) - rd(b) : 0) || ((b.end > now) - (a.end > now)) || b.t - a.t);
-  setList($('sclist'), list.length ? list.map(s => scHtml(s, true)).join('') : `<div class="empty${S.scs.length ? '' : ' xw'}">${S.scs.length ? `没有 ¥${cfg.sc.min} 以上的 SC` : '暂无 SC'}</div>`);
+  const all = S.scs.filter(s => !(cfg.sc.min > 0) || s.price >= cfg.sc.min).sort((a, b) => (cfg.sc.unreadTop ? rd(a) - rd(b) : 0) || ((b.end > now) - (a.end > now)) || b.t - a.t);
+  // 2026-11-27 性能检测：SC 很多时整张列表都画会越来越卡。没读的、还在置顶的全画，读过的只画最近 60 条，更早的点一下再展开
+  let shownRead = 0;
+  const list = scAll ? all : all.filter(s => !rd(s) || s.end > now || ++shownRead <= 60).slice(0, 150);  // 没读的也最多先画 150 条
+  const more = all.length - list.length;
+  setList($('sclist'), list.length ? list.map(s => scHtml(s, true)).join('') + (more > 0 ? `<button class="btn sm scmore" id="scmore">还有 ${more} 条更早的</button>` : '')
+    : `<div class="empty${S.scs.length ? '' : ' xw'}">${S.scs.length ? `没有 ¥${cfg.sc.min} 以上的 SC` : '暂无 SC'}</div>`);
 }
+let scAll = false;
+document.addEventListener('click', e => { if (e.target.id === 'scmore') { scAll = true; renderSc(); } });
 // 倒计时每秒走一下；有 SC 到时间了就重新排一次
 setInterval(() => {
   let expired = false;
