@@ -161,3 +161,18 @@ class MirrorTests(unittest.TestCase):
         fast, down = asyncio.run(run())
         self.assertGreater(fast, 0)
         self.assertEqual(down, 0)
+
+
+class SitePackagesTests(unittest.TestCase):
+    def test_only_new_library_files_are_added(self):
+        import os, tempfile
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as app:
+            s = os.path.join(root, 'python', 'Lib', 'site-packages')
+            d = os.path.join(app, 'python', 'Lib', 'site-packages')
+            os.makedirs(os.path.join(s, 'webview')); os.makedirs(os.path.join(s, 'aiohttp')); os.makedirs(os.path.join(d, 'aiohttp'))
+            open(os.path.join(s, 'webview', '__init__.py'), 'w').write('new')
+            open(os.path.join(s, 'aiohttp', 'x.pyd'), 'w').write('new')
+            open(os.path.join(d, 'aiohttp', 'x.pyd'), 'w').write('old')
+            self.assertEqual(updates.add_site_packages(root, app, lambda t: None), 1)
+            self.assertEqual(open(os.path.join(d, 'webview', '__init__.py')).read(), 'new')
+            self.assertEqual(open(os.path.join(d, 'aiohttp', 'x.pyd')).read(), 'old')

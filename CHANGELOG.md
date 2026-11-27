@@ -5,6 +5,74 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.15 · 2026-11-27
+
+### 独立软件 · A real desktop app
+
+- 雾幕有了自己的窗口（用 Windows 自带的 WebView2），不再借 Edge 的窗口：标题栏、任务栏图标都是雾幕的，记得窗口大小和位置；以前窗口里的设置第一次会自动搬过来。少数电脑开不起来时自动退回原来的 Edge 窗口。
+  Danmist now runs in its own window (Windows' built-in WebView2) instead of an Edge app window, with its own title bar and taskbar icon, and remembers its size and position. Settings carry over; it falls back to the Edge window if WebView2 is unavailable.
+- 安装程序改成正经的安装向导：选位置、创建桌面 / 开始菜单快捷方式、进度条、装完启动雾幕。
+  The installer is now a proper setup wizard with install location, shortcut options, a progress bar and a launch option.
+- 软件窗口里右键是雾幕自己的菜单，Ctrl+P 打印这类浏览器快捷键不再起作用。
+  Right-click shows Danmist's own menu, and browser shortcuts like Ctrl+P are disabled in the app window.
+
+### 点歌 · Song requests
+
+- 「点歌」二选一：**歌回点歌**（记进点歌单，主播来唱）或**点歌姬**（直接放）。点歌栏的页签带数字。
+  Choose what 「点歌」 does: a **sing list** for you, or the **song bot** that plays it. Tabs show counts.
+- 点歌姬：
+  The song bot:
+  - 雾幕自己出声，主播也听得到；也能叫电脑上的网易云或 QQ 音乐客户端放。OBS 放歌源改成可选。
+    Plays from the app itself so you hear it too, or through the NetEase / QQ Music desktop client. The OBS audio source is now optional.
+  - 登录音乐账号改成弹出官网登录页，像平常一样登录（以前扫码常被平台拦）。
+    Music accounts log in through the official website in a pop-up window (QR login was often blocked).
+  - 自动回观众一句（已点、前面几首、没找到、不合规则、已取消），可以关。
+    Optional chat replies: queued with position, not found, rule not met, cancelled.
+  - 放错版本能「换」一首；主播能自己搜歌加进去；能拖动排序；观众发「取消点歌」撤回。
+    Swap a wrongly matched version, add songs yourself, drag to reorder; viewers can send 「取消点歌」.
+  - 一个平台找不到或只能试听就自动换另一个平台；也能指定「点歌 qq 歌名」。
+    Falls back to the other platform when a song is missing or preview-only; viewers can force one with 「点歌 qq …」.
+  - 冷却：同一个人隔几秒、同一首几分钟内不再点。
+    Cooldowns per viewer and per song.
+  - 没人点时从曲库或网易云歌单里随机放；音量条、渐入渐出、响度均衡。
+    Idle playlist from your library or a NetEase playlist; volume slider, fades and loudness normalization.
+  - 歌词跟着放的歌上 OBS 歌词源；能点 B 站视频（点歌 BV号）。
+    The OBS lyrics source follows the playing song; viewers can request a Bilibili video's audio by BV id.
+
+### 界面 · Interface
+
+- 顶栏：常用的几个按钮带字放外面（OBS、朗读、历史、曲库，可以自己挑），其余在「更多」里。
+  Top bar: a few labeled buttons (your choice), the rest under "More".
+- 弹幕「简洁」（默认开）：名字前只留舰长和自己直播间的粉丝牌。
+  "Simple" danmaku (on by default): only guard and your own fan medal before names.
+- 数据条上有最近 60 分钟的小曲线；第一次用时右下角有「开始用」清单。
+  Sparklines on the stats bar; a getting-started checklist for new users.
+- 设置页：不常用的折进「更多设置」，说明收成「?」；浅色模式的灰字更清楚。
+  Settings fold rarely used groups and hide explanations behind "?"; better contrast in light mode.
+- 功能页改成图片卡片，跟着深浅色和主题色；更新页减字。SC 卡片有深色模式。
+  The feature guide uses illustrated cards that follow theme and accent; SC cards have a dark mode.
+
+### 手机 · Phone
+
+- 手机上滑弹幕不再被拽回最底下，也不会一碰就弹出观众卡片（点名字、头像才打开）。
+  Scrolling danmaku on phones no longer snaps back or pops open viewer cards (tap the name or avatar).
+- 「功能 / 更新」页在 iPhone 上能关了。
+  The feature / updates page can be closed on iPhone again.
+
+### 其他 · Other
+
+- 软件内更新先测速，选最快的地址，太慢马上换；GitHub 连不上时也能提示有新版本。
+  In-app updates pick the fastest mirror and switch when slow; new versions are announced even when GitHub is unreachable.
+- 修：0.9.13 起改直播间标题、开播后收不到成功 / 失败提示。
+  Fixed: no feedback after editing the room title or going live (since 0.9.13).
+
+### 怎么更新 · How to update
+
+顶栏点「下载更新」→「重启生效」，或者下载新的安装包直接装（存档、设置都保留）。从 0.9.14 及更早的版本用软件内更新过来，要到下一次更新才换成独立窗口（之前还是 Edge 窗口，功能都一样）；想马上用独立窗口就用安装包装一次。
+Click **download update** → **restart**, or run the new installer (your data is kept). Updating in-app from 0.9.14 or older keeps the Edge window until the next update; run the installer once to get the new window right away.
+
+---
+
 ## v0.9.14 · 2026-11-26
 
 ### 桌面版 · Desktop app

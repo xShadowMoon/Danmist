@@ -18,7 +18,7 @@ import zipfile
 
 import aiohttp
 
-VERSION = '0.9.14'
+VERSION = '0.9.15'
 REPO = 'xShadowMoon/Danmist'  # 2026-11-25 仓库从 bili-danmaku-board 改名成 Danmist（旧地址 GitHub 会自动转过来）
 REPOS = ('xshadowmoon/bili-danmaku-board', 'xshadowmoon/danmist')  # 下载地址认这两个名字（比的时候不分大小写）
 LATEST_API = f'https://api.github.com/repos/{REPO}/releases/latest'
@@ -232,11 +232,37 @@ async def _fetch(session, url, zpath, want, size, progress, give_up_slow=False):
         raise ValueError('下载的文件校验不对（没下完或者被改过）')
 
 
+def add_site_packages(root, app_dir, say=print):
+    """python 文件夹整个换不了（正在用），但新版本可能多了要用的库（比如 0.9.15 的独立窗口要 pywebview）：
+    只把自带 Python 里还没有的库文件补进去，已经有的一个都不动（2026-11-27）"""
+    src = os.path.join(root, 'python', 'Lib', 'site-packages')
+    dst = os.path.join(app_dir, 'python', 'Lib', 'site-packages')
+    if not (os.path.isdir(src) and os.path.isdir(dst)):
+        return 0
+    n = 0
+    for base, _, files in os.walk(src):
+        out = os.path.join(dst, os.path.relpath(base, src))
+        for f in files:
+            to = os.path.join(out, f)
+            if os.path.exists(to):
+                continue
+            try:
+                os.makedirs(out, exist_ok=True)
+                shutil.copy2(os.path.join(base, f), to)
+                n += 1
+            except OSError as e:
+                say(f'新库没装上：{f}（{e}）')
+    if n:
+        say(f'补上了 {n} 个新库文件')
+    return n
+
+
 def apply(app_dir, say=print, later=()):
     """启动器在服务停下以后调用：把 data/update 里准备好的新版本拷过来（不动 KEEP 里的），成功返回版本号"""
     v, root = staged(app_dir)
     if not v:
         return None
+    add_site_packages(root, app_dir, say)
     for name in os.listdir(root):
         if name in KEEP:
             continue
