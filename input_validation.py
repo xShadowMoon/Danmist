@@ -181,7 +181,7 @@ COMMAND_FIELDS = {
     'update_download': set(), 'update_restart': set(), 'open_mode': {'mode'}, 'make_shortcut': set(),
     'music_rules': {'on', 'mode', 'src', 'need_ok', 'skip', 'max', 'medal', 'guard', 'wealth', 'follow', 'maxdur', 'reply', 'idle', 'idle_list', 'vol'},
     'music_next': set(), 'music_ok': {'id'}, 'music_del': {'id'}, 'music_top': {'id'},
-    'music_vol': {'vol'}, 'music_add': {'text'}, 'music_alts': {'id'}, 'music_swap': {'id', 'sid'},
+    'music_vol': {'vol'}, 'music_add': {'text'}, 'music_alts': {'id'}, 'music_swap': {'id', 'sid'}, 'music_weblogin': {'src'},
     'music_qr': {'src'}, 'music_poll': {'src', 'key'}, 'music_logout': {'src'}, 'music_cookie': {'src', 'cookie'},
     'plat_set': {'rooms'}, 'plat_show': {'plat', 'room', 'show'},
     'tags_set': {'builtin', 'custom'}, 'tag_user': {'uid', 'tags', 'bot'}, 'room_set': {'plat', 'room', 'sure'},
@@ -316,7 +316,7 @@ def validate_command(c, clean_rules):
             raise InputError('歌的编号不对')
     elif cmd in ('music_ok', 'music_del', 'music_top', 'music_alts'):
         text(c.get('id'), '点歌编号', 32, True)
-    elif cmd in ('music_qr', 'music_poll', 'music_logout', 'music_cookie'):
+    elif cmd in ('music_qr', 'music_poll', 'music_logout', 'music_cookie', 'music_weblogin'):
         if c.get('src') not in ('163', 'qq'):
             raise InputError('不支持这个音乐平台')
         if cmd == 'music_cookie':

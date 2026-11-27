@@ -146,6 +146,8 @@ function connect() {
       const bad = (data?.rooms || []).find(r => r.warn && !was.has(r.plat + r.room));
       S.platforms = data; drawPlats();
       if (bad) note(`${bad.label || bad.plat} ${bad.room}：${bad.state}（设置 → 直播间）`, false);
+    } else if (type === 'music_login') {  // 官网登录页那边登好了 / 没登成
+      note(data.msg, data.ok);
     } else if (type === 'music_rules') {
       S.music_rules = data; drawMusicSet();
     } else if (type === 'result') {

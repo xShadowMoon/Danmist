@@ -47,6 +47,7 @@ from music import MusicService
 import platforms
 from bus import Bus
 import shortcut_icon
+import music_login
 from views import (VIEWER_ROOM, VIEWER_ENTER, VIEWER_GUARD, VIEWER_USER, VIEWER_REQ, VIEWER_GUARDLIST, VIEWER_DM, VIEWER_SC,  # noqa: F401
                    VIEWER_GIFT, VIEWER_SONG, public_view, pick, viewer_gift, viewer_snapshot, viewer_view, obs_view)
 import tags as tag_store
@@ -2847,6 +2848,7 @@ async def main():
     hub.obs_seen = os.path.exists(os.path.join(DIR, 'data', 'obs-seen'))  # OBS 里加过弹幕没有（「开始用」清单）  # config.json 写了主播名字就用写的；没写就去 B 站查（bili.poll_room，2026-11-26）
     hub.music = MusicService(os.path.join(DIR, 'data'), not args.demo, write_json, log, hub.emit, hub.emit_admin)
     reply_q, reply_busy = [], [False]
+    music_login_busy = [False]
 
     async def auto_say(text, uid, dmid, name):
         """点歌自动回观众一句（2026-11-26）：有机器人代发就用机器人，没有就用连直播间的号回复那条弹幕。
@@ -3449,6 +3451,27 @@ async def main():
                                 await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': msg}})
                             except ValueError as e:
                                 await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': str(e)}})
+                            continue
+                        if cmd == 'music_weblogin':  # 弹出官网登录页登录音乐账号（2026-11-26，扫码常被平台拦）
+                            if not local:
+                                msg = '登录窗口会开在运行雾幕的那台电脑上：请在那台电脑上点'
+                            elif args.demo:
+                                msg = '演示模式不能登录'
+                            elif music_login_busy[0]:
+                                msg = '登录窗口已经开着了'
+                            else:
+                                music_login_busy[0] = True
+                                src_l = c['src']
+
+                                async def run_login(src_l=src_l):
+                                    try:
+                                        ok_l, msg_l = await music_login.web_login(src_l, os.path.join(DIR, 'data'), hub.music.set_cookie, log)
+                                    finally:
+                                        music_login_busy[0] = False
+                                    hub.emit_admin('music_login', {'src': src_l, 'ok': ok_l, 'msg': msg_l})
+                                asyncio.get_event_loop().create_task(run_login())
+                                msg = '已经打开登录窗口：在里面登录好，窗口会自己关掉'
+                            await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': not msg.startswith(('登录窗口会', '演示', '登录窗口已经')), 'msg': msg}})
                             continue
                         if cmd in ('music_qr', 'music_poll', 'music_logout', 'music_cookie'):
                             p = hub.music.providers[c['src']]

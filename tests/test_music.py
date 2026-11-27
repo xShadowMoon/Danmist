@@ -156,3 +156,16 @@ class MusicV2Tests(unittest.TestCase):
         for bad in ({'idle': 'radio'}, {'idle_list': 'https://example.com/x'}, {'vol': 101}):
             with self.assertRaises(ValueError):
                 music.clean_rules(bad, music.DEFAULTS)
+
+
+class WebLoginTests(unittest.TestCase):
+    """弹出官网登录页登录（2026-11-26）：从浏览器的 Cookie 里挑出登录要的"""
+    def test_cookie_text(self):
+        import music_login as ml
+        cs = [{'domain': '.music.163.com', 'name': 'MUSIC_U', 'value': 'abc'}, {'domain': '.music.163.com', 'name': '__csrf', 'value': 'x'},
+              {'domain': '.qq.com', 'name': 'uin', 'value': 'o123'}, {'domain': '.y.qq.com', 'name': 'qqmusic_key', 'value': 'K'},
+              {'domain': '.evil.com', 'name': 'MUSIC_U', 'value': 'zzz'}]
+        self.assertEqual(ml.cookie_text('163', cs), 'MUSIC_U=abc; __csrf=x')
+        self.assertEqual(ml.cookie_text('qq', cs), 'uin=o123; qqmusic_key=K')
+        self.assertEqual(ml.cookie_text('163', cs[2:4]), '')
+        self.assertEqual(ml.cookie_text('qq', cs[:2]), '')

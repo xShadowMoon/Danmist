@@ -106,7 +106,7 @@ function drawMusicSet() {
   if (document.activeElement !== $('midlelist')) $('midlelist').value = R.idle_list ? `https://music.163.com/#/playlist?id=${R.idle_list}` : '';
   const lg = R.login || {}, src = R.src;
   $('mlogin').innerHTML = lg[src] ? `<span class="mlg">${esc(lg[src])}</span><button class="btn sm" data-mlogout="${src}">退出</button>`
-    : `<button class="btn sm" data-mlogin="${src}">${icon('phone')} 扫码登录${MSRC[src]}</button><button class="btn sm" data-mcookie="${src}" title="扫码登不上时用：在电脑浏览器登录${MSRC[src]}网页版，按 F12 → 应用/存储 → Cookie，复制${src === '163' ? ' MUSIC_U' : ' uin 和 qqmusic_key'}粘进来">粘贴登录信息</button>`
+    : `<button class="btn sm go" data-mweb="${src}" title="在这台电脑上弹出${MSRC[src]}官网的登录页，像平常一样登录（扫码、密码都行），登好后窗口自己关掉">登录${MSRC[src]}</button><button class="btn sm" data-mcookie="${src}" title="扫码登不上时用：在电脑浏览器登录${MSRC[src]}网页版，按 F12 → 应用/存储 → Cookie，复制${src === '163' ? ' MUSIC_U' : ' uin 和 qqmusic_key'}粘进来">粘贴登录信息</button>`
       + `<small class="mtip">${R.mode === 'app' ? `「音乐客户端」用${MSRC[src]}客户端自己的登录，这里可以不登` : '不登录只能放免费的歌'}</small>`;
   $('mobsurl').value = location.origin + location.pathname.replace(/[^/]*$/, '') + 'obs-music';
 }
@@ -120,6 +120,8 @@ document.addEventListener('click', e => {
   const sb = e.target.closest('#msetbox [data-mseg] button');
   if (sb) { const k = sb.parentElement.dataset.mseg; sendRules({ [k]: k === 'on' ? sb.dataset.val === 'true' : sb.dataset.val }); return; }
   if (e.target.closest('#midlesave')) { sendRules({ idle_list: $('midlelist').value.trim() }); return; }
+  const wl = e.target.closest('[data-mweb]');  // 弹出官网登录页（2026-11-26：接口扫码常被平台拦，登不上）
+  if (wl) { window._ws?.send(JSON.stringify({ cmd: 'music_weblogin', src: wl.dataset.mweb })); return; }
   const li = e.target.closest('[data-mlogin]');
   if (li) { mqr = { src: li.dataset.mlogin, key: '', t: 0 }; window._ws?.send(JSON.stringify({ cmd: 'music_qr', src: mqr.src })); return; }
   const mc = e.target.closest('[data-mcookie]');
