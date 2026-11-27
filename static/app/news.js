@@ -375,7 +375,7 @@ function sendRoom(sel, input, tipEl, sure = false) {
   window._ws?.send(JSON.stringify({ cmd: 'room_set', plat: sel.value, room: Number(room), sure: sure || sel.value !== 'bili' }));
 }
 let roomTip = null;
-function roomResult(d) {
+function roomSetResult(d) {  // 设置 → 直播间（不能叫 roomResult：songs.js 里改标题、开播的结果用了这个名字）
   const t = roomTip || $('sc-tip') || $('roomnow');
   if (d.ask) {
     roomAsk = d.ask;

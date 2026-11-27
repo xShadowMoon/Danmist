@@ -386,8 +386,10 @@
     </div>
     <div class="spage" data-sp="req">
       <h2 class="ptitle">点歌<small>点歌栏标题上的齿轮也是打开这一页</small></h2>
-      <fieldset class="admin-only" id="msetbox"><legend>弹幕点歌直接放</legend>
-        <div class="chips"><label class="chip" title="开着时，弹幕「点歌 歌名」直接从音乐平台找歌放；「切歌」按下面的规则切。关掉就跟以前一样只记进点歌单"><input type="checkbox" data-mr="on"><span><i class="ic" data-ic="music"></i> 开</span></label></div>
+      <fieldset class="admin-only" id="msetbox"><legend>观众发「点歌 歌名」时</legend>
+        <div class="mmode" data-mseg="on"><button type="button" data-val="false"><b>歌回点歌</b><small>记进点歌单，我来唱</small></button><button type="button" data-val="true"><b>点歌姬</b><small>直接从音乐平台找歌放</small></button></div>
+        <div class="chips"><label class="chip" title="点上了、没找到、不合规则、取消了，都用连直播间的号（有机器人就用机器人）回那条弹幕一句。B 站发弹幕有频率限制，刷屏时会少回几句"><input type="checkbox" data-mr="reply"><span>自动回观众一句</span></label></div>
+        <div id="mjirows">
         <div class="opt r"><span>曲库</span><div class="ctl"><span class="seg" data-mseg="src"><button type="button" data-val="163">网易云</button><button type="button" data-val="qq">QQ 音乐</button></span></div><span></span></div>
         <div class="opt r" title="网页放：OBS 加「放歌」浏览器源（或者在歌单里开「这页出声」）；电脑上的网易云：叫这台电脑上装的网易云客户端放"><span>怎么放</span><div class="ctl"><span class="seg" data-mseg="mode"><button type="button" data-val="web">网页放</button><button type="button" data-val="app">电脑上的网易云</button></span></div><span></span></div>
         <div class="opt r"><span>登录</span><div class="ctl" id="mlogin"></div><span></span></div>
@@ -401,7 +403,10 @@
           <label class="chip" title="点的歌先等你在歌单里点 ✓ 才放"><input type="checkbox" data-mr="need_ok"><span>要我同意</span></label>
         </div>
         <div class="opt r" title="主播在页面上随时能切"><span>弹幕「切歌」</span><div class="ctl"><select data-mr="skip"><option value="host">只有我</option><option value="req">点这首的人</option><option value="guard">舰长以上</option></select></div><span></span></div>
+        <div class="opt r" title="队列空了的时候放什么。观众一点歌，空闲时放的那首马上让位"><span>没人点时</span><div class="ctl"><span class="seg" data-mseg="idle"><button type="button" data-val="off">不放</button><button type="button" data-val="lib">曲库里随机</button><button type="button" data-val="list">网易云歌单</button></span></div><span></span></div>
+        <div class="opt r" id="midlerow" hidden><span>歌单链接</span><div class="ctl"><input type="text" id="midlelist" maxlength="300" placeholder="粘网易云歌单的链接" style="flex:1;min-width:0"><button class="btn sm" id="midlesave">保存</button></div><span></span></div>
         <div class="opt r"><span>OBS 放歌源</span><div class="ctl"><input type="text" id="mobsurl" readonly style="flex:1;min-width:0"><button class="btn sm" id="mobscopy">复制</button></div><span></span></div>
+        </div>
       </fieldset>
       <fieldset><legend>显示</legend>
         <div class="opt r"><span>字号</span><div class="ctl"><input type="range" min="80" max="160" step="5" data-u="%" data-k="fs.req"></div><button class="rs" title="恢复默认">↺</button></div>

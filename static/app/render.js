@@ -100,7 +100,7 @@ addEventListener('pointercancel', () => { dragging = false; }, true);
 dmList.addEventListener('scroll', () => {
   const top = dmList.scrollTop, down = top >= lastTop, byUser = dragging || performance.now() - userAt < 800;
   lastTop = top;
-  if (touching || (!byUser && (autoScroll || performance.now() < holdUntil))) return;  // 页面自己滚的，不算人在滚
+  if (touching || settleT || (!byUser && (autoScroll || performance.now() < holdUntil))) return;  // 页面自己滚的、手指甩出去的惯性还在滚，都不算
   if (down && dmList.scrollHeight - top - dmList.clientHeight < 30) followNow(false);
   else if (!down && byUser) followStop(false);
 });
@@ -118,7 +118,12 @@ dmList.addEventListener('mouseleave', hoverResume);
 setInterval(() => { if (hoverHeld && performance.now() - hoverMoveAt > 2000) hoverResume(); }, 500);
 dmList.addEventListener('touchstart', e => { touchY = e.touches[0].clientY; touching = true; unstick(); }, { passive: true });
 dmList.addEventListener('touchmove', e => { if (e.touches[0].clientY > touchY + 3) unstick(); }, { passive: true });
-const touchEnd = () => { touching = false; if (dmList.scrollHeight - dmList.scrollTop - dmList.clientHeight < 30) followNow(false); };
+// 2026-11-26 手机上还是滑不动（用户反馈）：手指一甩，抬手那一刻列表其实还没怎么动（是抬手以后惯性滚上去的），
+// 以前抬手时一看「离底不到 30 像素」就又跟随了，下一条弹幕一来就被拽回最底下。现在等惯性停了（0.4 秒没再滚）再看在不在底
+let settleT = 0;
+const settleCheck = () => { clearTimeout(settleT); settleT = setTimeout(() => { settleT = 0; if (!touching && dmList.scrollHeight - dmList.scrollTop - dmList.clientHeight < 30) followNow(false); }, 400); };
+dmList.addEventListener('scroll', () => { if (settleT && !touching) settleCheck(); }, { passive: true });
+const touchEnd = () => { touching = false; settleCheck(); };
 dmList.addEventListener('touchend', touchEnd, { passive: true });
 dmList.addEventListener('touchcancel', touchEnd, { passive: true });
 dmList.addEventListener('pointerdown', e => { if (e.offsetX > dmList.clientWidth) unstick(); });  // 按住滚动条

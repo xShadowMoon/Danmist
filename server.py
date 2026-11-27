@@ -1211,11 +1211,18 @@ class Hub:
         self.emit('dm', item, uc=len(s.users))
 
     def music_dm(self, d):
-        """弹幕点歌直接放（2026-11-25）：开着的话「点歌 歌名」进放歌队列、「切歌」按规则切；别的弹幕照旧"""
+        """点歌姬（弹幕点歌直接放，2026-11-25）：开着的话「点歌 歌名」进放歌队列、「切歌」按规则切、「取消点歌」撤回；别的弹幕照旧。
+        关着就是歌回点歌（collect：记进点歌单，主播唱）。两种都用「点歌」，二选一（2026-11-26 用户定的）"""
         m = getattr(self, 'music', None)
+        text = d['text'].strip()
+        if text in ('取消点歌', '撤回点歌'):
+            if m and m.rules['on']:
+                m.cancel_by(d)
+            else:
+                self.req_cancel(d)
+            return True
         if not m or not m.rules['on']:
             return False
-        text = d['text'].strip()
         if text == '切歌':
             m.skip_by(d)
             return True
@@ -1227,6 +1234,21 @@ class Hub:
         own = s.room.get('room_real') or s.room_id
         asyncio.get_event_loop().create_task(m.request(d, hit.group(1).strip(), own, followed))
         return True
+
+    def req_cancel(self, d):
+        """歌回点歌：弹幕「取消点歌」撤掉这个人最后点的、还没唱的那首"""
+        s = self.state
+        r = next((x for x in reversed(s.reqs) if x['uid'] == d['uid'] and x['kind'] == 'song' and not x['done']), None)
+        m = getattr(self, 'music', None)
+        if not r:
+            if m:
+                m.reply(d, '你没有点过歌')
+            return
+        s.reqs = [x for x in s.reqs if x is not r]
+        s.dirty = True
+        self.emit('reqs', s.reqs)
+        if m:
+            m.reply(d, f'已取消{m.short(r["song"])}')
 
     def collect(self, d):
         """点歌 / 提问收集：认出来的弹幕记进单子，网页上「点歌 & 提问」面板显示。"""
@@ -1254,6 +1276,8 @@ class Hub:
                     fans.append({'uid': d['uid'], 'name': d['name']})
                     s.dirty = True
                     self.emit('reqs', s.reqs)
+                    if getattr(self, 'music', None):
+                        self.music.reply(d, f'{self.music.short(song)}已经有人点了，记上你了')
                 return
         if not over and rules['max'] and sum(1 for r in s.reqs if r['uid'] == d['uid'] and r['kind'] == 'song' and not r.get('over')) >= rules['max']:
             over = f"每人最多 {rules['max']} 首"
@@ -1275,6 +1299,9 @@ class Hub:
                     ids.remove(removed['id'])
         s.dirty = True
         self.emit('req', item)
+        m = getattr(self, 'music', None)
+        if m:  # 自动回一句（2026-11-26）
+            m.reply(d, f'{m.short(song)}：{over}' if over else f'收到，记下{m.short(song)}了')
 
     def obs_test(self):
         """开播前测试：只发给打开着的 OBS 弹幕页，一条弹幕、一条 SC、一条上舰，隔一秒多一条；不进本场数据。"""
@@ -2819,6 +2846,36 @@ async def main():
     hub.series = collections.deque(maxlen=60)  # 数据条小曲线（sample_series）
     hub.obs_seen = os.path.exists(os.path.join(DIR, 'data', 'obs-seen'))  # OBS 里加过弹幕没有（「开始用」清单）  # config.json 写了主播名字就用写的；没写就去 B 站查（bili.poll_room，2026-11-26）
     hub.music = MusicService(os.path.join(DIR, 'data'), not args.demo, write_json, log, hub.emit, hub.emit_admin)
+    reply_q, reply_busy = [], [False]
+
+    async def auto_say(text, uid, dmid, name):
+        """点歌自动回观众一句（2026-11-26）：有机器人代发就用机器人，没有就用连直播间的号回复那条弹幕。
+        排着一条一条发，隔 3 秒，排太多就丢掉（刷屏时不要连着回）"""
+        if args.demo or len(reply_q) >= 4:
+            return
+        reply_q.append((text, uid, dmid, name))
+        if reply_busy[0]:
+            return
+        reply_busy[0] = True
+        try:
+            while reply_q:
+                t, u, dm, nm = reply_q.pop(0)
+                try:
+                    if BOT_SAY_URL:
+                        ok, why = await bot_say(f'@{nm} {t}'[:40] if nm else t)
+                    else:
+                        ck = load_cookie()
+                        m_uid = re.search(r'DedeUserID=(\d+)', ck or '')
+                        ok, why = await own_say({'cookie': ck, 'uid': int(m_uid.group(1)) if m_uid else 0}, t[:40], u, dm) if ck else (False, '没有登录的号')
+                    if not ok:
+                        log.info('点歌回复没发出去：%s', why)
+                except Exception as e:
+                    log.info('点歌回复没发出去：%s', e)
+                await asyncio.sleep(3.2)
+        finally:
+            reply_busy[0] = False
+    hub.music.say = auto_say
+    hub.music.idle_names = lambda: [(k, str(v.get('artist') or '')) for k, v in hub.songbook.items() if v.get('available', True) is not False]
     hub.platforms = Platforms(hub, os.path.join(DIR, 'data'), not args.demo, write_json, log, lambda: bare)
     hub.admin_links, hub.public_limits = links, limits
     if args.demo:
@@ -3371,7 +3428,22 @@ async def main():
                             except (ValueError, OSError) as e:
                                 await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': str(e)}})
                             continue
-                        if cmd in ('music_rules', 'music_next', 'music_ok', 'music_del', 'music_top'):
+                        if cmd in ('music_add', 'music_alts', 'music_swap'):  # 主播自己加歌、放错版本换一首（2026-11-26）
+                            try:
+                                extra = {}
+                                if cmd == 'music_add':
+                                    await hub.music.request({'uid': 0, 'name': '主播', 'face': '', 'guard': 0}, str(c.get('text', '')).strip(), 0, True, host=True)
+                                    msg = '加进去了'
+                                elif cmd == 'music_alts':
+                                    extra = {'id': c['id'], 'alts': await hub.music.alternatives(c['id'])}
+                                    msg = '' if extra['alts'] else '没搜到别的版本'
+                                else:
+                                    msg = await hub.music.swap(c['id'], str(c.get('sid', '')))
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': msg, **extra}})
+                            except (ValueError, aiohttp.ClientError, asyncio.TimeoutError) as e:
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': str(e) or '音乐平台连不上，过一会再试'}})
+                            continue
+                        if cmd in ('music_rules', 'music_next', 'music_ok', 'music_del', 'music_top', 'music_vol'):
                             try:
                                 msg = hub.music.command(c)
                                 await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': msg}})

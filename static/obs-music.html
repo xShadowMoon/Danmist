@@ -35,7 +35,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const player = new MusicPlayer(location.pathname.replace(/[^/]*$/, ''));
 player.on = true;
-player.setVolume((Number(P.get('vol')) || 80) / 100);
+player.scale = Math.max(0, Math.min(1, (Number(P.get('vol')) || 100) / 100));  // 网址里的 vol（2026-11-26 起跟点歌姬面板上的音量乘起来）
 let M = null, skew = 0;
 function draw() {
   const now = M?.list?.find(x => x.state === 'play'), next = M?.list?.filter(x => x.state === 'ok') || [];

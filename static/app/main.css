@@ -1562,3 +1562,17 @@ body.touring #spot { transition: opacity .3s, left .2s, top .2s, width .2s, heig
 .ctxmenu button { border: 0; background: none; color: var(--ink); text-align: left; padding: 7px 12px; border-radius: 7px; font: inherit; font-size: 13.5px; cursor: pointer; }
 .ctxmenu button:hover { background: var(--hover); color: var(--mist-d); }
 #guide .nline[hidden] { display: none; }
+/* 点歌改版（2026-11-26）：页签上的数字、点歌姬的音量、加歌、换版本；设置里二选一 */
+#p-req .tab em { font-style: normal; margin-left: 4px; font-size: 11px; background: var(--mist-d); color: #fff; border-radius: 999px; padding: 0 6px; }
+.mq .mvol { display: inline-flex; align-items: center; gap: 4px; color: var(--ink3); }
+.mq .mvol input { width: 72px; }
+.mq .madd { padding: 4px 0 6px; }
+.mq .madd input { width: 100%; }
+.malts { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; border: 1px solid var(--line); border-radius: 8px; padding: 4px; background: var(--input); }
+.malts button { display: flex; align-items: baseline; gap: 8px; border: 0; background: none; color: var(--ink); text-align: left; padding: 5px 8px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 13px; }
+.malts button:hover, .malts button.on { background: var(--chip); color: var(--mist-d); }
+.malts button small { color: var(--ink3); font-size: 12px; }
+#msetbox .mmode { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 8px; }
+#msetbox .mmode button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: 1px solid var(--line); background: var(--card); color: var(--ink2); border-radius: 10px; padding: 9px 12px; cursor: pointer; text-align: left; }
+#msetbox .mmode button b { font-size: 14px; } #msetbox .mmode button small { font-size: 12.5px; color: var(--ink3); }
+#msetbox .mmode button.on { border-color: var(--mist-d); background: var(--chip); color: var(--mist-d); }

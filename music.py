@@ -35,7 +35,14 @@ DEFAULTS = {
     'wealth': 0,        # 荣耀等级 ≥ 几级（0 = 不看）
     'follow': False,    # 要关注了主播（认粉丝牌：戴着本直播间的牌子，或者这场里点过关注）
     'maxdur': 420,      # 太长的歌不放（秒，0 = 不限）
+    # 2026-11-26 点歌改版
+    'reply': False,     # 自动回观众一句（已点 / 没找到 / 不合规则 / 已取消），用连直播间的号（或者机器人）发
+    'idle': 'off',      # 没人点的时候：off 不放 / lib 从曲库里随机 / list 从网易云歌单里随机
+    'idle_list': '',    # 网易云歌单的 id（粘链接也行，存的时候只留数字）
+    'vol': 80,          # 放歌音量（0~100），网页放、OBS 放歌源都跟着它
 }
+IDLE_NAME = '空闲时'
+TITLE_SHORT = 10   # 自动回的那句话里歌名最多几个字（B 站弹幕 20 个字以内最稳）
 
 
 def hash33(s):
@@ -64,8 +71,15 @@ def clean_rules(c, old):
         elif isinstance(v, int):
             if type(x) is not int or not 0 <= x <= (3600 if k == 'maxdur' else 100):
                 raise ValueError(f'{k} 数字不对')
+        elif k == 'idle_list':
+            if not isinstance(x, str) or len(x) > 300:
+                raise ValueError('歌单链接不对')
+            m = re.search(r'(?:[?&#]id=|playlist/)(\d{3,20})', x) or re.fullmatch(r'\s*(\d{3,20})\s*', x)
+            if x.strip() and not m:
+                raise ValueError('认不出歌单：粘网易云歌单的链接，或者歌单 id（一串数字）')
+            x = m.group(1) if m else ''
         else:
-            allowed = {'mode': ('web', 'app'), 'src': ('163', 'qq'), 'skip': ('host', 'req', 'guard')}[k]
+            allowed = {'mode': ('web', 'app'), 'src': ('163', 'qq'), 'skip': ('host', 'req', 'guard'), 'idle': ('off', 'lib', 'list')}[k]
             if x not in allowed:
                 raise ValueError(f'{k} 不支持')
         out[k] = x
@@ -120,6 +134,17 @@ class NetEase:
                 song['cover'] = pic.replace('http://', 'https://') + '?param=200y200'
         except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, IndexError):
             pass
+
+    async def playlist(self, pid):
+        """网易云歌单里的歌（空闲时随机放，2026-11-26）"""
+        j, _ = await self.get('/api/playlist/detail', {'id': pid})
+        pl = (j or {}).get('result') or (j or {}).get('playlist') or {}
+        out = []
+        for s in pl.get('tracks') or []:
+            out.append({'src': '163', 'sid': str(s.get('id')), 'title': str(s.get('name') or ''),
+                        'artist': ' / '.join(str(a.get('name') or '') for a in (s.get('artists') or s.get('ar') or [])),
+                        'dur': int((s.get('duration') or s.get('dt') or 0) / 1000), 'cover': ''})
+        return [s for s in out if s['sid'] and s['dur']]
 
     async def url(self, sid):
         j, _ = await self.get('/api/song/enhance/player/url', {'ids': f'[{sid}]', 'br': '320000'})
@@ -325,6 +350,9 @@ class MusicService:
         self.session = None
         self.wake = asyncio.Event()
         self.providers = {'163': NetEase(self), 'qq': QQMusic(self)}
+        self.say = None          # 自动回观众一句：async say(text, uid, dmid, name)，server.py 设
+        self.idle_names = None   # 曲库里的歌名：() -> [(歌名, 歌手)]，server.py 设
+        self.idle_recent = []    # 空闲时最近放过的，别老是那几首
         try:
             with open(self.file, encoding='utf-8') as f:
                 j = json.load(f)
@@ -404,7 +432,8 @@ class MusicService:
         keep = ('id', 't', 'uid', 'name', 'face', 'guard', 'src', 'sid', 'title', 'artist', 'dur', 'cover', 'state', 'why', 'start')
         on = [x for x in self.queue if x['state'] in ('play', 'ok', 'wait', 'deny')]
         done = [x for x in self.queue if x['state'] in ('done', 'skip')][-5:]
-        return {'on': self.rules['on'], 'mode': self.rules['mode'], 'now': time.time(),
+        keep = keep + ('idle',)
+        return {'on': self.rules['on'], 'mode': self.rules['mode'], 'now': time.time(), 'vol': self.rules['vol'],
                 'list': [{k: x[k] for k in keep if k in x} for x in done + on]}
 
     def push(self):
@@ -431,9 +460,29 @@ class MusicService:
             return f'每人最多排 {R["max"]} 首'
         return ''
 
-    async def request(self, d, text, own_room, followed):
-        """观众点了一首。找不到、不合规则的也记一条（灰色，写原因），主播看得到"""
-        why = self.check(d, own_room, followed)
+    def reply(self, d, text):
+        """自动回观众一句（开了「自动回一句」才回）"""
+        if self.rules['reply'] and self.say and d.get('uid'):
+            asyncio.get_event_loop().create_task(self.say(text, d.get('uid'), d.get('dmid', ''), d.get('name', '')))
+
+    @staticmethod
+    def short(title):
+        title = str(title or '').strip()
+        return title if len(title) <= TITLE_SHORT else title[:TITLE_SHORT - 1] + '…'
+
+    def ahead(self, it):
+        """前面还有几首（正在放的不算）"""
+        n = 0
+        for x in self.queue:
+            if x is it:
+                break
+            if x['state'] in ('ok', 'wait') and not x.get('idle'):
+                n += 1
+        return n
+
+    async def request(self, d, text, own_room, followed, host=False):
+        """观众点了一首。找不到、不合规则的也记一条（灰色，写原因），主播看得到。host=True：主播自己在页面上加的，不看规则"""
+        why = '' if host else self.check(d, own_room, followed)
         item = {'id': uuid.uuid4().hex[:12], 't': int(time.time()), 'uid': d['uid'], 'name': d['name'], 'face': d.get('face', ''),
                 'guard': d.get('guard') or 0, 'src': self.rules['src'], 'sid': '', 'title': text, 'artist': '', 'dur': 0, 'cover': '',
                 'state': 'deny' if why else ('wait' if self.rules['need_ok'] else 'ok')}
@@ -449,14 +498,98 @@ class MusicService:
                 item.update(state='deny', why=miss)
             else:
                 item.update(song)
-                if self.rules['maxdur'] and song['dur'] > self.rules['maxdur']:
+                if host:
+                    item['state'] = 'ok'
+                if self.rules['maxdur'] and song['dur'] > self.rules['maxdur'] and not host:
                     item.update(state='deny', why=f'太长了（{song["dur"] // 60} 分钟）')
-                elif any(x['sid'] == song['sid'] and x['state'] in ('wait', 'ok', 'play') for x in self.queue):
+                elif any(x['sid'] == song['sid'] and x['state'] in ('wait', 'ok', 'play') and not x.get('idle') for x in self.queue):
+                    self.reply(d, f'{self.short(song["title"])}已经在排了')
                     return  # 已经排着了，不重复
+        cur = self.current()
+        if cur and cur.get('idle') and item['state'] == 'ok':  # 空闲时随便放的那首让位给观众点的
+            cur['state'] = 'done'
         self.queue.append(item)
         self.trim()
         self.push()
         self.wake.set()
+        if not host:
+            if item['state'] == 'deny':
+                self.reply(d, f'{self.short(text)}：{item.get("why") or "点不了"}')
+            elif item['state'] == 'wait':
+                self.reply(d, f'已点{self.short(item["title"])}，等主播同意')
+            else:
+                n = self.ahead(item)
+                self.reply(d, f'已点{self.short(item["title"])}' + (f'，前面还有{n}首' if n else '，马上放'))
+
+    def cancel_by(self, d):
+        """弹幕「取消点歌」：撤掉这个人最后点的、还没开始放的那首"""
+        it = next((x for x in reversed(self.queue) if x['uid'] == d['uid'] and x['state'] in ('ok', 'wait')), None)
+        if not it:
+            self.reply(d, '你没有排着的歌')
+            return False
+        it['state'] = 'skip'
+        it['why'] = '点歌的人取消了'
+        self.push()
+        self.wake.set()
+        self.reply(d, f'已取消{self.short(it["title"])}')
+        return True
+
+    async def alternatives(self, iid):
+        """放错版本时换一首：按这首的歌名再搜一次，列出能选的（存在这首身上，换的时候只认这里面的）"""
+        it = next((x for x in self.queue if x['id'] == iid), None)
+        if not it:
+            raise ValueError('这首已经不在了')
+        p = self.providers[it['src']]
+        q = it.get('ask') or it['title']
+        songs = [s for s in await p.search(q, 12) if s['sid'] and s['dur']][:10]
+        it['alts'] = {s['sid']: s for s in songs}
+        return [{k: s[k] for k in ('sid', 'title', 'artist', 'dur')} for s in songs]
+
+    async def swap(self, iid, sid):
+        it = next((x for x in self.queue if x['id'] == iid), None)
+        if not it or str(sid) not in (it.get('alts') or {}):
+            raise ValueError('这首已经不在了，或者先点「换」再选')
+        s = dict(it['alts'][str(sid)])
+        p = self.providers[it['src']]
+        if not (self.rules['mode'] == 'app' and it['src'] == '163') and not await p.url(s['sid']):
+            raise ValueError('这个版本放不了（可能要会员）')
+        await p.detail(s)
+        it.setdefault('ask', it['title'])
+        it.update({k: s[k] for k in ('sid', 'title', 'artist', 'dur', 'cover')})
+        it.pop('why', None)
+        if it['state'] == 'deny':
+            it['state'] = 'ok'
+        if it['state'] == 'play':  # 正在放的换了：从头放新的
+            it['start'] = time.time() + 1.5
+            if self.rules['mode'] == 'app':
+                p.app_play(it['sid'])
+        self.push()
+        self.wake.set()
+        return f'换成了：{s["title"]}' + (f' · {s["artist"]}' if s['artist'] else '')
+
+    async def pick_idle(self):
+        """没人点的时候放什么（2026-11-26）：曲库里随机 / 网易云歌单里随机。找不到就算了"""
+        R = self.rules
+        try:
+            if R['idle'] == 'list' and R['idle_list']:
+                pool = await self.providers['163'].playlist(R['idle_list'])
+                pool = [s for s in pool if s['sid'] not in self.idle_recent] or pool
+                random.shuffle(pool)
+                p = self.providers['163']
+                for s in pool[:6]:
+                    if (R['mode'] == 'app') or await p.url(s['sid']):
+                        await p.detail(s)
+                        return s
+            elif R['idle'] == 'lib' and self.idle_names:
+                names = list(self.idle_names() or [])
+                random.shuffle(names)
+                for name, artist in names[:6]:
+                    song, _ = await self.find(f'{name} - {artist}' if artist else name)
+                    if song and song['sid'] not in self.idle_recent:
+                        return song
+        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, Resting, KeyError) as e:
+            self.log.info('空闲时找歌没成功：%s', e)
+        return None
 
     async def find(self, text):
         """找歌：「歌名」或者「歌名 - 歌手」。只要歌名对得上的（翻唱也算），按歌手对不对、能不能放挑第一首。
@@ -497,6 +630,10 @@ class MusicService:
     # ---------- 主播在页面上点的 ----------
     def command(self, c):
         cmd = c['cmd']
+        if cmd == 'music_vol':
+            self.rules['vol'] = max(0, min(100, int(c.get('vol') or 0)))
+            self.push()
+            return f'音量 {self.rules["vol"]}%'
         if cmd == 'music_rules':
             self.rules = clean_rules({k: v for k, v in c.items() if k in DEFAULTS}, self.rules)
             self.emit_admin('music_rules', self.admin_view())
@@ -552,9 +689,22 @@ class MusicService:
                     continue
                 if not cur:
                     nxt = next((x for x in self.queue if x['state'] == 'ok'), None)
+                    if not nxt and self.rules['idle'] != 'off':
+                        s = await self.pick_idle()  # 没人点：放一首备用的
+                        if s and not next((x for x in self.queue if x['state'] == 'ok'), None):
+                            self.idle_recent = (self.idle_recent + [s['sid']])[-20:]
+                            nxt = {'id': uuid.uuid4().hex[:12], 't': int(time.time()), 'uid': 0, 'name': IDLE_NAME, 'face': '', 'guard': 0,
+                                   'state': 'ok', 'idle': True, **s}
+                            self.queue.append(nxt)
+                            self.trim()
+                        else:
+                            nxt = next((x for x in self.queue if x['state'] == 'ok'), None)
                     if not nxt:
                         self.wake.clear()
-                        await self.wake.wait()
+                        try:  # 开了空闲歌单但这次没找到：过一会儿再试
+                            await asyncio.wait_for(self.wake.wait(), 60 if self.rules['idle'] != 'off' else None)
+                        except asyncio.TimeoutError:
+                            pass
                         continue
                     nxt['state'], nxt['start'] = 'play', time.time() + 1.5  # 给播放页一点时间拿地址
                     if self.rules['mode'] == 'app':
