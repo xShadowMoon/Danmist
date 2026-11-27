@@ -1576,3 +1576,7 @@ body.touring #spot { transition: opacity .3s, left .2s, top .2s, width .2s, heig
 #msetbox .mmode button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: 1px solid var(--line); background: var(--card); color: var(--ink2); border-radius: 10px; padding: 9px 12px; cursor: pointer; text-align: left; }
 #msetbox .mmode button b { font-size: 14px; } #msetbox .mmode button small { font-size: 12.5px; color: var(--ink3); }
 #msetbox .mmode button.on { border-color: var(--mist-d); background: var(--chip); color: var(--mist-d); }
+/* 点歌姬拖动排序（2026-11-26） */
+#reqlist .mrow[draggable="true"] { cursor: grab; }
+#reqlist .mrow.mdragging { opacity: .45; }
+#reqlist .mrow.mdrop { box-shadow: inset 0 3px 0 var(--mist-d); }

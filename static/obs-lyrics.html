@@ -56,8 +56,8 @@ function parse(text) {
   return out.filter(x => x.s);
 }
 function draw() {
-  $('ttl').textContent = opt.title ? song : '';
-  $('lines').innerHTML = rows.length ? rows.map(r => `<div class="l">${esc(r.s)}</div>`).join('') : (song ? '<div class="l empty">曲库里还没有这首的歌词</div>' : '');
+  $('ttl').textContent = opt.title ? song.split('|')[0] : '';  // 点歌姬的歌名后面带着 |编号（同名歌换了也认得出）
+  $('lines').innerHTML = rows.length ? rows.map(r => `<div class="l">${esc(r.s)}</div>`).join('') : (song ? (song.includes('|') ? '<div class="l empty">这首没有歌词</div>' : '<div class="l empty">曲库里还没有这首的歌词</div>') : '');
   document.body.classList.toggle('noscroll', !timed && !opt.speed);
   shown = -1; tick();
 }
@@ -75,14 +75,15 @@ function tick() {
   const mid = Math.floor((opt.lines - 1) / 2);
   $('lines').style.transform = `translateY(calc(${-Math.max(0, i - mid)} * 1.6em))`;
 }
-function setSong(name, lyrics) {
-  if (name === song && rows.length) return;
-  song = name || ''; rows = parse(lyrics); since = Date.now(); draw();
+function setSong(name, lyrics, elapsed) {
+  // elapsed：点歌姬在放的歌已经放了几秒（2026-11-26），按它对上时间轴；差一秒以上就校一下
+  if (name === song && rows.length) { if (typeof elapsed === 'number' && Math.abs((Date.now() - since) / 1000 - elapsed) > 1) since = Date.now() - elapsed * 1000; return; }
+  song = name || ''; rows = parse(lyrics); since = typeof elapsed === 'number' ? Date.now() - elapsed * 1000 : Date.now(); draw();
 }
 async function poll() {
   try {
     const j = await (await fetch('api/lyrics/now', { cache: 'no-store' })).json();
-    setSong(j.name || '', j.lyrics || '');
+    setSong(j.name || '', j.lyrics || '', j.elapsed);
   } catch {}
 }
 if (opt.demo) setSong('晴天（示例）', '故事的小黄花\n从出生那年就飘着\n童年的荡秋千\n随记忆一直晃到现在\nRe So So Si Do Si La\nSo La Si Si Si Si La Si La So\n吹着前奏望着天空\n我想起花瓣试着掉落');

@@ -2877,6 +2877,7 @@ async def main():
         finally:
             reply_busy[0] = False
     hub.music.say = auto_say
+    hub.music.bili_cookie = load_cookie  # 点 B 站视频用连直播间那个号的登录信息（B 站不让没登录的查视频）
     hub.music.idle_names = lambda: [(k, str(v.get('artist') or '')) for k, v in hub.songbook.items() if v.get('available', True) is not False]
     hub.platforms = Platforms(hub, os.path.join(DIR, 'data'), not args.demo, write_json, log, lambda: bare)
     hub.admin_links, hub.public_limits = links, limits
@@ -3444,6 +3445,13 @@ async def main():
                                 await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': msg, **extra}})
                             except (ValueError, aiohttp.ClientError, asyncio.TimeoutError) as e:
                                 await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': str(e) or '音乐平台连不上，过一会再试'}})
+                            continue
+                        if cmd == 'music_move':  # 点歌姬队列拖动排序（2026-11-26）
+                            try:
+                                msg = hub.music.move(c['id'], str(c.get('before') or ''))
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': msg}})
+                            except ValueError as e:
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': str(e)}})
                             continue
                         if cmd in ('music_rules', 'music_next', 'music_ok', 'music_del', 'music_top', 'music_vol'):
                             try:
@@ -4314,6 +4322,11 @@ async def main():
 
     async def lyrics_now(request):
         """OBS 歌词源（2026-11-26）：歌单里「正在唱」的那首和它在曲库里的歌词。歌词本来就是要上屏的，不用管理身份"""
+        it = hub.music.current() if hub.music.rules['on'] else None
+        if it:  # 点歌姬正在放：歌词跟着这首走，elapsed 是已经放了几秒（2026-11-26）
+            lrc = await hub.music.lyrics_for(it)
+            return web.json_response({'name': f"{it['title']}|{it['id']}", 'title': it['title'], 'artist': it.get('artist', ''), 'lyrics': lrc,
+                                      'elapsed': max(0.0, time.time() - it.get('start', time.time()))}, headers={'Cache-Control': 'no-store'})
         cur = next((x for x in hub.state.songs if x.get('now')), None)
         if not cur:
             return web.json_response({}, headers={'Cache-Control': 'no-store'})
@@ -4369,7 +4382,55 @@ async def main():
             url = await hub.music.url_for(it)
         except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
             url = ''
+        if url:  # 2026-11-26：放歌页从雾幕这里拿流（同源才能做响度均衡；B 站视频的声音要带 Referer 才给）
+            stream_cache.clear()
+            stream_cache[it['id']] = (url, time.time())
+            url = 'api/music/stream?id=' + urllib.parse.quote(it['id'])
         return web.json_response({'url': url, 'start': it.get('start', 0), 'now': time.time()}, headers={'Cache-Control': 'no-store'})
+
+    stream_cache = {}
+    STREAM_REF = {'163': 'https://music.163.com/', 'qq': 'https://y.qq.com/', 'bili': 'https://www.bilibili.com/'}
+
+    async def music_stream(request):
+        """正在放的这首的音频，雾幕转一手给放歌页（支持拖进度要的 Range）。只给正在放的那首"""
+        it = hub.music.current()
+        got = stream_cache.get(request.query.get('id', ''))
+        if not it or not got or request.query.get('id') != it['id']:
+            raise web.HTTPNotFound()
+        url = got[0]
+        if time.time() - got[1] > 600:  # 地址有时效：十分钟以上的重新拿
+            try:
+                url = await hub.music.url_for(it)
+            except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
+                url = ''
+            if not url:
+                raise web.HTTPNotFound()
+            stream_cache[it['id']] = (url, time.time())
+        h = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+             'Referer': STREAM_REF.get(it['src'], '')}
+        if request.headers.get('Range'):
+            h['Range'] = request.headers['Range']
+        try:
+            up = await bare.get(url, headers=h, timeout=aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=60))
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            raise web.HTTPBadGateway()
+        try:
+            if up.status not in (200, 206):
+                raise web.HTTPBadGateway()
+            resp = web.StreamResponse(status=up.status)
+            for k in ('Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges'):
+                if up.headers.get(k):
+                    resp.headers[k] = up.headers[k]
+            resp.headers['Cache-Control'] = 'no-store'
+            await resp.prepare(request)
+            async for chunk in up.content.iter_chunked(64 * 1024):
+                await resp.write(chunk)
+            await resp.write_eof()
+            return resp
+        except (ConnectionResetError, aiohttp.ClientError, asyncio.CancelledError):
+            raise
+        finally:
+            up.release()
 
     async def art_list(request):
         """static/art 里自己放了哪些图（只回文件名），页面据此决定用不用 B 站官方的框"""
@@ -4747,6 +4808,7 @@ async def main():
     app.router.add_post('/api/tts/voices', tts_voices_set)
     app.router.add_post('/api/pick_file', pick_file)
     app.router.add_get('/api/music/url', music_url)
+    app.router.add_get('/api/music/stream', music_stream)
     app.router.add_get('/obs-music', page('obs-music'))
     app.router.add_get('/obs-lyrics', page('obs-lyrics'))  # OBS 歌词源（2026-11-26）
     app.router.add_get('/api/lyrics/now', lyrics_now)

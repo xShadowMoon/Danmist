@@ -404,6 +404,12 @@
         </div>
         <div class="opt r" title="主播在页面上随时能切"><span>弹幕「切歌」</span><div class="ctl"><select data-mr="skip"><option value="host">只有我</option><option value="req">点这首的人</option><option value="guard">舰长以上</option></select></div><span></span></div>
         <div class="opt r" title="队列空了的时候放什么。观众一点歌，空闲时放的那首马上让位"><span>没人点时</span><div class="ctl"><span class="seg" data-mseg="idle"><button type="button" data-val="off">不放</button><button type="button" data-val="lib">曲库里随机</button><button type="button" data-val="list">网易云歌单</button></span></div><span></span></div>
+        <div class="opt r" title="0 = 不限"><span>冷却</span><div class="ctl"><small>同一个人隔</small><input type="number" min="0" max="3600" data-mr="cd_user" style="width:64px"><small>秒；同一首放完</small><input type="number" min="0" max="1440" data-mr="cd_song" style="width:64px"><small>分钟内不再点</small></div><span></span></div>
+        <div class="chips">
+          <label class="chip" title="这个平台搜不到、或者只能试听 30 秒时，自动去另一个平台找（只在雾幕自己放时）。观众也能指定：「点歌 qq 七里香」「点歌 网易云 晴天」"><input type="checkbox" data-mr="fallback"><span>找不到自动换平台</span></label>
+          <label class="chip" title="一直量着这首歌有多响：太响的压一点、太小的抬一点，切歌时不会忽大忽小"><input type="checkbox" data-mr="norm"><span>响度均衡</span></label>
+          <label class="chip" title="观众发「点歌 BV号」（或 av 号、b23.tv 短链）就放那个视频的声音，比如点你的歌切"><input type="checkbox" data-mr="bili"><span>能点 B 站视频</span></label>
+        </div>
         <div class="opt r" id="midlerow" hidden><span>歌单链接</span><div class="ctl"><input type="text" id="midlelist" maxlength="300" placeholder="粘网易云歌单的链接" style="flex:1;min-width:0"><button class="btn sm" id="midlesave">保存</button></div><span></span></div>
         <div class="opt r" title="一般用不到：雾幕自己就会出声。只有想让 OBS 单独放一路歌（比如雾幕不在推流的电脑上）时才加这个浏览器源"><span>OBS 放歌源<small>（可选）</small></span><div class="ctl"><input type="text" id="mobsurl" readonly style="flex:1;min-width:0"><button class="btn sm" id="mobscopy">复制</button></div><span></span></div>
         </div>

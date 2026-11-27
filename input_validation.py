@@ -179,9 +179,10 @@ COMMAND_FIELDS = {
     'tpre_set': {'list'}, 'xrooms_set': {'open', 'rooms'}, 'live_start': {'acct', 'area_id', 'title'}, 'live_stop': {'acct'},
     'lan_set': {'on'},
     'update_download': set(), 'update_restart': set(), 'open_mode': {'mode'}, 'make_shortcut': set(),
-    'music_rules': {'on', 'mode', 'src', 'need_ok', 'skip', 'max', 'medal', 'guard', 'wealth', 'follow', 'maxdur', 'reply', 'idle', 'idle_list', 'vol'},
+    'music_rules': {'on', 'mode', 'src', 'need_ok', 'skip', 'max', 'medal', 'guard', 'wealth', 'follow', 'maxdur', 'reply', 'idle', 'idle_list', 'vol',
+                    'fallback', 'cd_user', 'cd_song', 'norm', 'bili'},
     'music_next': set(), 'music_ok': {'id'}, 'music_del': {'id'}, 'music_top': {'id'},
-    'music_vol': {'vol'}, 'music_add': {'text'}, 'music_alts': {'id'}, 'music_swap': {'id', 'sid'}, 'music_weblogin': {'src'},
+    'music_vol': {'vol'}, 'music_add': {'text'}, 'music_alts': {'id'}, 'music_swap': {'id', 'sid'}, 'music_weblogin': {'src'}, 'music_move': {'id', 'before'},
     'music_qr': {'src'}, 'music_poll': {'src', 'key'}, 'music_logout': {'src'}, 'music_cookie': {'src', 'cookie'},
     'plat_set': {'rooms'}, 'plat_show': {'plat', 'room', 'show'},
     'tags_set': {'builtin', 'custom'}, 'tag_user': {'uid', 'tags', 'bot'}, 'room_set': {'plat', 'room', 'sure'},
@@ -310,6 +311,10 @@ def validate_command(c, clean_rules):
         integer(c.get('vol'), '音量', 0, 100)
     elif cmd == 'music_add':
         text(c.get('text'), '歌名', 60, True)
+    elif cmd == 'music_move':
+        text(c.get('id'), '点歌编号', 32, True)
+        if c.get('before'):
+            text(c.get('before'), '点歌编号', 32, True)
     elif cmd == 'music_swap':
         text(c.get('id'), '点歌编号', 40, True)
         if not re.fullmatch(r'\w{1,40}', str(c.get('sid') or '')):

@@ -30,16 +30,30 @@ function musicHtml() {
   const deny = S.admin ? L.filter(x => x.state === 'deny').slice(-3).reverse() : [];
   const who = x => x.idle ? '<span class="mwho">没人点时随便放的</span>' : `<span class="mwho">${esc(x.name)}</span> 点的`;
   const alts = x => malts && malts.id === x.id ? `<div class="malts">${malts.list.length ? malts.list.map(a => `<button data-mswap="${esc(a.sid)}" data-id="${x.id}"${a.sid === x.sid ? ' class="on"' : ''}><b>${esc(a.title)}</b><small>${esc(a.artist || '')} · ${Math.floor(a.dur / 60)}:${String(a.dur % 60).padStart(2, '0')}</small></button>`).join('') : '<small>正在搜…</small>'}</div>` : '';
-  const acts = (x, i) => S.admin ? `${x.sid ? `<button class="btn sm" data-malt="${x.id}" title="放错版本了？换一首">换</button>` : ''}${x.state === 'wait' || (x.state === 'deny' && x.sid) ? `<button class="btn sm" data-mq="music_ok" data-id="${x.id}" title="同意，排进去">✓</button>` : ''}${x.state === 'ok' && i > 1 ? `<button class="btn sm" data-mq="music_top" data-id="${x.id}" title="下一首就放">↑</button>` : ''}<button class="btn sm" data-mq="music_del" data-id="${x.id}" title="不放了">✕</button>` : '';
-  const row = (x, i) => `<div class="req mrow${x.state === 'deny' ? ' over' : ''}" data-k="m${x.id}${x.state}${malts?.id === x.id ? 'a' + malts.list.length : ''}">${x.cover ? `<img class="mcov" src="${esc(x.cover)}" alt="" loading="lazy">` : `<span class="sn">${i}</span>`}<div class="b"><div class="s">${esc(x.title)}${x.artist ? `<small class="mart"> · ${esc(x.artist)}</small>` : ''}</div><div class="w">${who(x)}${x.state === 'wait' ? ' · <b class="mwait">等你同意</b>' : ''}${x.why ? ' · ' + esc(x.why) : ''}</div>${alts(x)}</div>${acts(x, i)}</div>`;
+  const acts = (x, i) => S.admin ? `${x.sid && x.src !== 'bili' ? `<button class="btn sm" data-malt="${x.id}" title="放错版本了？换一首">换</button>` : ''}${x.state === 'wait' || (x.state === 'deny' && x.sid) ? `<button class="btn sm" data-mq="music_ok" data-id="${x.id}" title="同意，排进去">✓</button>` : ''}${x.state === 'ok' && i > 1 ? `<button class="btn sm" data-mq="music_top" data-id="${x.id}" title="下一首就放">↑</button>` : ''}<button class="btn sm" data-mq="music_del" data-id="${x.id}" title="不放了">✕</button>` : '';
+  const drag = x => S.admin && (x.state === 'ok' || x.state === 'wait') ? ` draggable="true" data-mdrag="${x.id}" title="按住拖动换顺序"` : '';
+  const row = (x, i) => `<div class="req mrow${x.state === 'deny' ? ' over' : ''}"${drag(x)} data-k="m${x.id}${x.state}${malts?.id === x.id ? 'a' + malts.list.length : ''}">${x.cover ? `<img class="mcov" src="${esc(x.cover)}" alt="" loading="lazy">` : `<span class="sn">${i}</span>`}<div class="b"><div class="s">${esc(x.title)}${x.artist ? `<small class="mart"> · ${esc(x.artist)}</small>` : ''}</div><div class="w">${who(x)}${x.state === 'wait' ? ' · <b class="mwait">等你同意</b>' : ''}${x.why ? ' · ' + esc(x.why) : ''}</div>${alts(x)}</div>${acts(x, i)}</div>`;
   const pct = now && now.dur ? Math.max(0, Math.min(100, (Date.now() / 1000 + (m.skew || 0) - now.start) / now.dur * 100)) : 0;
   const head = `<div class="mqh">${icon('music')}<b>${m.on ? (m.mode === 'app' ? '音乐客户端放' : '雾幕自己放') : '点歌姬没开'}</b><span class="sp"></span>`
     + (S.admin ? `<label class="mvol" title="放歌音量（网页放、OBS 放歌源都跟着它）">${icon('volume')}<input type="range" min="0" max="100" step="5" id="mvol" value="${m.vol ?? 80}"></label>${m.mode !== 'app' ? `<label class="chip mhere" title="这个窗口放歌出声。在这台电脑上打开的雾幕默认就出声；手机、别的电脑上打开的默认不出声"><input type="checkbox" id="mhere"${musicHere() ? ' checked' : ''}><span>出声</span></label>` : ''}${now ? `<button class="btn sm" data-mq="music_next" title="切歌">${icon('skip')}</button>` : ''}` : '') + '</div>';
   const add = S.admin ? `<div class="songadd madd"><input id="maddinput" maxlength="60" placeholder="＋ 搜歌名（可以写「歌名 - 歌手」），回车加进去" autocomplete="off"></div>` : '';
-  const nowRow = now ? `<div class="req mrow mnow" data-k="m${now.id}play${malts?.id === now.id ? 'a' + malts.list.length : ''}">${now.cover ? `<img class="mcov" src="${esc(now.cover)}" alt="">` : `<span class="sn">♪</span>`}<div class="b"><div class="s">${esc(now.title)}${now.artist ? `<small class="mart"> · ${esc(now.artist)}</small>` : ''}</div><div class="w">${who(now)}</div><div class="mbar"><i style="transform:scaleX(${pct / 100})"></i></div>${alts(now)}</div>${S.admin && now.sid ? `<button class="btn sm" data-malt="${now.id}" title="放错版本了？换一首">换</button>` : ''}</div>` : '';
+  const nowRow = now ? `<div class="req mrow mnow" data-k="m${now.id}play${malts?.id === now.id ? 'a' + malts.list.length : ''}">${now.cover ? `<img class="mcov" src="${esc(now.cover)}" alt="">` : `<span class="sn">♪</span>`}<div class="b"><div class="s">${esc(now.title)}${now.artist ? `<small class="mart"> · ${esc(now.artist)}</small>` : ''}</div><div class="w">${who(now)}</div><div class="mbar"><i style="transform:scaleX(${pct / 100})"></i></div>${alts(now)}</div>${S.admin && now.sid && now.src !== 'bili' ? `<button class="btn sm" data-malt="${now.id}" title="放错版本了？换一首">换</button>` : ''}</div>` : '';
   const empty = !now && !queue.length && !deny.length ? `<div class="empty xw">${m.on ? '还没有人点<br><small>观众发「点歌 歌名」就会排进来；发「取消点歌」能撤回</small>' : '点歌姬没开<br><small>设置 → 点歌 里选「点歌姬」</small>'}</div>` : '';
   return `<div class="mq">${head}${add}${nowRow}${queue.map((x, i) => row(x, i + 1)).join('')}${deny.map(x => row(x, '')).join('')}${empty}</div>`;
 }
+// 点歌姬队列拖动排序（2026-11-26）：按住一首拖到别的歌上面，放下就排到它前面
+let mdragId = '';
+document.addEventListener('dragstart', e => { const r = e.target.closest?.('[data-mdrag]'); if (!r) return; mdragId = r.dataset.mdrag; e.dataTransfer.effectAllowed = 'move'; r.classList.add('mdragging'); });
+document.addEventListener('dragend', e => { e.target.closest?.('[data-mdrag]')?.classList.remove('mdragging'); document.querySelectorAll('.mdrop').forEach(x => x.classList.remove('mdrop')); mdragId = ''; });
+document.addEventListener('dragover', e => { const r = mdragId && e.target.closest?.('#reqlist .mrow'); if (!r) return; e.preventDefault(); document.querySelectorAll('.mdrop').forEach(x => x !== r && x.classList.remove('mdrop')); r.classList.add('mdrop'); });
+document.addEventListener('drop', e => {
+  const r = mdragId && e.target.closest?.('#reqlist .mrow'); if (!r) return;
+  e.preventDefault();
+  const before = r.dataset.mdrag || '';  // 放到正在放的那首上：排到最前面
+  const first = (S.music?.list || []).find(x => x.state === 'ok' || x.state === 'wait');
+  const to = r.classList.contains('mnow') ? (first?.id || '') : before;
+  if (to !== mdragId) window._ws?.send(JSON.stringify({ cmd: 'music_move', id: mdragId, before: to }));
+});
 function musicTick() {
   const m = S.music, now = m?.list?.find(x => x.state === 'play'), bar = document.querySelector('.mnow .mbar i');
   if (now && bar && now.dur) bar.style.transform = `scaleX(${Math.max(0, Math.min(1, (Date.now() / 1000 + (m.skew || 0) - now.start) / now.dur))})`;
@@ -114,7 +128,8 @@ function sendRules(patch) { window._ws?.send(JSON.stringify({ cmd: 'music_rules'
 document.addEventListener('change', e => {
   const el = e.target.closest('#msetbox [data-mr]'); if (!el) return;
   const k = el.dataset.mr;
-  sendRules({ [k]: el.type === 'checkbox' ? el.checked : k === 'skip' ? el.value : Math.max(0, Math.min(k === 'max' ? 20 : 100, parseInt(el.value, 10) || 0)) });
+  const hi = { max: 20, cd_user: 3600, cd_song: 1440 }[k] ?? 100;
+  sendRules({ [k]: el.type === 'checkbox' ? el.checked : k === 'skip' ? el.value : Math.max(0, Math.min(hi, parseInt(el.value, 10) || 0)) });
 });
 document.addEventListener('click', e => {
   const sb = e.target.closest('#msetbox [data-mseg] button');

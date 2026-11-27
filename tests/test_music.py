@@ -169,3 +169,55 @@ class WebLoginTests(unittest.TestCase):
         self.assertEqual(ml.cookie_text('qq', cs), 'uin=o123; qqmusic_key=K')
         self.assertEqual(ml.cookie_text('163', cs[2:4]), '')
         self.assertEqual(ml.cookie_text('qq', cs[:2]), '')
+
+
+class Music6Tests(unittest.TestCase):
+    """借鉴别的点歌姬（2026-11-26）：换平台兜底、指定平台、冷却、拖动排序、B 站视频"""
+    def make(self):
+        m = svc()
+        m.providers['163'] = FakeProvider([], playable=False)
+        m.providers['qq'] = FakeProvider([dict(SONGS[1], src='qq', sid='q2')])
+        m.rules.update(on=True, max=0)
+        return m
+
+    def test_fallback_and_forced_source(self):
+        m = self.make()
+        s, _ = asyncio.run(m.find('晴天'))
+        self.assertEqual(s['src'], 'qq')  # 网易云放不了：去 QQ 找
+        m.rules['fallback'] = False
+        s, miss = asyncio.run(m.find('晴天'))
+        self.assertIsNone(s)
+        m.providers['163'] = FakeProvider(SONGS)
+        s, _ = asyncio.run(m.find('qq 晴天'))
+        self.assertEqual(s['src'], 'qq')
+        s, _ = asyncio.run(m.find('网易云 晴天'))
+        self.assertEqual(s['src'], '163')
+
+    def test_cooldowns(self):
+        m = self.make()
+        m.providers['163'] = FakeProvider(SONGS)
+        m.rules.update(cd_user=30, cd_song=10)
+        asyncio.run(m.request(dm(uid=5), '晴天', 0, True))
+        self.assertIn('点太快了', m.check(dm(uid=5), 0, True))
+        self.assertEqual(m.check(dm(uid=6), 0, True), '')
+        m.played['1'] = __import__('time').time()
+        m.queue.clear()
+        asyncio.run(m.request(dm(uid=7), '晴天', 0, True))
+        self.assertEqual(m.queue[-1]['state'], 'deny')
+        self.assertIn('刚放过', m.queue[-1]['why'])
+
+    def test_move(self):
+        m = self.make()
+        m.queue = [{'id': x, 'uid': 1, 'state': 'ok', 'sid': x} for x in 'abc']
+        m.move('c', 'a')
+        self.assertEqual([x['id'] for x in m.queue], ['c', 'a', 'b'])
+        m.move('c', '')
+        self.assertEqual([x['id'] for x in m.queue], ['a', 'b', 'c'])
+        with self.assertRaises(ValueError):
+            m.move('zz', '')
+
+    def test_bv_pattern(self):
+        self.assertEqual(music.BV_RE.search('BV1xx411c7mD 好听').group(1), 'BV1xx411c7mD')
+        self.assertEqual(music.BV_RE.search('av170001').group(2), '170001')
+        self.assertTrue(music.BV_RE.search('https://b23.tv/abcd123'))
+        self.assertIsNone(music.BV_RE.search('晴天 - 周杰伦'))

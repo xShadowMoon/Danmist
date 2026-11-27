@@ -41,7 +41,15 @@ DEFAULTS = {
     'idle': 'off',      # 没人点的时候：off 不放 / lib 从曲库里随机 / list 从网易云歌单里随机
     'idle_list': '',    # 网易云歌单的 id（粘链接也行，存的时候只留数字）
     'vol': 80,          # 放歌音量（0~100），网页放、OBS 放歌源都跟着它
+    'fallback': True,   # 这个平台搜不到 / 只能试听：自动去另一个平台找（只在雾幕自己放时）
+    'cd_user': 30,      # 同一个人隔几秒才能再点（0 = 不限）
+    'cd_song': 10,      # 同一首歌放完几分钟内不再点（0 = 不限）
+    'norm': True,       # 响度均衡：太响的压一点、太小的抬一点
+    'bili': True,       # 能点 B 站视频（点歌 BV号）
 }
+OTHER = {'163': 'qq', 'qq': '163'}
+SRC_WORDS = {'qq': 'qq', 'QQ': 'qq', 'qq音乐': 'qq', 'QQ音乐': 'qq', '网易': '163', '网易云': '163', 'wy': '163', '163': '163'}
+BV_RE = re.compile(r'(BV[0-9A-Za-z]{10})|(?<![0-9A-Za-z])av(\d{1,12})|(b23\.tv/[0-9A-Za-z]{4,12})')
 IDLE_NAME = '空闲时'
 TITLE_SHORT = 10   # 自动回的那句话里歌名最多几个字（B 站弹幕 20 个字以内最稳）
 
@@ -70,7 +78,7 @@ def clean_rules(c, old):
             if type(x) is not bool:
                 raise ValueError(f'{k} 只能是开或关')
         elif isinstance(v, int):
-            if type(x) is not int or not 0 <= x <= (3600 if k == 'maxdur' else 100):
+            if type(x) is not int or not 0 <= x <= {'maxdur': 3600, 'cd_user': 3600, 'cd_song': 1440}.get(k, 100):
                 raise ValueError(f'{k} 数字不对')
         elif k == 'idle_list':
             if not isinstance(x, str) or len(x) > 300:
@@ -135,6 +143,11 @@ class NetEase:
                 song['cover'] = pic.replace('http://', 'https://') + '?param=200y200'
         except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, IndexError):
             pass
+
+    async def lyric(self, sid):
+        """这首的歌词（带时间轴的 LRC），OBS 歌词源用"""
+        j, _ = await self.get('/api/song/lyric', {'id': sid, 'lv': '1', 'kv': '1', 'tv': '-1'})
+        return str(((j or {}).get('lrc') or {}).get('lyric') or '')
 
     async def playlist(self, pid):
         """网易云歌单里的歌（空闲时随机放，2026-11-26）"""
@@ -241,6 +254,14 @@ class QQMusic:
     async def detail(self, song):
         return
 
+    async def lyric(self, sid):
+        h = {'User-Agent': UA, 'Referer': 'https://y.qq.com/'}
+        async with self.svc.session.get('https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg',
+                                        params={'songmid': sid, 'format': 'json', 'nobase64': '1', 'g_tk': '5381'}, headers=h,
+                                        timeout=aiohttp.ClientTimeout(total=10)) as r:
+            j = json.loads(re.sub(r'^[^{]*|[^}]*$', '', await r.text()) or '{}')
+        return str(j.get('lyric') or '')
+
     async def url(self, sid):
         lg = self.login()
         uin, key = str(lg.get('uin') or '0'), lg.get('key', '')
@@ -339,6 +360,72 @@ class QQMusic:
             raise OSError('没找到 QQ 音乐客户端（要先装好、登录）')
 
 
+class Bili:
+    """点 B 站视频的声音（2026-11-26 用户要的，比如点主播自己的歌切）：「点歌 BV号」「点歌 av号」「点歌 b23.tv 短链」。
+    只放声音，用 B 站自己给的音频流；要带 Referer，所以都经雾幕转一手（/api/music/stream）"""
+    name = 'B 站'
+    HEAD = {'User-Agent': UA, 'Referer': 'https://www.bilibili.com/'}
+
+    def __init__(self, svc):
+        self.svc = svc
+
+    def head(self):
+        """B 站不让没登录的程序查视频（会回 412）：用连直播间的那个号（设置 → 账号）的登录信息"""
+        ck = self.svc.bili_cookie() if self.svc.bili_cookie else ''
+        return dict(self.HEAD, Cookie=ck) if ck else dict(self.HEAD)
+
+    async def resolve(self, text):
+        """从弹幕里认出视频，回一首歌的样子（sid = bvid:cid）；认不出回 None"""
+        m = BV_RE.search(text or '')
+        if not m:
+            return None
+        bvid, aid, short = m.groups()
+        if short:  # 短链：问一下跳到哪
+            async with self.svc.session.get('https://' + short, headers=self.head(), allow_redirects=False,
+                                            timeout=aiohttp.ClientTimeout(total=10)) as r:
+                loc = r.headers.get('Location', '')
+            m2 = BV_RE.search(loc)
+            if not m2 or m2.group(3):
+                return None
+            bvid, aid = m2.group(1), m2.group(2)
+        params = {'bvid': bvid} if bvid else {'aid': aid}
+        p = re.search(r'(?:[?&]p=|\bp)(\d{1,3})', text)
+        async with self.svc.session.get('https://api.bilibili.com/x/web-interface/view', params=params, headers=self.head(),
+                                        timeout=aiohttp.ClientTimeout(total=10)) as r:
+            j = await r.json(content_type=None)
+        d = j.get('data') if isinstance(j, dict) else None
+        if not d or j.get('code') != 0:
+            return None
+        pages = d.get('pages') or [{'cid': d.get('cid'), 'duration': d.get('duration'), 'part': ''}]
+        pg = pages[min(len(pages), int(p.group(1))) - 1] if p and int(p.group(1)) >= 1 else pages[0]
+        title = str(d.get('title') or '')
+        if len(pages) > 1 and pg.get('part'):
+            title = f'{title} · {pg["part"]}'
+        pic = str(d.get('pic') or '').replace('http://', 'https://')
+        return {'src': 'bili', 'sid': f'{d.get("bvid")}:{pg.get("cid")}', 'title': title[:80], 'artist': str((d.get('owner') or {}).get('name') or ''),
+                'dur': int(pg.get('duration') or d.get('duration') or 0), 'cover': pic + '@200w_200h.jpg' if pic else ''}
+
+    async def url(self, sid):
+        bvid, _, cid = str(sid).partition(':')
+        async with self.svc.session.get('https://api.bilibili.com/x/player/playurl', params={'bvid': bvid, 'cid': cid, 'fnval': '16', 'fourk': '0'},
+                                        headers=self.head(), timeout=aiohttp.ClientTimeout(total=10)) as r:
+            j = await r.json(content_type=None)
+        audio = (((j or {}).get('data') or {}).get('dash') or {}).get('audio') or []
+        if not audio:
+            return ''
+        best = max(audio, key=lambda a: a.get('bandwidth') or 0)
+        return str(best.get('baseUrl') or best.get('base_url') or '')
+
+    async def detail(self, song):
+        return
+
+    async def lyric(self, sid):
+        return ''
+
+    def app_play(self, sid):
+        raise OSError('音乐客户端放不了 B 站视频')
+
+
 def qr_svg(text):
     import qrcode
     import qrcode.image.svg
@@ -358,9 +445,13 @@ class MusicService:
         self.qq_flows = {}
         self.session = None
         self.wake = asyncio.Event()
-        self.providers = {'163': NetEase(self), 'qq': QQMusic(self)}
+        self.providers = {'163': NetEase(self), 'qq': QQMusic(self), 'bili': Bili(self)}
+        self.last_req = {}       # 每个人上次点歌的时间（冷却）
+        self.played = {}         # 每首歌上次放完的时间（同一首几分钟内不再点）
+        self.lyric_cache = {}    # 歌词：{src:sid: 文字}
         self.say = None          # 自动回观众一句：async say(text, uid, dmid, name)，server.py 设
         self.idle_names = None   # 曲库里的歌名：() -> [(歌名, 歌手)]，server.py 设
+        self.bili_cookie = None  # 连直播间那个号的登录信息（点 B 站视频要），server.py 设
         self.idle_recent = []    # 空闲时最近放过的，别老是那几首
         try:
             with open(self.file, encoding='utf-8') as f:
@@ -442,7 +533,7 @@ class MusicService:
         on = [x for x in self.queue if x['state'] in ('play', 'ok', 'wait', 'deny')]
         done = [x for x in self.queue if x['state'] in ('done', 'skip')][-5:]
         keep = keep + ('idle',)
-        return {'on': self.rules['on'], 'mode': self.rules['mode'], 'now': time.time(), 'vol': self.rules['vol'],
+        return {'on': self.rules['on'], 'mode': self.rules['mode'], 'now': time.time(), 'vol': self.rules['vol'], 'norm': self.rules['norm'],
                 'list': [{k: x[k] for k in keep if k in x} for x in done + on]}
 
     def push(self):
@@ -467,6 +558,9 @@ class MusicService:
             return '要先关注主播'
         if R['max'] and sum(1 for x in self.queue if x['uid'] == d['uid'] and x['state'] in ('wait', 'ok', 'play')) >= R['max']:
             return f'每人最多排 {R["max"]} 首'
+        left = int(self.last_req.get(d['uid'], 0) + R['cd_user'] - time.time()) if R['cd_user'] else 0
+        if left > 0:
+            return f'点太快了，{left} 秒后再点'
         return ''
 
     def reply(self, d, text):
@@ -498,6 +592,8 @@ class MusicService:
         if why:
             item['why'] = why
         else:
+            if not host:
+                self.last_req[d['uid']] = time.time()
             try:
                 song, miss = await self.find(text)
             except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as e:
@@ -514,6 +610,8 @@ class MusicService:
                 elif any(x['sid'] == song['sid'] and x['state'] in ('wait', 'ok', 'play') and not x.get('idle') for x in self.queue):
                     self.reply(d, f'{self.short(song["title"])}已经在排了')
                     return  # 已经排着了，不重复
+                elif not host and self.rules['cd_song'] and time.time() - self.played.get(song['sid'], 0) < self.rules['cd_song'] * 60:
+                    item.update(state='deny', why=f'这首刚放过，{self.rules["cd_song"]} 分钟内不再点')
         cur = self.current()
         if cur and cur.get('idle') and item['state'] == 'ok':  # 空闲时随便放的那首让位给观众点的
             cur['state'] = 'done'
@@ -548,6 +646,8 @@ class MusicService:
         it = next((x for x in self.queue if x['id'] == iid), None)
         if not it:
             raise ValueError('这首已经不在了')
+        if it['src'] == 'bili':
+            raise ValueError('B 站视频没有别的版本可换')
         p = self.providers[it['src']]
         q = it.get('ask') or it['title']
         songs = [s for s in await p.search(q, 12) if s['sid'] and s['dur']][:10]
@@ -601,9 +701,41 @@ class MusicService:
         return None
 
     async def find(self, text):
-        """找歌：「歌名」或者「歌名 - 歌手」。只要歌名对得上的（翻唱也算），按歌手对不对、能不能放挑第一首。
+        """找歌：「歌名」「歌名 - 歌手」「qq 歌名」（指定平台）「BV号」（B 站视频）。
+        这个平台搜不到、只能试听的，开了「自动换平台」就去另一个平台再找一次（2026-11-26）"""
+        R = self.rules
+        if BV_RE.search(text):
+            if not R['bili']:
+                return None, '没开点 B 站视频'
+            if R['mode'] == 'app':
+                return None, '用音乐客户端放时点不了 B 站视频'
+            if not (self.bili_cookie and self.bili_cookie()):
+                return None, '点视频要先登录 B 站号（设置 → 账号）'
+            try:
+                s = await self.providers['bili'].resolve(text)
+            except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
+                s = None
+            if not s or not s['dur']:
+                return None, '没找到这个视频'
+            if not await self.providers['bili'].url(s['sid']):
+                return None, '这个视频放不了'
+            return s, ''
+        m = re.match(r'\s*(qq音乐|QQ音乐|qq|QQ|网易云|网易|wy|163)\s*[:：]?\s+(.+)$', text)
+        if m:
+            src, text = SRC_WORDS[m.group(1)], m.group(2).strip()
+            if R['mode'] == 'app' and src != R['src']:
+                return None, f'现在只用{self.providers[R["src"]].name}客户端放'
+            return await self.find_in(src, text)
+        song, miss = await self.find_in(R['src'], text)
+        if song or not R['fallback'] or R['mode'] == 'app':
+            return song, miss
+        song2, _ = await self.find_in(OTHER[R['src']], text)
+        return (song2, '') if song2 else (None, miss)
+
+    async def find_in(self, src, text):
+        """在一个平台里找：只要歌名对得上的（翻唱也算），按歌手对不对、能不能放挑第一首。
         找到了但都放不了（要登录或者会员）就回一个原因"""
-        p = self.providers[self.rules['src']]
+        p = self.providers[src]
         m = re.match(r'(.+?)\s*[-—–/]\s*(.+)', text)
         title, artist = (m.group(1).strip(), m.group(2).strip()) if m else (text.strip(), '')
         songs = await p.search(f'{title} {artist}'.strip(), 12)
@@ -617,7 +749,7 @@ class MusicService:
             if self.rules['mode'] == 'app' or await p.url(s['sid']):  # 客户端放：用客户端自己的登录，这里不用拿地址
                 await p.detail(s)
                 return s, ''
-        return None, '要登录（或会员）才能放' if not self.logins.get(self.rules['src']) else '这首放不了（可能要会员）'
+        return None, '要登录（或会员）才能放' if not self.logins.get(src) else '这首放不了（可能要会员）'
 
     def trim(self):
         old = [x for x in self.queue if x['state'] in ('done', 'skip', 'deny')]
@@ -674,7 +806,36 @@ class MusicService:
         cur = self.current()
         if cur:
             cur['state'] = 'done' if how == 'done' else 'skip'
+            self.played[cur.get('sid', '')] = time.time()
         self.wake.set()
+
+    def move(self, iid, before):
+        """拖动排序（2026-11-26）：把这首挪到 before 那首前面（before 空 = 挪到最后）。只在排着的歌之间挪"""
+        it = next((x for x in self.queue if x['id'] == iid and x['state'] in ('ok', 'wait')), None)
+        if not it:
+            raise ValueError('这首已经不在了')
+        self.queue.remove(it)
+        tgt = next((k for k, x in enumerate(self.queue) if x['id'] == before), None) if before else None
+        if tgt is None:
+            self.queue.append(it)
+        else:
+            self.queue.insert(tgt, it)
+        self.push()
+        return '顺序改好了'
+
+    async def lyrics_for(self, it):
+        """正在放的这首的歌词（OBS 歌词源跟着点歌姬走），拿过的记下来"""
+        if not it or not it.get('sid'):
+            return ''
+        k = f'{it["src"]}:{it["sid"]}'
+        if k not in self.lyric_cache:
+            try:
+                self.lyric_cache[k] = (await self.providers[it['src']].lyric(it['sid']))[:20000]
+            except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, AttributeError, Resting):
+                return ''
+            if len(self.lyric_cache) > 50:
+                self.lyric_cache.pop(next(iter(self.lyric_cache)))
+        return self.lyric_cache[k]
 
     # ---------- 往下放 ----------
     async def url_for(self, it):
@@ -728,6 +889,7 @@ class MusicService:
                 left = cur['start'] + cur['dur'] + 1 - time.time()
                 if left <= 0:
                     cur['state'] = 'done'
+                    self.played[cur.get('sid', '')] = time.time()
                     self.push()
                     continue
                 self.wake.clear()
@@ -738,6 +900,7 @@ class MusicService:
                 c2 = self.current()
                 if c2 is cur and time.time() >= cur['start'] + cur['dur'] + 1:
                     cur['state'] = 'done'
+                    self.played[cur.get('sid', '')] = time.time()
                     self.push()
                 elif c2 is not cur:
                     self.push()

@@ -158,7 +158,7 @@ function connect() {
       if (data.cmd === 'room_set') { roomSetResult(data); return; }
       if (['update_download', 'update_restart', 'open_mode', 'make_shortcut'].includes(data.cmd)) { note(data.msg, data.ok); if (!data.ok && data.cmd === 'update_download') { updPct = -1; drawUpd(); } return; }
       if (['music_qr', 'music_poll', 'music_logout', 'music_cookie'].includes(data.cmd)) { musicLoginResult(data); return; }
-      if (['music_add', 'music_alts', 'music_swap', 'music_vol'].includes(data.cmd)) { if (data.cmd !== 'music_vol' || !data.ok) musicResult(data); return; }
+      if (['music_add', 'music_alts', 'music_swap', 'music_vol', 'music_move'].includes(data.cmd)) { if (!['music_vol', 'music_move'].includes(data.cmd) || !data.ok) musicResult(data); return; }
       if (data.cmd === 'mute_list' || data.cmd === 'unmute') { muteResult(data); return; }
       if (data.cmd === 'news_get' || data.cmd === 'news_set') { newsResult(data); return; }
       if (data.cmd === 'sc_read' || data.cmd === 'sc_read_all') { if (!data.ok) note(data.msg, false); return; }

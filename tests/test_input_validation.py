@@ -36,7 +36,7 @@ BAD_COMMANDS = {
     'open_mode': {'mode': 'x'}, 'music_cookie': {'src': 'x', 'cookie': 'a'}, 'music_del': {'id': []}, 'music_logout': {'src': 'x'},
     'music_next': {'extra': 1}, 'music_ok': {'id': []}, 'music_poll': {'src': '163', 'key': []}, 'music_qr': {'src': 'x'},
     'music_rules': {'max': 'x'}, 'music_top': {'id': ''}, 'plat_set': {'rooms': 'x'},
-    'music_vol': {'vol': 101}, 'music_add': {'text': ''}, 'music_alts': {'id': ''}, 'music_swap': {'id': 'a', 'sid': '..'}, 'music_weblogin': {'src': 'kugou'},
+    'music_vol': {'vol': 101}, 'music_add': {'text': ''}, 'music_alts': {'id': ''}, 'music_swap': {'id': 'a', 'sid': '..'}, 'music_weblogin': {'src': 'kugou'}, 'music_move': {'id': ''},
     'plat_show': {'plat': 'douyu', 'room': '1', 'show': True},
     'tags_set': {'custom': [{'id': 'x', 'name': 'a'}]}, 'tag_user': {'uid': 'abc'}, 'room_set': {'plat': 'x', 'room': 1},
 }
