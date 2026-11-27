@@ -43,7 +43,7 @@ function drawGuide() {
     // 2026-11-19 减字：每次更新只显示一行标题，点开才看细节；最新那条默认展开；一次只列最近 12 次
     const list = NEWS.news.slice(0, newsMore ? 200 : 8);  // 2026-11-26 再减字：默认只列最近 8 次，每次最多先露 3 条
     body.innerHTML = `<div class="nlist">${list.map((n, i) => `<details class="nrel"${i === 0 ? ' open' : ''}><summary><b>${esc(n.title || '更新')}</b><small>${esc(String(n.v).slice(5).replace(/^(\d+)\.(\d+).*$/, '$1/$2'))}</small></summary>${n.items.map(x => {
-      const m = String(x).match(/^(\S{1,3})\s+(.*)$/s);  // 开头的图标单独放一格
+      const m = String(x).match(/^([^\p{L}\p{N}\s]{1,3})\s+(.*)$/su);  // 开头的图标单独放一格（只认符号 / 表情，2026-11-26：以前「设置 → …」的「设置」被当成图标竖着挤成两行）
       return `<div class="nline"><i>${m ? esc(m[1]) : '•'}</i><span>${esc(m ? m[2] : x)}</span></div>`;
     }).join("")}</details>`).join('')}${!newsMore && NEWS.news.length > 8 ? '<button class="btn sm nmore" id="nmore">更早的</button>' : ''}</div>`;
     body.querySelectorAll('.nrel').forEach(d => {  // 一次更新超过 3 条的，后面的先收起来

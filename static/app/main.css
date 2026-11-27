@@ -922,7 +922,11 @@ body.fdrag iframe { pointer-events: none; }
 #guide .nline:hover { background: var(--hover); }
 #guide .nline i { font-style: normal; flex: none; width: 22px; text-align: center; }
 @media (max-width: 700px) {
-  #guide { width: 100vw; max-width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; }
+  /* 2026-11-26 手机上整屏：用 100dvh、贴顶，不再居中位移（iPhone 上 100vh 比看得见的高，标题栏和关闭按钮被地址栏盖住） */
+  #guide { left: 0; top: 0; width: 100vw; max-width: 100vw; height: 100vh; height: 100dvh; max-height: none; border-radius: 0; transform: translateY(2%); }
+  #guide.open { transform: none; }
+  #guide > header { padding-top: max(14px, env(safe-area-inset-top)); flex-wrap: wrap; }
+  #guide > header #gclose { margin-left: auto; }
   #guide .gmain { flex-direction: column; }
   #guide .grail { width: auto; flex-direction: row; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; padding: 6px 8px; }
   #guide .grail button { flex: none; padding: 5px 10px; }
@@ -1557,3 +1561,4 @@ body.touring #spot { transition: opacity .3s, left .2s, top .2s, width .2s, heig
 .ctxmenu { position: fixed; z-index: 60; min-width: 140px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 5px; box-shadow: 0 10px 28px rgba(0,0,0,.25); display: flex; flex-direction: column; }
 .ctxmenu button { border: 0; background: none; color: var(--ink); text-align: left; padding: 7px 12px; border-radius: 7px; font: inherit; font-size: 13.5px; cursor: pointer; }
 .ctxmenu button:hover { background: var(--hover); color: var(--mist-d); }
+#guide .nline[hidden] { display: none; }
