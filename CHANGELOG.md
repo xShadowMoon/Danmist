@@ -5,6 +5,20 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.15.1 · 2026-11-27
+
+只修问题、没有新功能的小更新。以后这类更新都在版本号后面加一位（0.9.15.1、0.9.15.2……）。
+A bug-fix-only update. From now on, updates like this add a fourth number to the version (0.9.15.1, 0.9.15.2, ...).
+
+- SC 攒到几百条时页面会越来越卡：现在先只显示最近的，更早的点「还有 N 条更早的」再展开。
+  The page no longer slows down when hundreds of Super Chats pile up: only recent ones are shown, older ones expand on demand.
+- 点歌姬切歌、拖进度时日志里不再记一大段报错。
+  Switching or seeking songs no longer writes a long error to the log.
+- 更新检查认得四位的版本号。注意：0.9.15 及更早的版本认不出 0.9.15.1，不会提示这次更新（等下一个大版本会正常提示），想要的话手动下载。
+  The update check understands four-part versions. Note: 0.9.15 and earlier cannot see 0.9.15.1 and will not be notified; download it manually if you want it.
+
+---
+
 ## v0.9.15 · 2026-11-27
 
 ### 独立软件 · A real desktop app

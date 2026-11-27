@@ -10,8 +10,18 @@ import updates
 
 class VersionTests(unittest.TestCase):
     def test_parse(self):
-        self.assertEqual(updates.parse('v0.10.1'), (0, 10, 1))
-        self.assertEqual(updates.parse('1.2'), (1, 2, 0))
+        self.assertEqual(updates.parse('v0.10.1'), (0, 10, 1, 0))
+        self.assertEqual(updates.parse('1.2'), (1, 2, 0, 0))
+        self.assertEqual(updates.parse('v0.9.15.1'), (0, 9, 15, 1))
+        self.assertIsNone(updates.parse('0.9.15.1.2'))
+
+    def test_bugfix_versions(self):
+        # 只修 bug 的小更新（2026-11-27）：0.9.15 < 0.9.15.1 < 0.9.15.2 < 0.9.16
+        self.assertTrue(updates.is_newer('v0.9.15.1', '0.9.15'))
+        self.assertTrue(updates.is_newer('v0.9.15.2', '0.9.15.1'))
+        self.assertTrue(updates.is_newer('v0.9.16', '0.9.15.2'))
+        self.assertFalse(updates.is_newer('v0.9.15', '0.9.15.1'))
+        self.assertFalse(updates.is_newer('v0.9.15.0', '0.9.15'))
         self.assertIsNone(updates.parse('nightly'))
         self.assertIsNone(updates.parse(None))
 

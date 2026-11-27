@@ -18,7 +18,7 @@ import zipfile
 
 import aiohttp
 
-VERSION = '0.9.15'
+VERSION = '0.9.15.1'
 REPO = 'xShadowMoon/Danmist'  # 2026-11-25 仓库从 bili-danmaku-board 改名成 Danmist（旧地址 GitHub 会自动转过来）
 REPOS = ('xshadowmoon/bili-danmaku-board', 'xshadowmoon/danmist')  # 下载地址认这两个名字（比的时候不分大小写）
 LATEST_API = f'https://api.github.com/repos/{REPO}/releases/latest'
@@ -41,8 +41,9 @@ log = logging.getLogger('danmaku')
 
 
 def parse(tag):
-    """'v0.9.2' -> (0, 9, 2)；认不出来就返回 None。"""
-    m = re.fullmatch(r'v?(\d{1,4})\.(\d{1,4})(?:\.(\d{1,4}))?', str(tag or '').strip())
+    """'v0.9.2' -> (0, 9, 2, 0)；认不出来就返回 None。
+    2026-11-27：只修 bug 的小更新在后面再加一位（0.9.15.1），所以最多认四位，少的补 0 好比大小"""
+    m = re.fullmatch(r'v?(\d{1,4})\.(\d{1,4})(?:\.(\d{1,4}))?(?:\.(\d{1,4}))?', str(tag or '').strip())
     return tuple(int(x or 0) for x in m.groups()) if m else None
 
 
