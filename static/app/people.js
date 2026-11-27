@@ -1,9 +1,18 @@
 // 雾幕主页面 · 观众卡片、历史场次
 // 这几个文件按顺序加载，共用同一套全局变量。加载时只能直接用前面文件里的东西，用后面文件的函数要放进回调里
 /* ---------- 用户卡片 ---------- */
+// 手机上（2026-11-26 用户：滑弹幕老是弹出观众卡片，像滑不动）：手指动过、或者列表刚在滚，就不算点；
+// 列表里的一行只有点名字、头像才打开卡片（电脑上还是整行都能点）
+let touchMoved = 0, tx0 = 0, ty0 = 0;
+const coarse = matchMedia('(pointer: coarse)');
+addEventListener('touchstart', e => { tx0 = e.touches[0].clientX; ty0 = e.touches[0].clientY; }, { passive: true, capture: true });
+addEventListener('touchmove', e => { if (Math.hypot(e.touches[0].clientX - tx0, e.touches[0].clientY - ty0) > 8) touchMoved = performance.now(); }, { passive: true, capture: true });
+addEventListener('scroll', e => { if (e.target.closest?.('.list, #dmlist')) touchMoved = Math.max(touchMoved, performance.now()); }, { passive: true, capture: true });
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-uid]');
   if (!el || el.closest('#card, #hist') || document.body.classList.contains('editing')) return;  // 2026-11-21 普通链接也能点开（不显示花了多少、备注、以前、禁言）
+  if (performance.now() - touchMoved < 450) return;  // 刚滑过 / 列表还在滚：不打开
+  if (coarse.matches && el.closest('.list, #dmlist') && !e.target.closest('.n, .av, .avw, .who > span:not(.tag), .rn, .row .n, .face')) return;  // 手机上：点名字、头像才开
   const uid = Number(el.dataset.uid);
   if (uid) openUser(uid);
 });
