@@ -15,7 +15,7 @@ function dmHtml(d) {
   if (d.kind === 'mute') return `<div class="dm dmsys" data-uid="${d.uid}" data-i="${d.i ?? ''}"><span>${icon('ban')}</span><span class="txt"><b>${esc(d.name)}</b> ${esc(d.text)}</span><span class="time">${hhmm(d.t)}</span></div>`;
   const tags = [];
   if (d.plat) tags.push(platTag(d.plat));  // 其他平台的弹幕（2026-11-25）
-  if (isAnchor(d)) tags.push(`<span class="tag anchor" title="${esc(tagName('anchor'))}本人">${esc(tagShort('anchor'))}</span>`);  // 2026-11-19 跟 B 站一样
+  if (isAnchorDm(d)) tags.push(`<span class="tag anchor" title="${esc(tagName('anchor'))}本人">${esc(tagShort('anchor'))}</span>`);  // 2026-11-19 跟 B 站一样
   if (d.wealth) tags.push(wealthHtml(d.wealth));
   if (d.guard) tags.push(`<span class="tag g${d.guard}" title="${GN[d.guard]}">${GS[d.guard]}</span>`);
   if (d.admin) tags.push(`<span class="tag admin" title="${esc(tagName('admin'))}">${esc(tagShort('admin'))}</span>`);
