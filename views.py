@@ -22,7 +22,7 @@ def public_view(data):
 # 不给：收益流水、礼物价格、谁送了多少、礼物榜、历史场次、下播期间、备注、曲库、整场弹幕往上翻。
 # 这里是按「只挑要给的」来写的：以后本场数据里加了新东西，默认不会漏给普通链接。
 VIEWER_ROOM = ('title', 'live', 'room_real', 'bili_ok', 'online', 'watched', 'watched_text', 'live_time', 'likes', 'area', 'area_id',
-               'area_rank', 'area_rank_name', 'pop_rank', 'top', 'uid', 'face', 'cover', 'guard', 'up_at', 'down_at')
+               'area_rank', 'area_rank_name', 'pop_rank', 'top', 'uid', 'face', 'anchor_face', 'cover', 'guard', 'up_at', 'down_at')
 
 
 VIEWER_ENTER = ('t', 'uid', 'name', 'face', 'kind', 'guard', 'plat')

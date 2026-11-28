@@ -820,7 +820,7 @@ def room_values(values):
             out[key] = number(value, key)
         elif key in ('title', 'area', 'watched_text', 'live_time', 'bot_name', 'area_rank_name', 'anchor_name'):
             out[key] = text(value, key, 64 if key in ('bot_name', 'anchor_name') else 256)
-        elif key in ('cover', 'bot_face'):
+        elif key in ('cover', 'bot_face', 'anchor_face'):
             out[key] = url(value)
         elif key == 'top':
             def top(row):

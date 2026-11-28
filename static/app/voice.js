@@ -208,7 +208,7 @@ function speakDm(d) {
   const T = cfg.tts;
   if (!T.on || !T.dm || isMuted(d.uid)) return;
   if (T.skipBot && (S.bot_uids || []).includes(d.uid)) return;
-  if (T.skipAnchor && S.room.uid && d.uid === S.room.uid) return;
+  if (T.skipAnchor && isAnchor(d)) return;
   if (d.emoticon && !T.readEmoticon) return;
   if (blocked(d.text) || blocked(d.name)) return;
   const text = clean(d.text, T.maxLen);

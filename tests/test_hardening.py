@@ -124,3 +124,8 @@ class DesktopSettingsTests(unittest.TestCase):
 
     def test_room_keeps_anchor_name_and_bot_uid(self):
         self.assertEqual(validation.room_values({'anchor_name': '雾冬', 'bot_uid': 12}), {'anchor_name': '雾冬', 'bot_uid': 12})
+        # 2026-11-28：主播头像，游客时按头像认主播本人
+        face = 'https://i0.hdslb.com/bfs/face/abc.jpg'
+        self.assertEqual(validation.room_values({'anchor_face': face}), {'anchor_face': face})
+        with self.assertRaises(ValueError):
+            validation.room_values({'anchor_face': 'javascript:alert(1)'})

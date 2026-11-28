@@ -337,6 +337,9 @@ function loadWealth(tries = 0) {
 loadWealth();
 // 舰长头像框（2026-11-25）：没放自己的框图时用 B 站官方的框，官方框底下自带「舰长」字，就不再叠锚徽章
 fetch('api/art').then(r => r.json()).then(a => document.body.classList.toggle('biliframe', !a.includes('frame3-s.png'))).catch(() => {});
+// 是不是主播本人（2026-11-28）：平时按账号编号认；没登录（游客）时 B 站把弹幕的账号编号藏了（是 0），就按头像认
+const faceKey = u => (String(u || '').match(/\/bfs\/face\/([^?@\s]+)/) || [])[1] || '';
+const isAnchor = d => !!d && ((!!S.room.uid && d.uid === S.room.uid) || (!d.uid && !!faceKey(d.face) && faceKey(d.face) === faceKey(S.room.anchor_face)));
 function wealthHtml(lv) {
   const u = WEALTH_ICON[lv];
   if (u) return `<img class="wealthimg" src="img?u=${encodeURIComponent(u)}&s=big" alt="荣耀 ${lv}" title="荣耀等级 ${lv}">`;
