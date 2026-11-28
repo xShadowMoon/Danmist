@@ -1625,3 +1625,4 @@ body.touring #spot { transition: opacity .3s, left .2s, top .2s, width .2s, heig
 .trsteps ol { margin: 4px 0 0; padding-left: 20px; line-height: 1.7; }
 .trimp { border-top: 1px solid var(--line-soft); margin-top: 8px; padding-top: 8px; }
 .trimp select { max-width: 100%; }
+#trainbox [hidden], #evbox [hidden], #databox [hidden] { display: none !important; }  /* .chips 的 display 会盖掉 hidden */
