@@ -218,7 +218,7 @@ function drawDesktop() {
   box.hidden = !D;
   if (!D) return;
   $('dkmode').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === D.open));
-  $('dkclose').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === (D.close || 'tray')));  // 2026-11-28 托盘
+  $('dkclose').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === (D.close || 'ask')));  // 2026-11-28 托盘
   $('dkauto').checked = !!D.autostart;
   box.querySelectorAll('.dkapp-only').forEach(r => { r.hidden = !(D.launcher && D.win && D.open !== 'web'); });
   $('dkshortcut').hidden = !D.win;

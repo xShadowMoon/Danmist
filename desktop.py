@@ -9,7 +9,7 @@
 1. 在后台开雾幕服务（server.py，没有黑窗口），日志写 data/server.log；
 2. 服务起来后，用雾幕自己的窗口打开它（native_window.py，Windows 自带的 WebView2，2026-11-26 起）；
    开不起来再用 Edge（没有就 Chrome）的「应用窗口」—— 用单独的配置文件夹 data/desktop-browser，不碰你平时的浏览器；
-3. 关窗口默认缩到右下角托盘（2026-11-28），右键托盘「退出雾幕」才真的停；设置里可以改成关窗口直接退出；
+3. 点 ✕ 时弹窗问缩到右下角托盘还是退出（2026-11-28），可以勾「不再提醒」；缩到托盘后右键托盘「退出雾幕」才真的停；
 4. 页面上点了「重启生效」（软件内更新）：服务以退出码 75 退出，这里把下载好的新版本换上，再把服务开起来，
    窗口不用关，几秒后页面自己连回来、刷新成新版本。
 """
@@ -227,7 +227,8 @@ def main():
         state = {'server': server, 'stop': False}
         threading.Thread(target=watch_server, args=(port, state), daemon=True).start()
         ok = native_window.show(url + '?app=1', title, port=port, hidden='--tray' in args,
-                                status=lambda: launcher_status(port), close_mode=lambda: config().get('close', 'tray'))
+                                status=lambda: launcher_status(port), close_mode=lambda: config().get('close', 'ask'),
+                                remember_close=remember_close)
         if ok:
             state['stop'] = True
             say('窗口关了，雾幕也停了')
@@ -264,6 +265,17 @@ def main():
             stop_server(port, server)
             return
         time.sleep(1)
+
+
+def remember_close(mode):
+    """关窗口的弹窗里勾了「不再提醒」：记进 config.json（设置 → 更多 → 软件 里能改回「每次问」）"""
+    try:
+        c = config()
+        c['close'] = mode
+        with open(os.path.join(APP, 'config.json'), 'w', encoding='utf-8') as f:
+            json.dump(c, f, ensure_ascii=False, indent=2)
+    except (OSError, ValueError) as e:
+        say(f'没记住关窗口的选择：{e}')
 
 
 def launcher_status(port):

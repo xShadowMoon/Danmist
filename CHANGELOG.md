@@ -5,6 +5,41 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.16 · 2026-11-28
+
+### 更像一个正经软件 · A proper desktop app
+
+- 右下角托盘图标：鼠标放上去看直播间和连接状态，右键「打开雾幕 / 弹幕小窗 / 检查更新 / 退出雾幕」。
+  Tray icon with status tooltip and a menu (open, danmaku popout, check for updates, quit).
+- 点 ✕ 时弹窗问「缩到托盘」还是「退出雾幕」，可以勾「不再提醒」；设置 → 更多 → 软件 里能改。缩到托盘后弹幕、朗读、点歌照常。
+  Closing the window asks whether to hide to the tray or quit, with a "don't ask again" option.
+- 只开一个：雾幕开着时再双击，会把原来的窗口叫出来。
+  Single instance: launching again brings the existing window to the front.
+- 开机自动启动（默认关，设置 → 更多 → 软件）：开机后只缩在托盘里。
+  Optional start with Windows, hidden in the tray.
+- 有新版本、跟直播间断开太久时，右下角弹雾幕自己的小通知。
+  Small notifications for new versions and long disconnections.
+- 弹幕小窗在雾幕里自己开（浮在最上面），不再弹「about 链接」、不再开浏览器；下载不再弹 Edge 的下载面板；Ctrl+滚轮不缩放。
+  The danmaku popout opens inside the app; no Edge download panel; no Ctrl+wheel zoom.
+
+### 点歌姬 · Song bot
+
+- 「音乐客户端」放歌：有人点歌自动放起来，点的歌放完叫客户端暂停，不再接着放主播以前的队列；客户端弹出来的窗口自动压回去。
+  In music-client mode, requested songs start on their own, the client pauses when the requests run out, and its pop-up window is minimised again.
+- 选「点歌姬 + 音乐客户端」时弹窗提醒：打游戏的话把客户端窗口拖到副屏，或者改用「雾幕自己放」。
+  A reminder to move the music client to a second screen when choosing music-client mode.
+
+### 修复 · Fixes
+
+- 0.9.15.4 / 0.9.15.5 里页面有一部分代码没加载（版本号不显示、弹幕时有时无、换号和发弹幕失灵）。
+  Part of the page failed to load in 0.9.15.4 / 0.9.15.5 (missing version, danmaku not updating).
+- 每天的备份跳过浏览器缓存，体积小很多；更新前的备份也快了，点「重启」不再等很久。
+  Backups skip browser caches, so they are much smaller and faster.
+- 诊断日志不再把版本号当 IP 打码。
+  Diagnostic logs no longer mask version numbers as IP addresses.
+
+---
+
 ## v0.9.15.5 · 2026-11-28
 
 - 设置 → 更多 →「检查更新」点了马上去 GitHub 查。以前它只看开软件时自动查的那一次，开着软件期间发的新版本要等到第二天才看得到。

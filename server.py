@@ -3184,7 +3184,7 @@ async def main():
         v, _ = updates.staged(DIR)
         conf = load_config(args.config) if not args.demo else {}
         return {'launcher': launcher, 'open': conf.get('open', 'web') if not args.demo else 'web',
-                'close': 'quit' if conf.get('close') == 'quit' else 'tray', 'autostart': autostart_on(),  # 2026-11-28 托盘、开机自启
+                'close': conf.get('close') if conf.get('close') in ('tray', 'quit') else 'ask', 'autostart': autostart_on(),  # 2026-11-28 托盘、开机自启
                 'staged': v or '', 'win': sys.platform == 'win32',
                 'app_dir': os.path.abspath(DIR), 'data_dir': os.path.abspath(os.path.join(DIR, 'data'))}  # 设置 → 更多 → 文件夹（2026-11-26）
 
@@ -3256,7 +3256,7 @@ async def main():
             hub.emit_admin('desktop', desktop_info())
             return True, '下次打开用软件窗口' if mode == 'app' else '下次打开用浏览器'
         if cmd == 'close_mode':  # 关窗口时：缩到托盘 / 直接退出（2026-11-28）
-            mode = 'quit' if c.get('mode') == 'quit' else 'tray'
+            mode = c.get('mode') if c.get('mode') in ('tray', 'quit') else 'ask'
             if args.demo:
                 return False, '演示模式不改设置'
             try:
@@ -3266,7 +3266,7 @@ async def main():
             except (OSError, SystemExit, ValueError) as e:
                 return False, f'没存上：{e}'
             hub.emit_admin('desktop', desktop_info())
-            return True, '关窗口时缩到右下角托盘' if mode == 'tray' else '关窗口时直接退出雾幕'
+            return True, {'tray': '关窗口时缩到右下角托盘', 'quit': '关窗口时直接退出雾幕', 'ask': '关窗口时每次问一下'}[mode]
         if cmd == 'autostart':  # 开机自动启动（2026-11-28，默认不开）
             if args.demo:
                 return False, '演示模式不改设置'

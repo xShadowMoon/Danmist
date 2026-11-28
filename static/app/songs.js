@@ -124,6 +124,19 @@ function drawMusicSet() {
       + `<small class="mtip">${R.mode === 'app' ? `「音乐客户端」用${MSRC[src]}客户端自己的登录，这里可以不登。打游戏时建议用「雾幕自己放」，客户端换歌时可能弹到前面` : '不登录只能放免费的歌'}</small>`;
   $('mobsurl').value = location.origin + location.pathname.replace(/[^/]*$/, '') + 'obs-music';
 }
+function clientTip(name) {
+  if ($('ctipbox')) return;
+  const box = document.createElement('div');
+  box.id = 'ctipbox'; box.className = 'ctipmask';
+  box.innerHTML = `<div class="ctip" role="alertdialog" aria-modal="true" aria-labelledby="ctiph"><h3 id="ctiph">点歌姬用${esc(name)}客户端放歌</h3>`
+    + `<p>换歌时${esc(name)}的窗口可能会弹到最前面，挡住游戏。</p><p><b>打游戏的话，先把${esc(name)}窗口拖到副屏。</b>没有副屏就改用「雾幕自己放」：雾幕自己出声，不会弹任何窗口。</p>`
+    + `<div class="ctipbtns"><button class="btn sm" id="ctipweb">改用雾幕自己放</button><button class="btn sm accent" id="ctipok">知道了</button></div></div>`;
+  document.body.appendChild(box);
+  const close = () => box.remove();
+  $('ctipok').onclick = close;
+  $('ctipweb').onclick = () => { sendRules({ mode: 'web' }); close(); };
+  $('ctipok').focus();
+}
 function sendRules(patch) { window._ws?.send(JSON.stringify({ cmd: 'music_rules', ...patch })); }
 document.addEventListener('change', e => {
   const el = e.target.closest('#msetbox [data-mr]'); if (!el) return;
@@ -133,7 +146,14 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('click', e => {
   const sb = e.target.closest('#msetbox [data-mseg] button');
-  if (sb) { const k = sb.parentElement.dataset.mseg; sendRules({ [k]: k === 'on' ? sb.dataset.val === 'true' : sb.dataset.val }); return; }
+  if (sb) {
+    const k = sb.parentElement.dataset.mseg, v = k === 'on' ? sb.dataset.val === 'true' : sb.dataset.val, R = S.music_rules || {};
+    sendRules({ [k]: v });
+    // 选了点歌姬 + 音乐客户端（2026-11-28 用户：要必须点掉的弹窗）：提醒把客户端放到副屏
+    const on = k === 'on' ? v : R.on, mode = k === 'mode' ? v : R.mode;
+    if (on && mode === 'app' && (R.on !== on || R.mode !== mode)) clientTip(MSRC[R.src] || '音乐客户端');
+    return;
+  }
   if (e.target.closest('#midlesave')) { sendRules({ idle_list: $('midlelist').value.trim() }); return; }
   const wl = e.target.closest('[data-mweb]');  // 弹出官网登录页（2026-11-26：接口扫码常被平台拦，登不上）
   if (wl) { window._ws?.send(JSON.stringify({ cmd: 'music_weblogin', src: wl.dataset.mweb })); return; }

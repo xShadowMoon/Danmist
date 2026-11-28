@@ -270,5 +270,5 @@ class ClientControlTests(unittest.TestCase):
                 await asyncio.gather(*list(m.bg_tasks))
         asyncio.run(go())
         self.assertEqual(calls, [('163', 'play'), ('163', 'play'), ('163', 'pause')])
-        self.assertEqual(len(tips), 1)
+        self.assertEqual(tips, [])  # 副屏提醒改成在设置里选的时候弹（2026-11-28），放歌时不再提醒
         self.assertEqual(m.app_client, '')

@@ -707,11 +707,6 @@ class MusicService:
     def client_started(self, src):
         """叫客户端放了一首（2026-11-28 用户实测：有时要手动点一下才放）：过 3 秒看看，没在放就叫它放"""
         self.app_client = src
-        if not self.app_tipped:
-            self.app_tipped = True
-            name = '网易云' if src == '163' else 'QQ 音乐'
-            if self.tip:
-                self.tip('点歌姬在用音乐客户端放歌', f'建议把{name}窗口拖到副屏：换歌时它可能会弹出来，挡住游戏')
 
         async def go():
             await asyncio.sleep(3)

@@ -207,3 +207,45 @@ class Tray:
             if self.notified_down:
                 self.ui(lambda: self.balloon('又连上直播间了', '弹幕恢复正常'))
             self.down_since, self.notified_down = 0.0, False
+
+
+def ask_close(owner):
+    """点 ✕ 时问一下（2026-11-28 用户：要弹窗选缩小还是退出，再加个「不再提醒」）。
+    返回 (选的, 不再提醒)：选的是 'tray' / 'quit' / ''（点了取消或关掉这个框）"""
+    from System.Drawing import Font, FontStyle, Point, Size
+    from System.Windows.Forms import (Button, CheckBox, DialogResult, Form, FormBorderStyle, FormStartPosition, Label)
+    f = Form()
+    f.Text = '雾幕'
+    f.FormBorderStyle = FormBorderStyle.FixedDialog
+    f.MaximizeBox = f.MinimizeBox = False
+    f.ShowInTaskbar = False
+    f.StartPosition = FormStartPosition.CenterParent
+    f.ClientSize = Size(420, 170)
+    f.Font = Font('Microsoft YaHei UI', 9.5)
+    try:
+        f.Icon = owner.Icon
+    except Exception:
+        pass
+    t1 = Label()
+    t1.Text = '关掉窗口后，雾幕要怎么办？'
+    t1.Font = Font('Microsoft YaHei UI', 11.0, FontStyle.Bold)
+    t1.Location, t1.Size = Point(20, 18), Size(380, 26)
+    t2 = Label()
+    t2.Text = '缩到右下角托盘：弹幕、朗读、点歌照常，右键托盘图标能退出。'
+    t2.Location, t2.Size = Point(20, 50), Size(380, 40)
+    keep = CheckBox()
+    keep.Text = '不再提醒（以后可以在 设置 → 更多 → 软件 里改）'
+    keep.Location, keep.Size = Point(20, 92), Size(390, 24)
+    b1, b2 = Button(), Button()
+    b1.Text, b2.Text = '缩到托盘', '退出雾幕'
+    b1.DialogResult, b2.DialogResult = DialogResult.Yes, DialogResult.No
+    b1.Location, b1.Size = Point(196, 126), Size(100, 32)
+    b2.Location, b2.Size = Point(304, 126), Size(100, 32)
+    for c in (t1, t2, keep, b1, b2):
+        f.Controls.Add(c)
+    f.AcceptButton = b1
+    r = f.ShowDialog(owner)
+    choice = 'tray' if r == DialogResult.Yes else 'quit' if r == DialogResult.No else ''
+    remember = bool(keep.Checked) and bool(choice)
+    f.Dispose()
+    return choice, remember

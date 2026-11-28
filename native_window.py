@@ -132,7 +132,7 @@ def log(text):
         pass
 
 
-def show(url, title="雾幕", port=None, hidden=False, status=None, close_mode=None):
+def show(url, title="雾幕", port=None, hidden=False, status=None, close_mode=None, remember_close=None):
     """开窗口，一直到窗口关掉（退出雾幕）才返回。返回 True = 窗口正常开过；False = 开不起来（启动器换 Edge）
     2026-11-28：右下角托盘图标；关窗口缩到托盘（close_mode() 返回 'quit' 时直接退出）；hidden=True 开机自启时只放在托盘里；
     status() 给托盘看的雾幕状态；下载用雾幕自己的保存窗口，不弹 Edge 的下载面板；Ctrl+滚轮不缩放"""
@@ -173,18 +173,34 @@ def show(url, title="雾幕", port=None, hidden=False, status=None, close_mode=N
         return box['tray'] is not None and box['tray'].ni is not None
 
     def on_form_closing(sender, e):
-        """点 ✕：缩到托盘（关机、注销时照常关）"""
+        """点 ✕：默认弹窗问「缩到托盘 / 退出雾幕」，勾了「不再提醒」就按记下的来（关机、注销时照常关）"""
         try:
             from System.Windows.Forms import CloseReason
             t = box['tray']
             if not tray_ok() or t.quitting or e.CloseReason != CloseReason.UserClosing:
                 return
-            if (close_mode() if close_mode else 'tray') != 'tray':
+            mode = close_mode() if close_mode else 'ask'
+            if mode not in ('tray', 'quit'):
+                import tray
+                mode, remember = tray.ask_close(sender)
+                if not mode:  # 取消：窗口留着
+                    e.Cancel = True
+                    return
+                if remember and remember_close:
+                    remember_close(mode)
+            if mode == 'quit':
+                t.quitting = True
+                t.remove()
+                try:
+                    for w in list(webview.windows):
+                        if w is not win:
+                            w.destroy()
+                except Exception:
+                    pass
                 return
             e.Cancel = True
             save_state(win)
             sender.Hide()
-            t.hidden_to_tray()
         except Exception as ex:
             log(f'缩到托盘出错：{ex}')
 
