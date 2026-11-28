@@ -185,6 +185,8 @@ function connect() {
       if ($('card').classList.contains('open') && $('card').dataset.uid) drawCardTags(Number($('card').dataset.uid));
     } else if (type === 'mascot') {  // 在别的地方换了看板娘
       applyMascot(data);
+    } else if (type === 'music_tip') {  // 点歌姬给主播的提醒（2026-11-28）
+      note(`${data.title}：${data.text}`, true);
     } else if (type === 'desktop') {
       S.desktop = data; updPct = null; drawUpd();
     } else if (type === 'face') {  // 没头像的人，后台去 B 站名片查到了（2026-11-25）：补上再画

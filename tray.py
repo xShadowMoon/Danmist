@@ -30,6 +30,7 @@ class Tray:
         self.notified_update = ''
         self.down_since = 0.0
         self.notified_down = False
+        self.toasts = []
 
     # ---------- 下面这些都在窗口的界面线程里跑 ----------
     def build(self):
@@ -88,6 +89,13 @@ class Tray:
     def quit(self):
         self.quitting = True
         self.remove()
+        try:  # 弹幕小窗这些别的窗口一起关
+            import webview
+            for w in list(webview.windows):
+                if w is not self.win:
+                    w.destroy()
+        except Exception:
+            pass
         self.form().Close()
 
     def remove(self):
@@ -111,11 +119,56 @@ class Tray:
         except OSError:
             pass
 
-    def balloon(self, title, text):
+    def balloon(self, title, text, seconds=8):
+        """右下角弹一个雾幕自己的小通知（2026-11-28：Windows 的气泡通知打游戏时会被免打扰挡掉，用户没看到）。
+        不抢焦点，点一下打开雾幕，过几秒自己消失"""
         if self.ni is None:
             return
-        from System.Windows.Forms import ToolTipIcon
-        self.ni.ShowBalloonTip(6000, title, text, ToolTipIcon.Info)
+        import ctypes
+        from System.Drawing import Color, Font, FontStyle, Point, Size
+        from System.Windows.Forms import Form, FormBorderStyle, FormStartPosition, Label, Screen, Timer
+        f = Form()
+        f.FormBorderStyle = getattr(FormBorderStyle, 'None')
+        f.ShowInTaskbar = False
+        f.StartPosition = FormStartPosition.Manual
+        f.BackColor = Color.FromArgb(27, 36, 52)
+        f.Size = Size(360, 104)
+        wa = Screen.PrimaryScreen.WorkingArea
+        f.Location = Point(wa.Right - 372, wa.Bottom - 116 - 112 * len(self.toasts))
+        t1, t2 = Label(), Label()
+        t1.Text, t2.Text = title, text
+        t1.ForeColor, t2.ForeColor = Color.White, Color.FromArgb(196, 208, 224)
+        t1.Font = Font('Microsoft YaHei UI', 10.5, FontStyle.Bold)
+        t2.Font = Font('Microsoft YaHei UI', 9.0)
+        t1.Location, t1.Size = Point(16, 14), Size(328, 24)
+        t2.Location, t2.Size = Point(16, 42), Size(328, 54)
+        f.Controls.Add(t1)
+        f.Controls.Add(t2)
+        timer = Timer()
+        timer.Interval = seconds * 1000
+
+        def close(*_):
+            try:
+                timer.Stop()
+                ctypes.windll.user32.ShowWindow(ctypes.c_void_p(h), 0)  # 不是用 Show() 显示的，Close() 关不掉：先藏再释放
+                f.Dispose()
+                timer.Dispose()
+            except Exception:
+                pass
+            if f in self.toasts:
+                self.toasts.remove(f)
+
+        def click(*_):
+            close()
+            self.safe(self.open)
+        for c in (f, t1, t2):
+            c.Click += click
+        h = int(str(f.Handle.ToInt64()))
+        timer.Tick += close
+        self.toasts.append(f)
+        # 不抢焦点地显示在最上面：SWP_NOACTIVATE | SWP_SHOWWINDOW
+        ctypes.windll.user32.SetWindowPos(ctypes.c_void_p(h), ctypes.c_void_p(-1), f.Location.X, f.Location.Y, 360, 104, 0x0010 | 0x0040)
+        timer.Start()
 
     # ---------- 后台线程用：转到界面线程去做 ----------
     def ui(self, fn):
@@ -138,6 +191,9 @@ class Tray:
         conn = '已连接' if st.get('bili_ok') is not False else '没连上直播间'
         text = short(f"{self.title}{' · ' + anchor if anchor else ''} · {live} · {conn}")
         self.ui(lambda: setattr(self.ni, 'Text', text) if self.ni is not None else None)
+        for tip in st.get('tips') or []:  # 点歌姬这些给主播的提醒（2026-11-28）
+            if isinstance(tip, dict):
+                self.ui(lambda tip=tip: self.balloon(str(tip.get('title') or '雾幕'), str(tip.get('text') or ''), 12))
         v = st.get('update') or ''
         if v and v != self.notified_update:
             self.notified_update = v

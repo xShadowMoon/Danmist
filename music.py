@@ -20,6 +20,7 @@ import uuid
 
 import aiohttp
 
+import media_ctl
 from breaker import Breaker, Resting
 
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
@@ -470,6 +471,10 @@ class MusicService:
         self.idle_names = None   # 曲库里的歌名：() -> [(歌名, 歌手)]，server.py 设
         self.bili_cookie = None  # 连直播间那个号的登录信息（点 B 站视频要），server.py 设
         self.idle_recent = []    # 空闲时最近放过的，别老是那几首
+        self.tip = None          # 给主播的提醒（托盘小通知 + 页面上），server.py 设
+        self.app_client = ''     # 现在在用哪个音乐客户端放（163 / qq），点的歌放完要叫它暂停（2026-11-28）
+        self.app_tipped = False  # 「把客户端放到副屏」每次打开雾幕后第一次用客户端放歌时提醒一次
+        self.bg_tasks = set()
         try:
             with open(self.file, encoding='utf-8') as f:
                 j = json.load(f)
@@ -689,9 +694,35 @@ class MusicService:
             it['start'] = time.time() + 1.5
             if self.rules['mode'] == 'app':
                 p.app_play(it['sid'])
+                self.client_started(it['src'])
         self.push()
         self.wake.set()
         return f'换成了：{s["title"]}' + (f' · {s["artist"]}' if s['artist'] else '')
+
+    def bg(self, coro):
+        t = asyncio.ensure_future(coro)
+        self.bg_tasks.add(t)
+        t.add_done_callback(self.bg_tasks.discard)
+
+    def client_started(self, src):
+        """叫客户端放了一首（2026-11-28 用户实测：有时要手动点一下才放）：过 3 秒看看，没在放就叫它放"""
+        self.app_client = src
+        if not self.app_tipped:
+            self.app_tipped = True
+            name = '网易云' if src == '163' else 'QQ 音乐'
+            if self.tip:
+                self.tip('点歌姬在用音乐客户端放歌', f'建议把{name}窗口拖到副屏：换歌时它可能会弹出来，挡住游戏')
+
+        async def go():
+            await asyncio.sleep(3)
+            await media_ctl.run(src, 'play')
+        self.bg(go())
+
+    def client_stop(self):
+        """点的歌放完了、没有下一首：叫客户端暂停，别接着放主播自己以前的队列"""
+        if self.app_client:
+            self.bg(media_ctl.run(self.app_client, 'pause'))
+            self.app_client = ''
 
     async def pick_idle(self):
         """没人点的时候放什么（2026-11-26）：曲库里随机 / 网易云歌单里随机。找不到就算了"""
@@ -867,6 +898,7 @@ class MusicService:
             try:
                 cur = self.current()
                 if not self.rules['on']:
+                    self.client_stop()
                     if cur:
                         cur['state'] = 'ok'
                         cur.pop('start', None)
@@ -887,6 +919,7 @@ class MusicService:
                         else:
                             nxt = next((x for x in self.queue if x['state'] == 'ok'), None)
                     if not nxt:
+                        self.client_stop()
                         self.wake.clear()
                         try:  # 开了空闲歌单但这次没找到：过一会儿再试
                             await asyncio.wait_for(self.wake.wait(), 60 if self.rules['idle'] != 'off' else None)
@@ -901,6 +934,7 @@ class MusicService:
                             nxt.update(state='skip', why=str(e))
                             self.push()
                             continue
+                        self.client_started(nxt['src'])
                     self.push()
                     cur = nxt
                 left = cur['start'] + cur['dur'] + 1 - time.time()

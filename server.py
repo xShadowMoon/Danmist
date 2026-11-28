@@ -2966,6 +2966,13 @@ async def main():
         finally:
             reply_busy[0] = False
     hub.music.say = auto_say
+    launcher_tips = []  # 给托盘弹的小通知（启动器来拿，2026-11-28）
+
+    def music_tip(title, text):
+        launcher_tips.append({'title': title, 'text': text})
+        del launcher_tips[:-5]
+        hub.emit_admin('music_tip', {'title': title, 'text': text})
+    hub.music.tip = music_tip
     hub.music.bili_cookie = load_cookie  # 点 B 站视频用连直播间那个号的登录信息（B 站不让没登录的查视频）
     hub.music.idle_names = lambda: [(k, str(v.get('artist') or '')) for k, v in hub.songbook.items() if v.get('available', True) is not False]
     hub.platforms = Platforms(hub, os.path.join(DIR, 'data'), not args.demo, write_json, log, lambda: bare)
@@ -3282,8 +3289,11 @@ async def main():
             raise web.HTTPForbidden()
         r = hub.state.room
         nr = new_release[0]
+        tips = list(launcher_tips)
+        launcher_tips.clear()
         return web.json_response({'anchor': str(r.get('anchor_name') or ''), 'live': r.get('live'), 'bili_ok': r.get('bili_ok'),
-                                  'room': r.get('room_real') or args.room, 'update': nr['v'] if nr and updates.is_newer(nr['v']) else ''},
+                                  'room': r.get('room_real') or args.room, 'update': nr['v'] if nr and updates.is_newer(nr['v']) else '',
+                                  'tips': tips},
                                  headers={'Cache-Control': 'no-store'})
 
     async def launcher_quit(request):

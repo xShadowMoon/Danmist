@@ -41,6 +41,7 @@ function syncPop() {
 }
 async function openPop() {
   if (pipWin) { popBack(); return; }
+  if (window.pywebview?.api?.popout) { window.pywebview.api.popout(); return; }  // 雾幕软件窗口里：开雾幕自己的小窗（2026-11-28）
   const fallback = () => window.open(location.pathname + '?pop=1', 'xwpop', 'width=420,height=680');  // 不支持画中画的浏览器：开一个只有弹幕的普通小窗
   if (!window.documentPictureInPicture) { fallback(); return; }
   try { pipWin = await documentPictureInPicture.requestWindow({ width: 400, height: 620 }); } catch { pipWin = null; fallback(); return; }

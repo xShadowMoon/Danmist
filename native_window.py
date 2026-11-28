@@ -152,8 +152,22 @@ def show(url, title="雾幕", port=None, hidden=False, status=None, close_mode=N
         webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = True   # GitHub、B 站这些链接用平时的浏览器开
     except Exception:
         pass
+    base = url.split('?')[0]
+
+    class Api:
+        """页面里能叫的（window.pywebview.api.xxx）"""
+        def popout(self):
+            """弹幕小窗（2026-11-28：以前在软件里点会弹「找不到能打开 about 链接的应用」再开个浏览器）：在雾幕里开一个浮在最上面的小窗"""
+            for w in list(webview.windows):
+                if getattr(w, 'title', '') == '弹幕小窗':
+                    w.show()
+                    return True
+            webview.create_window('弹幕小窗', base + '?pop=1&app=1', width=420, height=680, min_size=(280, 300),
+                                  on_top=True, background_color='#111925', text_select=True)
+            return True
+
     win = webview.create_window(title, url, width=st['width'], height=st['height'], x=st['x'], y=st['y'],
-                                min_size=(900, 600), background_color='#111925', text_select=True, hidden=hidden)
+                                min_size=(900, 600), background_color='#111925', text_select=True, hidden=hidden, js_api=Api())
 
     def tray_ok():
         return box['tray'] is not None and box['tray'].ni is not None
@@ -248,7 +262,7 @@ def show(url, title="雾幕", port=None, hidden=False, status=None, close_mode=N
     def watch_status():
         while status:
             try:
-                time.sleep(15)
+                time.sleep(5)
                 t = box['tray']
                 if t is not None and t.ni is not None:
                     t.update_status(status())

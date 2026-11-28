@@ -243,3 +243,32 @@ class OpenQuietTests(unittest.TestCase):
         with mock.patch.object(music.os, 'startfile', old, create=True):
             music.open_quiet('qqmusic://x')
         self.assertEqual(calls, ['qqmusic://x'])
+
+
+class ClientControlTests(unittest.TestCase):
+    """音乐客户端放歌（2026-11-28）：放一首后叫它真的放起来；点的歌放完叫它暂停；第一次用时提醒放副屏"""
+
+    def test_started_then_stopped(self):
+        from unittest import mock
+        calls, tips = [], []
+
+        async def fake_run(src, do):
+            calls.append((src, do))
+            return 'Playing'
+
+        m = svc()
+
+        async def go():
+            m.tip = lambda title, text: tips.append(title)
+            with mock.patch.object(music.media_ctl, 'run', fake_run), mock.patch.object(music.asyncio, 'sleep', mock.AsyncMock()):
+                m.client_started('163')
+                m.client_started('163')
+                await asyncio.gather(*list(m.bg_tasks))
+                m.client_stop()
+                await asyncio.gather(*list(m.bg_tasks))
+                m.client_stop()  # 已经停了：不再叫
+                await asyncio.gather(*list(m.bg_tasks))
+        asyncio.run(go())
+        self.assertEqual(calls, [('163', 'play'), ('163', 'play'), ('163', 'pause')])
+        self.assertEqual(len(tips), 1)
+        self.assertEqual(m.app_client, '')
