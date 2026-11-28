@@ -54,13 +54,21 @@ IDLE_NAME = '空闲时'
 TITLE_SHORT = 10   # 自动回的那句话里歌名最多几个字（B 站弹幕 20 个字以内最稳）
 
 
-def open_quiet(uri):
+def open_quiet(uri, exes=()):
     """叫音乐客户端（2026-11-28 用户要的）：要求它最小化打开、不抢前台，主播在全屏打游戏时别被切出去。
-    7 = SW_SHOWMINNOACTIVE。客户端听不听这个要求看它自己，不保证"""
+    7 = SW_SHOWMINNOACTIVE。客户端不听这个要求（网易云实测还是会弹）时，win_quiet 再把它弹出来的窗口压回去"""
+    def launch():
+        try:
+            os.startfile(uri, 'open', show_cmd=7)  # noqa: S606 —— 只用来打开音乐客户端自己的链接
+        except TypeError:  # Python 3.10 以前没有这几个参数
+            os.startfile(uri)  # noqa: S606
+    if not exes:
+        return launch()
     try:
-        os.startfile(uri, 'open', show_cmd=7)  # noqa: S606 —— 只用来打开音乐客户端自己的链接
-    except TypeError:  # Python 3.10 以前没有这几个参数
-        os.startfile(uri)  # noqa: S606
+        import win_quiet
+    except Exception:
+        return launch()
+    return win_quiet.keep_quiet(launch, exes)
 
 
 def hash33(s):
@@ -219,7 +227,7 @@ class NetEase:
         payload = base64.b64encode(json.dumps({'type': 'song', 'id': str(sid), 'cmd': 'play'}).encode()).decode()
         if sys.platform != 'win32':
             raise OSError('只有 Windows 上能叫网易云客户端')
-        open_quiet('orpheus://' + payload)
+        open_quiet('orpheus://' + payload, ('cloudmusic.exe',))
 
 
 class QQMusic:
@@ -364,7 +372,7 @@ class QQMusic:
             raise OSError('只有 Windows 上能叫 QQ 音乐客户端')
         p = json.dumps({'song': [{'type': '0', 'songmid': str(sid)}], 'action': 'play'}, separators=(',', ':'))
         try:
-            open_quiet('qqmusic://qq.com/media/playSonglist?p=' + urllib.parse.quote(p, safe=''))
+            open_quiet('qqmusic://qq.com/media/playSonglist?p=' + urllib.parse.quote(p, safe=''), ('qqmusic.exe',))
         except OSError:
             raise OSError('没找到 QQ 音乐客户端（要先装好、登录）')
 

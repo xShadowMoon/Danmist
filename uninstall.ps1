@@ -15,6 +15,7 @@ foreach ($lnk in @((Join-Path ([Environment]::GetFolderPath('Programs')) '雾幕
   Remove-Item -LiteralPath $lnk -Force -ErrorAction SilentlyContinue
 }
 Remove-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Danmist' -Recurse -Force -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'Danmist' -ErrorAction SilentlyContinue  # 开机自动启动（2026-11-28）
 
 if ($all -eq 'Yes') {
   Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue

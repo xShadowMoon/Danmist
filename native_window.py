@@ -10,6 +10,7 @@ import os
 import shutil
 import sys
 import threading
+import time
 
 APP = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(APP, 'data')
@@ -83,8 +84,58 @@ def set_app_id():
         pass
 
 
-def show(url, title="雾幕"):
-    """开窗口，一直到窗口关掉才返回。返回 True = 窗口正常开过；False = 开不起来（启动器换 Edge）"""
+SHOW_EVENT = 'Local\\Danmist-Show-{}'  # 再双击一次雾幕时，叫已经开着的那个窗口出来（2026-11-28）
+
+
+def signal_running(port):
+    """已经开着一个雾幕了：叫它把窗口拿出来。叫到了返回 True（这边就不用再开窗口）"""
+    try:
+        import ctypes
+        k32 = ctypes.windll.kernel32
+        k32.OpenEventW.restype = ctypes.c_void_p
+        h = k32.OpenEventW(0x0002, False, SHOW_EVENT.format(port))  # EVENT_MODIFY_STATE
+        if not h:
+            return False
+        ctypes.windll.user32.AllowSetForegroundWindow(-1)  # 让那边的窗口能跳到最前面
+        ok = bool(k32.SetEvent(ctypes.c_void_p(h)))
+        k32.CloseHandle(ctypes.c_void_p(h))
+        return ok
+    except Exception:
+        return False
+
+
+def wait_show_requests(port, on_show):
+    """在后台等「再双击了一次雾幕」的信号"""
+    try:
+        import ctypes
+        k32 = ctypes.windll.kernel32
+        k32.CreateEventW.restype = ctypes.c_void_p
+        h = k32.CreateEventW(None, False, False, SHOW_EVENT.format(port))
+        if not h:
+            return
+    except Exception:
+        return
+
+    def loop():
+        while True:
+            if k32.WaitForSingleObject(ctypes.c_void_p(h), 0xFFFFFFFF) == 0:
+                on_show()
+    threading.Thread(target=loop, daemon=True).start()
+
+
+def log(text):
+    try:
+        os.makedirs(DATA, exist_ok=True)
+        with open(os.path.join(DATA, 'desktop.log'), 'a', encoding='utf-8') as f:
+            f.write(time.strftime('%Y-%m-%d %H:%M:%S ') + text + '\n')
+    except OSError:
+        pass
+
+
+def show(url, title="雾幕", port=None, hidden=False, status=None, close_mode=None):
+    """开窗口，一直到窗口关掉（退出雾幕）才返回。返回 True = 窗口正常开过；False = 开不起来（启动器换 Edge）
+    2026-11-28：右下角托盘图标；关窗口缩到托盘（close_mode() 返回 'quit' 时直接退出）；hidden=True 开机自启时只放在托盘里；
+    status() 给托盘看的雾幕状态；下载用雾幕自己的保存窗口，不弹 Edge 的下载面板；Ctrl+滚轮不缩放"""
     try:
         import webview
     except Exception:
@@ -93,6 +144,7 @@ def show(url, title="雾幕"):
     carry_over_storage()
     st = load_state()
     shown = threading.Event()
+    box = {'tray': None, 'hooked': False}
     # 点歌姬由雾幕自己出声（2026-11-26 用户：主播也要听到）：不用先点一下页面也能放
     os.environ.setdefault('WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS', '--autoplay-policy=no-user-gesture-required')
     try:
@@ -101,7 +153,26 @@ def show(url, title="雾幕"):
     except Exception:
         pass
     win = webview.create_window(title, url, width=st['width'], height=st['height'], x=st['x'], y=st['y'],
-                                min_size=(900, 600), background_color='#111925', text_select=True)
+                                min_size=(900, 600), background_color='#111925', text_select=True, hidden=hidden)
+
+    def tray_ok():
+        return box['tray'] is not None and box['tray'].ni is not None
+
+    def on_form_closing(sender, e):
+        """点 ✕：缩到托盘（关机、注销时照常关）"""
+        try:
+            from System.Windows.Forms import CloseReason
+            t = box['tray']
+            if not tray_ok() or t.quitting or e.CloseReason != CloseReason.UserClosing:
+                return
+            if (close_mode() if close_mode else 'tray') != 'tray':
+                return
+            e.Cancel = True
+            save_state(win)
+            sender.Hide()
+            t.hidden_to_tray()
+        except Exception as ex:
+            log(f'缩到托盘出错：{ex}')
 
     def before_show(window=None):
         try:  # 窗口和任务栏的图标
@@ -110,12 +181,79 @@ def show(url, title="雾幕"):
             win.native.Icon = Icon(icon_path())
         except Exception:
             pass
+        try:
+            import tray
+            t = tray.Tray(win, title, icon_path())
+            t.build()
+            box['tray'] = t
+            win.native.FormClosing += on_form_closing
+        except Exception as ex:
+            log(f'托盘图标没做起来：{ex}')
+
+    def on_download(sender, args):
+        """下载（导出诊断信息、导出设置）：保存窗口是 pywebview 弹的，这里把 Edge 自己的下载面板藏掉，存好了在雾幕里说一声"""
+        try:
+            if args.Cancel:
+                return
+            args.Handled = True
+            op, path = args.DownloadOperation, str(args.ResultFilePath)
+
+            def changed(s, e):
+                try:
+                    state = str(op.State)
+                    if state == 'Completed':
+                        code = f"typeof note === 'function' && note({json.dumps('已保存：' + path)}, true)"
+                    elif state == 'Interrupted':
+                        code = "typeof note === 'function' && note('没保存成功，换个文件夹再试', false)"
+                    else:
+                        return
+                    threading.Thread(target=lambda: win.evaluate_js(code), daemon=True).start()
+                except Exception:
+                    pass
+            op.StateChanged += changed
+        except Exception as ex:
+            log(f'下载处理出错：{ex}')
+
+    def hook_webview():
+        if box['hooked']:
+            return
+        core = win.native.browser.webview.CoreWebView2
+        if core is None:
+            return
+        box['hooked'] = True
+        s = core.Settings
+        for k in ('IsZoomControlEnabled', 'IsPinchZoomEnabled', 'IsSwipeNavigationEnabled'):
+            try:
+                setattr(s, k, False)  # 不像浏览器：Ctrl+滚轮、双指缩放、左右滑动翻页都关掉
+            except Exception:
+                pass
+        core.DownloadStarting += on_download
 
     def loaded():
         shown.set()
+        try:
+            from System import Action
+            win.native.BeginInvoke(Action(lambda: hook_webview()))
+        except Exception as ex:
+            log(f'窗口设置没改上：{ex}')
 
     def closing():
         save_state(win)
+
+    def bring_up():
+        t = box['tray']
+        if t is not None:
+            t.ui(t.open)
+
+    def watch_status():
+        while status:
+            try:
+                time.sleep(15)
+                t = box['tray']
+                if t is not None and t.ni is not None:
+                    t.update_status(status())
+            except Exception:
+                pass
 
     try:
         win.events.before_show += before_show
@@ -123,8 +261,15 @@ def show(url, title="雾幕"):
         pass
     win.events.loaded += loaded
     win.events.closing += closing
+    if port:
+        wait_show_requests(port, bring_up)
+    if status:
+        threading.Thread(target=watch_status, daemon=True).start()
     try:
         webview.start(gui='edgechromium', private_mode=False, storage_path=STORE, debug=False)
     except Exception:
         return False
-    return shown.is_set()
+    finally:
+        if box['tray'] is not None:
+            box['tray'].remove()
+    return shown.is_set() or hidden

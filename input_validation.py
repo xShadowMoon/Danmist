@@ -178,7 +178,7 @@ COMMAND_FIELDS = {
     'room_edit': {'acct', 'title', 'area_id'}, 'acct_poll': {'key'}, 'acct_info': {'acct'}, 'acct_logout': {'acct'}, 'acct_connect': {'acct'}, 'acct_guest': set(),
     'tpre_set': {'list'}, 'xrooms_set': {'open', 'rooms'}, 'live_start': {'acct', 'area_id', 'title'}, 'live_stop': {'acct'},
     'lan_set': {'on'},
-    'update_check': set(), 'update_download': set(), 'update_restart': set(), 'open_mode': {'mode'}, 'make_shortcut': set(),
+    'update_check': set(), 'update_download': set(), 'update_restart': set(), 'open_mode': {'mode'}, 'close_mode': {'mode'}, 'autostart': {'on'}, 'make_shortcut': set(),
     'music_rules': {'on', 'mode', 'src', 'need_ok', 'skip', 'max', 'medal', 'guard', 'wealth', 'follow', 'maxdur', 'reply', 'idle', 'idle_list', 'vol',
                     'fallback', 'cd_user', 'cd_song', 'norm', 'bili'},
     'music_next': set(), 'music_ok': {'id'}, 'music_del': {'id'}, 'music_top': {'id'},

@@ -2,13 +2,14 @@
 
 用法：python\\pythonw.exe desktop.py          软件窗口（默认）
       python\\pythonw.exe desktop.py --web    用浏览器打开（跟以前 start.bat 一样）
+      python\\pythonw.exe desktop.py --tray   开机自动启动用：不弹窗口，只在右下角托盘里（2026-11-28）
       python desktop.py --shortcut             在桌面建一个「雾幕」快捷方式
 
 做的事：
 1. 在后台开雾幕服务（server.py，没有黑窗口），日志写 data/server.log；
 2. 服务起来后，用雾幕自己的窗口打开它（native_window.py，Windows 自带的 WebView2，2026-11-26 起）；
    开不起来再用 Edge（没有就 Chrome）的「应用窗口」—— 用单独的配置文件夹 data/desktop-browser，不碰你平时的浏览器；
-3. 窗口关掉，服务也一起停；
+3. 关窗口默认缩到右下角托盘（2026-11-28），右键托盘「退出雾幕」才真的停；设置里可以改成关窗口直接退出；
 4. 页面上点了「重启生效」（软件内更新）：服务以退出码 75 退出，这里把下载好的新版本换上，再把服务开起来，
    窗口不用关，几秒后页面自己连回来、刷新成新版本。
 """
@@ -199,7 +200,11 @@ def main():
     url = f'http://127.0.0.1:{port}/'
     native = not web and '--edge' not in args and native_window.available()
     title = str((c.get('brand') or {}).get('name') or '雾幕') if isinstance(c.get('brand'), dict) else '雾幕'
-    if port_open(port):  # 已经开着一份：直接再开一个窗口
+    if port_open(port):  # 已经开着一份
+        if native and native_window.signal_running(port):  # 2026-11-28：叫那个窗口出来（只开一个），不再开第二个
+            return
+        if '--tray' in args:  # 开机自启时发现已经开着了：什么都不用做
+            return
         if web:
             import webbrowser
             webbrowser.open(url)
@@ -221,7 +226,8 @@ def main():
     if native:  # 雾幕自己的窗口：窗口在主线程里一直开着，服务的看护放到后台线程
         state = {'server': server, 'stop': False}
         threading.Thread(target=watch_server, args=(port, state), daemon=True).start()
-        ok = native_window.show(url + '?app=1', title)
+        ok = native_window.show(url + '?app=1', title, port=port, hidden='--tray' in args,
+                                status=lambda: launcher_status(port), close_mode=lambda: config().get('close', 'tray'))
         if ok:
             state['stop'] = True
             say('窗口关了，雾幕也停了')
@@ -258,6 +264,15 @@ def main():
             stop_server(port, server)
             return
         time.sleep(1)
+
+
+def launcher_status(port):
+    """托盘图标上显示的状态（直播间、连没连上、有没有新版本），2026-11-28"""
+    try:
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/launcher/status?t={TOKEN}', timeout=5) as r:
+            return json.loads(r.read().decode('utf-8'))
+    except (OSError, ValueError):
+        return None
 
 
 def stop_server(port, server):

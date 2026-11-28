@@ -47,7 +47,9 @@ function connect() {
   };
   ws.onmessage = ev => {
     lastMsgAt = Date.now();
-    const msg = JSON.parse(ev.data), { type, data } = msg;
+    let msg;  // 2026-11-28：读不了的消息（旧版后台会发坏数字 NaN）别让整页卡在「连接中…」，换成 0 再读一次
+    try { msg = JSON.parse(ev.data); } catch { try { msg = JSON.parse(String(ev.data).replace(/(?<=[:\[,])\s*-?(?:NaN|Infinity)(?=\s*[,\]}])/g, '0')); } catch (e) { console.warn('读不了这条消息', e); return; } }
+    const { type, data } = msg;
     if (window.workbenchMessage?.(type, data)) return;
     if (msg.uc) S.userCount = msg.uc;
     if (/^(gift|sc|guard|enter|room)$/.test(type)) soon(renderExtra, 'x');
@@ -156,7 +158,7 @@ function connect() {
       if (String(data.cmd).startsWith('admin_link_')) { linkResult(data); return; }
       if (data.cmd === 'lan_set') { note(data.msg, data.ok); if (!data.ok) drawLinks(); return; }
       if (data.cmd === 'room_set') { roomSetResult(data); return; }
-      if (['update_check', 'update_download', 'update_restart', 'open_mode', 'make_shortcut'].includes(data.cmd)) { if (data.cmd === 'update_check' && S.update?.v) { $('updbar').hidden = false; try { localStorage.removeItem('xw-upd-skip'); } catch {} drawUpd(); } note(data.msg, data.ok); if (!data.ok && data.cmd === 'update_download') { updPct = -1; drawUpd(); } return; }
+      if (['update_check', 'update_download', 'update_restart', 'open_mode', 'close_mode', 'autostart', 'make_shortcut'].includes(data.cmd)) { if (data.cmd === 'update_check' && S.update?.v) { $('updbar').hidden = false; try { localStorage.removeItem('xw-upd-skip'); } catch {} drawUpd(); } note(data.msg, data.ok); if (!data.ok && data.cmd === 'update_download') { updPct = -1; drawUpd(); } return; }
       if (['music_qr', 'music_poll', 'music_logout', 'music_cookie'].includes(data.cmd)) { musicLoginResult(data); return; }
       if (['music_add', 'music_alts', 'music_swap', 'music_vol', 'music_move'].includes(data.cmd)) { if (!['music_vol', 'music_move'].includes(data.cmd) || !data.ok) musicResult(data); return; }
       if (data.cmd === 'mute_list' || data.cmd === 'unmute') { muteResult(data); return; }

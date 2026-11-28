@@ -218,6 +218,9 @@ function drawDesktop() {
   box.hidden = !D;
   if (!D) return;
   $('dkmode').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === D.open));
+  $('dkclose').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === (D.close || 'tray')));  // 2026-11-28 托盘
+  $('dkauto').checked = !!D.autostart;
+  box.querySelectorAll('.dkapp-only').forEach(r => { r.hidden = !(D.launcher && D.win && D.open !== 'web'); });
   $('dkshortcut').hidden = !D.win;
   $('dkapp').textContent = D.app_dir || ''; $('dkdata').textContent = D.data_dir || '';
   box.querySelectorAll('.dkdir').forEach(r => { r.hidden = !D.app_dir; r.querySelector('button').hidden = !D.win; });
@@ -288,6 +291,8 @@ $('mascotreset')?.addEventListener('click', async () => {
   catch (err) { tip.textContent = '没换成：' + (err.message || '出错了'); }
 });
 $('dkmode')?.addEventListener('click', e => { const b = e.target.closest('button'); if (b) window._ws?.send(JSON.stringify({ cmd: 'open_mode', mode: b.dataset.val })); });
+$('dkclose')?.addEventListener('click', e => { const b = e.target.closest('button'); if (b) window._ws?.send(JSON.stringify({ cmd: 'close_mode', mode: b.dataset.val })); });
+$('dkauto')?.addEventListener('change', e => window._ws?.send(JSON.stringify({ cmd: 'autostart', on: e.target.checked })));
 document.addEventListener('click', async e => {  // 打开程序 / 存档文件夹（2026-11-26）
   const b = e.target.closest('[data-opendir]'); if (!b) return;
   try { const r = await fetch('api/open_dir?d=' + b.dataset.opendir, { method: 'POST' }); if (!r.ok) note('打不开：只能在运行雾幕的这台电脑上打开', false); } catch {}

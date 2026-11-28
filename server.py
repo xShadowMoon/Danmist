@@ -775,19 +775,19 @@ class Hub:
         await asyncio.gather(*(close(ws) for ws in sockets))
 
     async def push(self, kind, data, **extra):
-        full = json.dumps({'type': kind, 'data': data, **extra}, ensure_ascii=False)
-        pub = json.dumps({'type': kind, 'data': public_view(data), **extra}, ensure_ascii=False)
+        full = wsjson({'type': kind, 'data': data, **extra})
+        pub = wsjson({'type': kind, 'data': public_view(data), **extra})
 
         slim = None
         if self.viewers:
             view = viewer_view(kind, data)
-            slim = False if view is None else json.dumps({'type': kind, 'data': view, **extra}, ensure_ascii=False)
+            slim = False if view is None else wsjson({'type': kind, 'data': view, **extra})
 
         obs_bodies = {}
 
         def obs_body(gm):
             if gm not in obs_bodies:
-                obs_bodies[gm] = json.dumps({'type': kind, 'data': obs_view(kind, public_view(data), gm), **extra}, ensure_ascii=False)
+                obs_bodies[gm] = wsjson({'type': kind, 'data': obs_view(kind, public_view(data), gm), **extra})
             return obs_bodies[gm]
 
         async def send(ws, admin):
@@ -955,7 +955,7 @@ class Hub:
 
     def emit_admin(self, kind, data):
         """只发给管理身份的网页（比如观众备注）。"""
-        msg = json.dumps({'type': kind, 'data': data}, ensure_ascii=False)
+        msg = wsjson({'type': kind, 'data': data})
 
         async def send(ws):
             if not self.socket_allowed(ws):
@@ -1317,7 +1317,7 @@ class Hub:
             for i, (kind, data) in enumerate(msgs):
                 if i:
                     await asyncio.sleep(1.5)
-                body = json.dumps({'type': kind, 'data': data}, ensure_ascii=False)
+                body = wsjson({'type': kind, 'data': data})
                 for ws in targets:
                     try:
                         await ws.send_str(body)
@@ -2097,8 +2097,88 @@ def render_page(name):
     return html.replace('</head>', ''.join(tags) + '</head>', 1)
 
 
-BACKUP_SKIP = ('imgcache', 'douyin-browser', 'update', 'mascot-tmp')  # 缓存和临时的，不用备份、恢复时也不动
+BACKUP_SKIP = ('imgcache', 'douyin-browser', 'update', 'mascot-tmp', 'music-browser', 'desktop-browser')  # 缓存和临时的，不用备份、恢复时也不动
+# 软件窗口（data/webview）里浏览器自己的缓存：几百 MB，备份时跳过，只留设置和登录过的号（2026-11-28：每天备份 699MB）
+BACKUP_SKIP_ANY = {'Cache', 'Code Cache', 'GPUCache', 'DawnCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'GrShaderCache',
+                   'ShaderCache', 'GraphiteDawnCache', 'CacheStorage', 'ScriptCache', 'Crashpad', 'BrowserMetrics',
+                   'component_crx_cache', 'extensions_crx_cache', 'Safe Browsing', 'optimization_guide_model_store', 'WasmTtsEngine'}
 BACKUP_NAME = re.compile(r'data-\d{8}(?:-\d{6}-[\w-]{1,12})?\.zip')
+
+
+RUN_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'  # 开机自动启动（2026-11-28）
+
+
+def autostart_cmd():
+    """开机时跑的命令：自带 Python 的 pythonw 开 desktop.py，只放在托盘里"""
+    pyw = os.path.join(DIR, 'python', 'pythonw.exe')
+    return f'"{pyw}" "{os.path.join(DIR, "desktop.py")}" --tray' if os.path.isfile(pyw) else ''
+
+
+def autostart_on():
+    if sys.platform != 'win32':
+        return False
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as k:
+            v, _ = winreg.QueryValueEx(k, 'Danmist')
+        return bool(v) and os.path.normcase(DIR) in os.path.normcase(str(v))
+    except OSError:
+        return False
+
+
+def autostart_set(on):
+    if sys.platform != 'win32':
+        return False, '只有 Windows 能开机自动启动'
+    cmd = autostart_cmd()
+    if on and not cmd:
+        return False, '只有安装版能开机自动启动（start.bat 打开的不行）'
+    try:
+        import winreg
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as k:
+            if on:
+                winreg.SetValueEx(k, 'Danmist', 0, winreg.REG_SZ, cmd)
+            else:
+                try:
+                    winreg.DeleteValue(k, 'Danmist')
+                except FileNotFoundError:
+                    pass
+    except OSError as e:
+        return False, f'没改成：{e}'
+    return True, '开机时雾幕会自己打开，缩在右下角托盘里' if on else '开机不再自动打开雾幕'
+
+
+def nan_paths(obj, path='', out=None):
+    """数据里哪些地方是坏数字（NaN / 无穷大），给日志看"""
+    out = [] if out is None else out
+    if isinstance(obj, float) and (obj != obj or obj in (float('inf'), float('-inf'))):
+        out.append(path or '(整个)')
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            nan_paths(v, f'{path}.{k}' if path else str(k), out)
+    elif isinstance(obj, (list, tuple)):
+        for i, v in enumerate(obj):
+            nan_paths(v, f'{path}[{i}]', out)
+    return out
+
+
+def clean_nan(obj):
+    if isinstance(obj, float) and (obj != obj or obj in (float('inf'), float('-inf'))):
+        return 0
+    if isinstance(obj, dict):
+        return {k: clean_nan(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [clean_nan(v) for v in obj]
+    return obj
+
+
+def wsjson(obj):
+    """发给网页的消息（2026-11-28）：Python 会把坏数字写成 NaN，网页读不了、整页卡在「连接中…」。
+    有坏数字就换成 0 再发，并在日志里记下是哪一项"""
+    try:
+        return json.dumps(obj, ensure_ascii=False, allow_nan=False)
+    except ValueError:
+        log.warning('发给网页的数据里有坏数字，已换成 0：%s', '、'.join(nan_paths(obj)[:8]))
+        return json.dumps(clean_nan(obj), ensure_ascii=False)
 
 
 def backup_dir():
@@ -2119,6 +2199,7 @@ def backup_data(keep=14, tag=''):
         for root, dirs, files in os.walk(src):
             if root == src:
                 dirs[:] = [d for d in dirs if d not in BACKUP_SKIP]
+            dirs[:] = [d for d in dirs if d not in BACKUP_SKIP_ANY]
             for n in files:
                 if n.endswith('.tmp'):
                     continue
@@ -2751,7 +2832,8 @@ def redact(obj):
 
 def mask_line(line):
     """日志里的 IP 打码、像 cookie 的长串去掉"""
-    line = re.sub(r'\b(\d{1,3})\.\d{1,3}\.\d{1,3}\.(\d{1,3})\b', r'\1.*.*.\2', line)
+    # 0 开头的不是 IP，是版本号（0.9.15.5），别打码（2026-11-28）
+    line = re.sub(r'\b(\d{1,3})\.\d{1,3}\.\d{1,3}\.(\d{1,3})\b', lambda m: m.group(0) if m.group(1) == '0' else f'{m.group(1)}.*.*.{m.group(2)}', line)
     return re.sub(r'(SESSDATA|bili_jct|MUSIC_U|DedeUserID)=[^;\s]+', r'\1=***', line)
 
 
@@ -3093,7 +3175,9 @@ async def main():
 
     def desktop_info():
         v, _ = updates.staged(DIR)
-        return {'launcher': launcher, 'open': load_config(args.config).get('open', 'web') if not args.demo else 'web',
+        conf = load_config(args.config) if not args.demo else {}
+        return {'launcher': launcher, 'open': conf.get('open', 'web') if not args.demo else 'web',
+                'close': 'quit' if conf.get('close') == 'quit' else 'tray', 'autostart': autostart_on(),  # 2026-11-28 托盘、开机自启
                 'staged': v or '', 'win': sys.platform == 'win32',
                 'app_dir': os.path.abspath(DIR), 'data_dir': os.path.abspath(os.path.join(DIR, 'data'))}  # 设置 → 更多 → 文件夹（2026-11-26）
 
@@ -3164,6 +3248,24 @@ async def main():
                 return False, f'没存上：{e}'
             hub.emit_admin('desktop', desktop_info())
             return True, '下次打开用软件窗口' if mode == 'app' else '下次打开用浏览器'
+        if cmd == 'close_mode':  # 关窗口时：缩到托盘 / 直接退出（2026-11-28）
+            mode = 'quit' if c.get('mode') == 'quit' else 'tray'
+            if args.demo:
+                return False, '演示模式不改设置'
+            try:
+                conf = load_config(args.config)
+                conf['close'] = mode
+                write_json(args.config, conf)
+            except (OSError, SystemExit, ValueError) as e:
+                return False, f'没存上：{e}'
+            hub.emit_admin('desktop', desktop_info())
+            return True, '关窗口时缩到右下角托盘' if mode == 'tray' else '关窗口时直接退出雾幕'
+        if cmd == 'autostart':  # 开机自动启动（2026-11-28，默认不开）
+            if args.demo:
+                return False, '演示模式不改设置'
+            ok, note = autostart_set(bool(c.get('on')))
+            hub.emit_admin('desktop', desktop_info())
+            return ok, note
         if cmd == 'make_shortcut':
             if sys.platform != 'win32':
                 return False, '只有 Windows 能建快捷方式'
@@ -3172,6 +3274,17 @@ async def main():
             await proc.wait()
             return proc.returncode == 0, '桌面上建好了「雾幕」' if proc.returncode == 0 else '快捷方式没建成'
         return False, '不支持'
+
+    async def launcher_status(request):
+        """托盘图标上显示的状态（2026-11-28）：直播间、连没连上、有没有新版本。只认本机 + 启动器给的口令"""
+        t = os.environ.get('BDB_TOKEN', '')
+        if not t or request.remote not in ('127.0.0.1', '::1') or not hmac.compare_digest(request.query.get('t', ''), t):
+            raise web.HTTPForbidden()
+        r = hub.state.room
+        nr = new_release[0]
+        return web.json_response({'anchor': str(r.get('anchor_name') or ''), 'live': r.get('live'), 'bili_ok': r.get('bili_ok'),
+                                  'room': r.get('room_real') or args.room, 'update': nr['v'] if nr and updates.is_newer(nr['v']) else ''},
+                                 headers={'Cache-Control': 'no-store'})
 
     async def launcher_quit(request):
         """桌面版窗口关掉时，启动器叫服务先存好再退（只认本机 + 启动器给的口令）"""
@@ -3311,7 +3424,7 @@ async def main():
             if h is not hub:
                 snap['notes'] = {}
                 snap['title_presets'] = []
-            await ws.send_str(json.dumps({'type': 'snapshot', 'data': snap}, ensure_ascii=False))
+            await ws.send_str(wsjson({'type': 'snapshot', 'data': snap}))
             rate = OperationRate()
             mute_query = MuteQuery()
             async for msg in ws:
@@ -3403,7 +3516,7 @@ async def main():
                                 extra = {}
                             await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': note, **extra}})
                             continue
-                        if cmd in ('update_check', 'update_download', 'update_restart', 'open_mode', 'make_shortcut'):
+                        if cmd in ('update_check', 'update_download', 'update_restart', 'open_mode', 'close_mode', 'autostart', 'make_shortcut'):
                             # 桌面版（2026-11-25）：只有在这台电脑上打开的才能用（会下载文件、动这台电脑）；只是查一下有没有新版的不限
                             if not local and cmd != 'update_check':
                                 await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': '只能在运行雾幕的这台电脑上操作'}})
@@ -3582,7 +3695,7 @@ async def main():
                             ok, note = await connect_as(None)
                         else:
                             continue
-                        await ws.send_str(json.dumps({'type': 'result', 'data': {'cmd': cmd, 'ok': ok, 'msg': note, **extra}}, ensure_ascii=False))
+                        await ws.send_str(wsjson({'type': 'result', 'data': {'cmd': cmd, 'ok': ok, 'msg': note, **extra}}))
                     except Exception as e:
                         log.warning('处理网页操作出错：%s', e)
                         await ws.send_json({'type': 'result', 'data': {'cmd': c.get('cmd', ''), 'rid': c.get('rid'), 'ok': False, 'msg': str(e) if isinstance(e, ValueError) else '操作未能保存，请重试并检查磁盘状态'}})
@@ -4564,7 +4677,7 @@ async def main():
     # 设了 key 的话，第一次用 ?key= 打开，之后记在 cookie 里
     @web.middleware
     async def auth(request, handler):
-        if not args.key or request.path == '/api/launcher/quit':
+        if not args.key or request.path in ('/api/launcher/quit', '/api/launcher/status'):
             return await handler(request)
         q = request.query.get('key', '')
         k = q or request.cookies.get('xwkey', '')
@@ -4797,6 +4910,7 @@ async def main():
     app.router.add_get('/art/{name}', art_file)
     app.router.add_get('/api/art', art_list)
     app.router.add_post('/api/launcher/quit', launcher_quit)
+    app.router.add_get('/api/launcher/status', launcher_status)
     app.router.add_post('/api/mascot', mascot_put)
     app.router.add_get('/api/diag', diag)
     app.router.add_get('/api/backups', backups_list)
