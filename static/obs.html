@@ -668,6 +668,9 @@ function flushAdds() {
   while ($list.children.length > opt.max) $list.firstElementChild.remove();
   EXT?.after?.();
 }
+// 自定义样式（2026-11-28，OBS 设置 → 自定义样式 里写的 CSS）：打开时拿一次，改了马上换上
+function userCss(css) { let el = document.getElementById('usercss'); if (!el) { el = document.createElement('style'); el.id = 'usercss'; document.head.appendChild(el); } el.textContent = css || ''; }
+fetch(location.pathname.replace(/[^/]*$/, '') + 'api/obs_css' + (new URLSearchParams(location.search).get('key') ? '?key=' + encodeURIComponent(new URLSearchParams(location.search).get('key')) : ''), { cache: 'no-store' }).then(r => r.json()).then(j => userCss(j.css)).catch(() => {});
 function add(html, cls = '', key = '', stay = 1) {
   const el = document.createElement('div');
   el.className = 'it ' + cls;
@@ -814,6 +817,7 @@ function handle(type, data) {
   curUid = Number((data && (data.item?.uid ?? data.uid)) || 0);
   curPlat = (data && (data.item?.plat ?? data.plat)) || '';
   if (type === 'ver') { checkVer(data); return; }
+  if (type === 'obs_css') { userCss(data.css); return; }
   if (type === 'snapshot') {
     checkVer(data.ver);
     Object.assign(EMO, data.emots || {});

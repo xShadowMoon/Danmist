@@ -342,6 +342,61 @@ document.addEventListener('click', async e => {
     try { const j = await (await fetch('api/backup/restore?' + new URLSearchParams({ name: r.dataset.bakr }), { method: 'POST' })).json(); note(j.msg, j.ok); } catch { note('没恢复成功', false); }
   }
 });
+// 数据管理（2026-11-28 用户：一键管理、更方便清理）：设置 → 更多 → 数据
+const mb = n => n >= 1073741824 ? (n / 1073741824).toFixed(2) + ' GB' : n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(0, Math.round(n / 1024)) + ' KB';
+function drawData(st) {
+  const box = $('datalist');
+  if (!box || !st) return;
+  const rows = st.rows || [];
+  const max = Math.max(1, ...rows.filter(r => r.key !== 'total').map(r => r.bytes));
+  box.innerHTML = rows.map(r => {
+    if (r.key === 'total') return `<div class="dtrow dttotal"><b>${esc(r.name)}</b><span class="dtsize">${mb(r.bytes)}</span></div>`;
+    const opt = r.key === 'backup' ? `<label class="dtopt">只留最近 <input type="number" min="1" max="60" value="3" data-dkeep> 份</label>`
+      : r.key === 'dm' ? `<label class="dtopt">清 <input type="number" min="0" max="3650" value="90" data-ddays> 天以前的</label>` : '';
+    return `<div class="dtrow"><div class="dtmain"><div class="dthead"><b>${esc(r.name)}</b><span class="dtsize">${mb(r.bytes)}</span></div>`
+      + `<div class="dtbar"><i style="width:${Math.max(r.bytes ? 2 : 0, r.bytes / max * 100)}%"></i></div><small>${esc(r.desc)}</small></div>`
+      + (r.clean ? `<div class="dtact">${opt}<button class="btn sm" data-dclean="${r.key}"${r.bytes ? '' : ' disabled'}>清理</button></div>` : '') + '</div>';
+  }).join('');
+  if (document.activeElement !== $('datakeep')) $('datakeep').value = st.backup_keep;
+  $('datawarn').value = String(st.warn_gb);
+  if ($('datawarn').value === '' ) { $('datawarn').insertAdjacentHTML('beforeend', `<option value="${st.warn_gb}">超过 ${st.warn_gb} GB</option>`); $('datawarn').value = String(st.warn_gb); }
+}
+let dataT = 0;
+const drawDataSoon = () => { clearTimeout(dataT); dataT = setTimeout(() => window._ws?.send(JSON.stringify({ cmd: 'storage_get' })), 200); };
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-st="more"]') && S.admin) drawDataSoon();
+  if (e.target.closest('[data-st="link"]') && S.admin) window._ws?.send(JSON.stringify({ cmd: 'event_api' }));
+  const b = e.target.closest('[data-dclean]');
+  if (!b) return;
+  if (!b.classList.contains('sure')) {  // 点两下才清，免得点错
+    b.classList.add('sure', 'danger'); b.textContent = '确定清理？';
+    setTimeout(() => { b.classList.remove('sure', 'danger'); b.textContent = '清理'; }, 4000);
+    return;
+  }
+  const row = b.closest('.dtrow'), c = { cmd: 'storage_clean', kind: b.dataset.dclean };
+  const k = row.querySelector('[data-dkeep]'), d = row.querySelector('[data-ddays]');
+  if (k) c.keep = Math.max(1, Math.min(60, parseInt(k.value, 10) || 3));
+  if (d) c.days = Math.max(0, Math.min(3650, parseInt(d.value, 10) || 0));
+  b.disabled = true; b.textContent = '正在清…';
+  window._ws?.send(JSON.stringify(c));
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'datakeep') window._ws?.send(JSON.stringify({ cmd: 'storage_set', backup_keep: Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 14)) }));
+  if (e.target.id === 'datawarn') window._ws?.send(JSON.stringify({ cmd: 'storage_set', warn_gb: Number(e.target.value) || 0 }));
+  if (e.target.id === 'evon') window._ws?.send(JSON.stringify({ cmd: 'event_api', on: e.target.checked }));
+});
+// 事件接口（2026-11-28）：设置 → 链接 最下面
+function drawEv(v) {
+  if (!$('evbox')) return;
+  $('evon').checked = !!v.on;
+  $('evrow').hidden = !v.on;
+  $('evurl').value = v.url || '';
+  $('evclients').textContent = v.on ? (v.clients ? `现在有 ${v.clients} 个程序连着` : '还没有程序连上') : '';
+}
+document.addEventListener('click', e => {
+  if (e.target.id === 'evcopy') navigator.clipboard?.writeText($('evurl').value).then(() => note('已复制', true)).catch(() => $('evurl').select());
+  if (e.target.id === 'evreset') window._ws?.send(JSON.stringify({ cmd: 'event_api', reset: true }));
+});
 // 直播间（2026-11-26）：第一次打开在这里选平台、填房间号；以后在 设置 → 直播间 里换
 const PLAT_NAME = { bili: 'B 站', douyu: '斗鱼', huya: '虎牙', douyin: '抖音' };
 function drawRoomSet() {

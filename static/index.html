@@ -364,6 +364,7 @@
       <fieldset><legend>礼物栏</legend>
         <div class="opt r"><span>字号</span><div class="ctl"><input type="range" min="80" max="160" step="5" data-u="%" data-k="fs.gift"></div><button class="rs" title="恢复默认">↺</button></div>
         <div class="opt r" title="礼物栏只显示这个价以上的"><span>只显示 ≥</span><div class="ctl"><input type="number" min="0" step="0.1" data-k="giftMin"><small>元</small></div><button class="rs" title="恢复默认">↺</button></div>
+        <div class="opt r" title="同一个人连着送同一个礼物，10 秒内的合成一条，显示总数（只是显示，记录不变）"><span>连送合并</span><div class="ctl"><label class="switch"><input type="checkbox" data-k="giftMerge"><i></i></label></div><button class="rs" title="恢复默认">↺</button></div>
         <div class="opt r" title="刚送来的礼物在礼物栏里播几秒动图"><span>礼物动图</span><div class="ctl"><label class="switch"><input type="checkbox" data-k="giftAnim"><i></i></label><button class="chipbtn" id="gaprev" title="看看礼物动图的样子">▶ 预览</button></div><button class="rs" title="恢复默认">↺</button></div>
         <div class="gaprev" id="gaprevbox"></div>
       </fieldset>
@@ -451,6 +452,15 @@
         <div class="chips"><label class="chip" title="给主播直播用：不显示普通视角、链接管理、清零这些后台的东西；会记下每次打开"><input type="checkbox" id="lk-host"><span><i class="ic" data-ic="user"></i> 主播专属</span></label></div>
         <div class="chips"><button class="btn sm danger" id="lk-rotate" title="所有管理链接马上失效，换一把新的。在这台电脑上直接打开的不受影响">全部作废，换新的</button></div>
       </fieldset>
+      <fieldset id="evbox"><legend>事件接口（给别的程序用）</legend>
+        <div class="note">打开后，这台电脑上的别的程序（比如弹幕机器人）连下面这个地址，就能实时收到雾幕收到的弹幕、礼物、SC、上舰、进房、点歌，不用自己再连一次直播间。只读，只有这台电脑上的程序能连，地址里带着口令，别发给别人。</div>
+        <div class="chips"><label class="chip"><input type="checkbox" id="evon"><span>打开事件接口</span></label><span class="mtip" id="evclients"></span></div>
+        <div class="opt" id="evrow" hidden><input type="text" id="evurl" readonly style="flex:1;min-width:0"><button class="btn sm" id="evcopy">复制</button><button class="btn sm" id="evreset" title="换一个新口令，用旧地址连着的程序会断开">换口令</button></div>
+        <details class="evhelp"><summary>每条消息长什么样</summary><pre>{"type": "dm", "data": {"uid": 123, "name": "观众", "text": "晚上好", "medal": "粉丝团", "medal_level": 12, "guard": 0, ...}}
+{"type": "gift", "data": {"name": "观众", "gift": "小心心", "num": 5, "yuan": 0.5, ...}}
+type 有：dm 弹幕、gift 礼物、sc 醒目留言、guard 上舰、enter 进房 / 关注 / 点赞、room 直播间状态、req 点歌
+连上时先收到一条 {"type": "hello", ...}</pre></details>
+      </fieldset>
     </div>
 
     <div class="spage" data-sp="room">
@@ -492,8 +502,14 @@
         <div class="about"><img id="mascotpv" src="/art/icon-256.png" alt=""><div><b id="mascotname">默认：雾冬Hanaki</b><span>换成你自己的图，软件里的图标、窗口和任务栏的图标都会跟着换。正方形的图最好，不是正方形会从中间裁。桌面和开始菜单的快捷方式图标也会跟着换。</span></div></div>
         <div class="chips"><label class="btn sm" id="mascotpick"><i class="ic" data-ic="upload"></i> 换成我的图<input type="file" id="mascotfile" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label><button class="btn sm" id="mascotreset" hidden>换回默认</button><span class="mtip" id="mascottip"></span></div>
       </fieldset>
+      <fieldset class="admin-only" id="databox"><legend>数据</legend>
+        <div class="note">雾幕存下来的东西各占多少。缓存清掉不影响任何记录；历史场次的数字、送礼榜、观众档案一直留着。</div>
+        <div id="datalist"><div class="empty" style="padding:8px">正在算…</div></div>
+        <div class="opt r" title="每天自动备份的那份留最近几份（手动、更新前的另外留最近 10 份）"><span>备份留几份</span><div class="ctl"><input type="number" min="1" max="60" step="1" id="datakeep" style="width:72px"><small>份</small></div><span></span></div>
+        <div class="opt r" title="存档和备份加起来超过这么大时，右下角提醒一次（一天最多一次）"><span>占用提醒</span><div class="ctl"><select id="datawarn"><option value="0">不提醒</option><option value="1">超过 1 GB</option><option value="2">超过 2 GB</option><option value="5">超过 5 GB</option><option value="10">超过 10 GB</option></select></div><span></span></div>
+      </fieldset>
       <fieldset class="admin-only" id="bakbox"><legend>备份</legend>
-        <div class="note">每天自动备份一份（留 14 份），更新前也会自动备份。恢复会先把现在的再备份一份，然后重启换成那一份。</div>
+        <div class="note">每天自动备份一份（留的份数在上面「数据」里改），更新前也会自动备份。恢复会先把现在的再备份一份，然后重启换成那一份。</div>
         <div class="chips"><button class="btn sm" id="baknow"><i class="ic" data-ic="save"></i> 立即备份</button><button class="btn sm" id="bakopen" title="在这台电脑上打开备份文件夹"><i class="ic" data-ic="download"></i> 打开备份文件夹</button><span class="mtip" id="baktip"></span></div>
         <div id="baklist"></div>
       </fieldset>

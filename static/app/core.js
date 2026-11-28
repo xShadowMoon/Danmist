@@ -25,7 +25,7 @@ const DEF = {
   v: 6, theme: 'auto', pal: '', frames: true, enterMerge: true, songGroup: '',
   // 进房并入弹幕的样子：位置 flow（弹幕区底部常驻小栏，默认）/ top / bottom（有人进来才弹出），停几秒，显示哪些，带不带头像
   enterTip: { pos: 'flow', sec: 3.5, enter: true, follow: true, share: true, like: true, guardOnly: false, avatar: true }, compact: false,
-  snd: { on: false, dm: false, sc: true, gift: true, guard: true, enterGuard: false, follow: false, giftMin: 10, scMin: 0, vol: 0.6 }, giftAnim: true, bigGift: { on: true, min: 10, guard: true }, dmSize: 15.5, giftMin: 0, snow: false,
+  snd: { on: false, dm: false, sc: true, gift: true, guard: true, enterGuard: false, follow: false, giftMin: 10, scMin: 0, vol: 0.6 }, giftAnim: true, giftMerge: true, bigGift: { on: true, min: 10, guard: true }, dmSize: 15.5, giftMin: 0, snow: false,
   dmFilter: 'all', dmMedalMin: 10, hlWords: '主播 点歌',
   dm: { gap: 0, name: 12, bg: 'none', font: '', color: '', avatar: true, medal: true, simple: false, time: true, bold: false, inline: false, guardBg: true, note: true, hoverPause: true, anim: 'in', animMs: 600 },
   sc: { size: 14.5, read: 'dim', avatar: true, bar: true, unreadTop: false, autoRead: false, min: 0 },
@@ -217,7 +217,7 @@ document.querySelectorAll('[data-k]').forEach(el => {
     setK(el.dataset.k, v);
     document.querySelectorAll(`[data-v="${el.dataset.k}"]`).forEach(x => x.textContent = v);
     saveCfg(); applyCfg();
-    if (el.dataset.k === 'giftMin') renderGifts();
+    if (el.dataset.k === 'giftMin' || el.dataset.k === 'giftMerge') renderGifts();
     if (el.dataset.k === 'enterMerge') renderLayout();
     if (el.dataset.k.startsWith('enterTip.') || el.dataset.k === 'enterMerge') previewEnter();
     if (el.dataset.k === 'hlWords' || el.dataset.k === 'dmMedalMin') renderDm();

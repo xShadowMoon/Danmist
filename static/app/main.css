@@ -1587,3 +1587,19 @@ body.touring #spot { transition: opacity .3s, left .2s, top .2s, width .2s, heig
 .ctip h3 { margin: 0 0 8px; font-size: 16px; }
 .ctip p { margin: 6px 0; font-size: 13.5px; line-height: 1.6; }
 .ctipbtns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+/* 设置 → 更多 → 数据（2026-11-28） */
+.dtrow { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.dtrow:last-child { border-bottom: 0; }
+.dtmain { flex: 1; min-width: 0; }
+.dthead { display: flex; justify-content: space-between; gap: 8px; }
+.dtsize { font-variant-numeric: tabular-nums; color: var(--ink2); font-weight: 600; }
+.dtbar { height: 5px; border-radius: 3px; background: var(--line-soft); margin: 6px 0 4px; overflow: hidden; }
+.dtbar i { display: block; height: 100%; background: var(--mist-d); border-radius: 3px; }
+.dtrow small { color: var(--ink3); font-size: 12px; line-height: 1.5; display: block; }
+.dtact { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+.dtopt { font-size: 12px; color: var(--ink2); white-space: nowrap; }
+.dtopt input { width: 56px; }
+.dttotal { justify-content: space-between; font-size: 14px; }
+.evhelp { margin-top: 8px; font-size: 12px; color: var(--ink2); }
+.evhelp pre { white-space: pre-wrap; word-break: break-all; background: var(--input); border: 1px solid var(--line-soft); border-radius: 8px; padding: 8px; margin: 6px 0 0; font-size: 11.5px; }
+@media (max-width: 640px) { .dtrow { flex-direction: column; align-items: stretch; } .dtact { flex-direction: row; justify-content: flex-end; align-items: center; } }

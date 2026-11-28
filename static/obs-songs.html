@@ -192,8 +192,12 @@ function checkVer(v) {  // 上线了新版：这一页自己刷新
   if (!myVer) { myVer = n; return; }
   if (n !== myVer) location.reload();
 }
+// 自定义样式（2026-11-28，OBS 设置 → 自定义样式 里写的 CSS）：打开时拿一次，改了马上换上
+function userCss(css) { let el = document.getElementById('usercss'); if (!el) { el = document.createElement('style'); el.id = 'usercss'; document.head.appendChild(el); } el.textContent = css || ''; }
+fetch(location.pathname.replace(/[^/]*$/, '') + 'api/obs_css' + (new URLSearchParams(location.search).get('key') ? '?key=' + encodeURIComponent(new URLSearchParams(location.search).get('key')) : ''), { cache: 'no-store' }).then(r => r.json()).then(j => userCss(j.css)).catch(() => {});
 function handle(type, data) {
   if (type === 'ver') { checkVer(data); return; }
+  if (type === 'obs_css') { userCss(data.css); return; }
   if (type === 'snapshot') { checkVer(data.ver); draw(data.songs); }
   else if (type === 'songs') draw(data);
 }
@@ -206,7 +210,7 @@ function connect() {
   ws.onopen = () => { retry = 0; };
   ws.onclose = () => setTimeout(connect, Math.min(30000, 2000 * 2 ** retry++));
   // 歌单页只关心歌单：别的消息（弹幕、礼物）只看一眼类型就丢掉，不解析整条
-  ws.onmessage = ev => { if (!/^\{"type": ?"(snapshot|songs|ver)"/.test(ev.data)) return; const m = JSON.parse(ev.data); handle(m.type, m.data); };
+  ws.onmessage = ev => { if (!/^\{"type": ?"(snapshot|songs|ver|obs_css)"/.test(ev.data)) return; const m = JSON.parse(ev.data); handle(m.type, m.data); };
 }
 if (opt.demo) {
   handle('songs', [{ id: 'd0', name: '告白气球', done: true, done_at: 1 }, { id: 'd1', name: '晴天', done: true, done_at: 2 }, { id: 'd2', name: '稻香', artist: '周杰伦', now: true }, { id: 'd3', name: '起风了' }, { id: 'd4', name: '小幸运' },

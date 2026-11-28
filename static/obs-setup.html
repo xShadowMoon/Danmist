@@ -189,6 +189,9 @@ h4.cap { margin: 10px 0 8px; font-size: 12px; font-weight: 700; color: var(--mis
 #ohelp { margin-left: auto; border: 0; background: none; color: var(--ink3, #8fa2b5); cursor: pointer; display: inline-flex; padding: 4px; border-radius: 8px; }
 #ohelp:hover { color: var(--mist-d, #4a8cc4); }
 #ohelp svg.ic { width: 17px; height: 17px; }
+#ucss { margin-top: 10px; font-size: 12.5px; }
+#ucss summary { cursor: pointer; color: var(--ink2, #4c6175); }
+#ucss textarea { width: 100%; box-sizing: border-box; min-height: 120px; margin: 8px 0; font: 12px/1.5 Consolas, monospace; border-radius: 8px; border: 1px solid var(--line, #d8e4ef); background: var(--input, #fff); color: inherit; padding: 8px; resize: vertical; }
 </style>
 </head>
 <body>
@@ -199,6 +202,10 @@ h4.cap { margin: 10px 0 8px; font-size: 12px; font-weight: 700; color: var(--mis
     <input id="url" readonly title="OBS 浏览器源用的网址">
     <div class="row"><button class="btn go" id="copy" title="OBS → 来源 ＋ → 浏览器 → 把网址粘贴进去，宽高照下面填"><i class="ic" data-ic="copy"></i> 复制网址</button><button class="btn" id="reset" title="恢复默认">↺</button><span id="copied" style="color:var(--mist-d);font-size:12px"></span></div>
     <div class="how" id="how"><span id="owh" title="OBS 浏览器源的宽和高，照这里填">宽 <input type="number" id="ow" min="150" max="1920" step="10"> 高 <input type="number" id="oh" min="100" max="1080" step="10"></span></div>
+    <details id="ucss"><summary>自定义样式（CSS，会写的人用）</summary>
+      <textarea id="ucsstext" spellcheck="false" placeholder="比如：.it .msg { letter-spacing: 1px; }&#10;所有 OBS 弹幕和歌单页面都会用上，存了马上生效"></textarea>
+      <div class="row"><button class="btn" id="ucsssave">保存</button><button class="btn" id="ucssclear" title="清空自定义样式">清空</button><span id="ucsstip" style="font-size:12px;color:var(--ink3,#8fa2b5)"></span></div>
+    </details>
   </div>
 </aside>
 <main id="stage">
@@ -770,6 +777,19 @@ fetch('api/xrooms').then(r => r.json()).then(j => {
   addEventListener('keydown', e => { if (e.key === 'Escape' && i >= 0) end(); });
   let seen = false; try { seen = !!localStorage.getItem('xw-obs-tour'); } catch {}
   if (!seen) setTimeout(start, 1200);
+})();
+// 自定义样式（2026-11-28）：存在后台，所有 OBS 页面都用
+(function () {
+  const t = document.getElementById('ucsstext'), tip = document.getElementById('ucsstip');
+  if (!t) return;
+  fetch('api/obs_css', { cache: 'no-store' }).then(r => r.json()).then(j => { t.value = j.css || ''; if (j.css) document.getElementById('ucss').open = true; }).catch(() => {});
+  const save = async css => {
+    tip.textContent = '正在存…';
+    try { const j = await (await fetch('api/obs_css', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ css }) })).json(); tip.textContent = j.msg; }
+    catch { tip.textContent = '没存上（只有管理链接能改）'; }
+  };
+  document.getElementById('ucsssave').onclick = () => save(t.value);
+  document.getElementById('ucssclear').onclick = () => { t.value = ''; save(''); };
 })();
 </script>
 </body>

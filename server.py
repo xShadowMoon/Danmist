@@ -41,6 +41,8 @@ from admin_links import AdminLinks, AdminSafeFormatter
 from daily_health import DailyHealth
 from public_limits import PublicLimits, client_ip
 import history_maintenance
+import data_tools
+import secrets
 from ai_voice import AIVoice, Busy as VoiceBusy, VoiceError
 from breaker import Breaker
 from music import MusicService
@@ -808,6 +810,14 @@ class Hub:
                 await ws.close()
         # 一起发，网速慢的人不拖累别人
         await asyncio.gather(*(send(ws, a) for ws, a in list(self.sockets.items())))
+        ev = getattr(self, 'event_socks', None)
+        if ev and kind in EVENT_KINDS:  # 事件转发接口（2026-11-28）：别的程序（弹幕助手这些）也收一份
+            async def fwd(ws):
+                try:
+                    await asyncio.wait_for(ws.send_str(full), 10)
+                except Exception:
+                    ev.discard(ws)
+            await asyncio.gather(*(fwd(ws) for ws in list(ev)))
 
     def need_face(self, uid):
         """没头像的人（2026-11-25）：排队去 B 站名片接口查一下（不带登录），查到了推 face 给网页补上"""
@@ -2101,7 +2111,9 @@ BACKUP_SKIP = ('imgcache', 'douyin-browser', 'update', 'mascot-tmp', 'music-brow
 # 软件窗口（data/webview）里浏览器自己的缓存：几百 MB，备份时跳过，只留设置和登录过的号（2026-11-28：每天备份 699MB）
 BACKUP_SKIP_ANY = {'Cache', 'Code Cache', 'GPUCache', 'DawnCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'GrShaderCache',
                    'ShaderCache', 'GraphiteDawnCache', 'CacheStorage', 'ScriptCache', 'Crashpad', 'BrowserMetrics',
-                   'component_crx_cache', 'extensions_crx_cache', 'Safe Browsing', 'optimization_guide_model_store', 'WasmTtsEngine'}
+                   'component_crx_cache', 'extensions_crx_cache', 'Safe Browsing', 'optimization_guide_model_store', 'WasmTtsEngine',
+                   'Extensions', 'Local Extension Settings', 'Extension State', 'ProvenanceData', 'Edge Shopping', 'Edge Wallet',
+                   'Edge Entity Extraction', 'Subresource Filter', 'Service Worker'}
 BACKUP_NAME = re.compile(r'data-\d{8}(?:-\d{6}-[\w-]{1,12})?\.zip')
 
 
@@ -2181,13 +2193,19 @@ def wsjson(obj):
         return json.dumps(clean_nan(obj), ensure_ascii=False)
 
 
+EVENT_KINDS = ('dm', 'gift', 'sc', 'guard', 'enter', 'room', 'req')  # 事件转发接口发哪些（2026-11-28）
+BACKUP_KEEP = 14       # 每天自动备份留几份（config.json backup_keep，设置 → 更多 → 数据 能改）
+STORAGE_WARN_GB = 2.0  # data 加备份超过多少 GB 提醒一次（config.json storage_warn_gb，0 = 不提醒）
+
+
 def backup_dir():
     return os.path.join(DIR, '备份', '数据')
 
 
-def backup_data(keep=14, tag=''):
+def backup_data(keep=None, tag=''):
     """把 data 文件夹打成一个压缩包放到「备份/数据/」。不带 tag 是每天自动的那份（一天一份，留最近 keep 份，今天的已经有了就不做）；
     带 tag（手动 / 更新前 / 恢复前，2026-11-26）每次都做一份，这种留最近 10 份。"""
+    keep = BACKUP_KEEP if keep is None else keep
     out_dir = backup_dir()
     out = os.path.join(out_dir, time.strftime(f'data-%Y%m%d-%H%M%S-{tag}.zip' if tag else 'data-%Y%m%d.zip'))
     if os.path.exists(out) and not tag:
@@ -2850,10 +2868,15 @@ def load_config(path):
 
 
 async def main():
-    global LOGIN_FILE, DISCORD_WEBHOOK, BOT_SAY_URL, WEALTH_CACHE
+    global LOGIN_FILE, DISCORD_WEBHOOK, BOT_SAY_URL, WEALTH_CACHE, BACKUP_KEEP, STORAGE_WARN_GB
     pre = argparse.ArgumentParser(add_help=False)
     pre.add_argument('--config', default=os.path.join(DIR, 'config.json'))
     cfg = load_config(pre.parse_known_args()[0].config)
+    try:  # 数据管理（2026-11-28）：备份留几份、占用超过多少提醒
+        BACKUP_KEEP = max(1, min(60, int(cfg.get('backup_keep') or 14)))
+        STORAGE_WARN_GB = max(0.0, min(1000.0, float(cfg.get('storage_warn_gb', 2) or 0)))
+    except (TypeError, ValueError):
+        pass
     ap = argparse.ArgumentParser(parents=[pre])
     ap.add_argument('--room', type=int, default=int(cfg.get('room') or 0), help='直播间号（也可以写在 config.json，或者打开网页在「设置 → 直播间」里选）')
     ap.add_argument('--plat', default=str(cfg.get('room_plat') or 'bili'), choices=('bili', 'douyu', 'huya', 'douyin'), help='直播间是哪个平台（默认 B 站）')
@@ -2968,11 +2991,12 @@ async def main():
     hub.music.say = auto_say
     launcher_tips = []  # 给托盘弹的小通知（启动器来拿，2026-11-28）
 
-    def music_tip(title, text):
+    def app_tip(title, text, kind='tip'):
+        """给主播的提醒：页面上弹一条，托盘那边也弹一个小通知"""
         launcher_tips.append({'title': title, 'text': text})
         del launcher_tips[:-5]
-        hub.emit_admin('music_tip', {'title': title, 'text': text})
-    hub.music.tip = music_tip
+        hub.emit_admin('app_tip', {'title': title, 'text': text, 'kind': kind})
+    hub.music.tip = app_tip
     hub.music.bili_cookie = load_cookie  # 点 B 站视频用连直播间那个号的登录信息（B 站不让没登录的查视频）
     hub.music.idle_names = lambda: [(k, str(v.get('artist') or '')) for k, v in hub.songbook.items() if v.get('available', True) is not False]
     hub.platforms = Platforms(hub, os.path.join(DIR, 'data'), not args.demo, write_json, log, lambda: bare)
@@ -3187,6 +3211,159 @@ async def main():
                 'close': conf.get('close') if conf.get('close') in ('tray', 'quit') else 'ask', 'autostart': autostart_on(),  # 2026-11-28 托盘、开机自启
                 'staged': v or '', 'win': sys.platform == 'win32',
                 'app_dir': os.path.abspath(DIR), 'data_dir': os.path.abspath(os.path.join(DIR, 'data'))}  # 设置 → 更多 → 文件夹（2026-11-26）
+
+    # ---------- 数据管理、两场合一场、OBS 自定义样式、事件转发接口（2026-11-28） ----------
+    obs_css_file = os.path.join(DIR, 'data', 'obs-css.json')
+    event_file = os.path.join(DIR, 'data', 'event-api.json')
+
+    def read_json_file(path, default):
+        try:
+            with open(path, encoding='utf-8') as f:
+                v = json.load(f)
+            return v if isinstance(v, type(default)) else default
+        except (OSError, ValueError):
+            return default
+
+    event_cfg = read_json_file(event_file, {})
+    hub.event_socks = set()
+
+    def event_view():
+        on = bool(event_cfg.get('on'))
+        return {'on': on, 'url': f"ws://127.0.0.1:{args.port}/api/events?token={event_cfg.get('token', '')}" if on else '',
+                'clients': len(hub.event_socks)}
+
+    def storage_extra(rows):
+        return {'storage': {'rows': rows, 'backup_keep': BACKUP_KEEP, 'warn_gb': STORAGE_WARN_GB}}
+
+    async def data_cmd(c):
+        """返回 (ok, 说明, 额外数据)"""
+        global BACKUP_KEEP, STORAGE_WARN_GB
+        cmd = c['cmd']
+        if cmd == 'storage_get':
+            return True, '', storage_extra(await asyncio.to_thread(data_tools.report, DIR))
+        if cmd == 'storage_clean':
+            if args.demo:
+                return False, '演示模式不清理', {}
+            protect = (hub.state.archive_id,) if getattr(hub.state, 'archive_id', '') else ()
+            try:
+                freed, note = await asyncio.to_thread(data_tools.clean, DIR, c['kind'], int(c.get('keep') or 3), int(c.get('days') or 90), protect)
+            except (OSError, ValueError) as e:
+                return False, f'没清成：{e}', {}
+            log.info('数据清理（%s）：%s，腾出 %.1f MB', c['kind'], note, freed / 1048576)
+            return True, f'{note}，腾出 {freed / 1048576:.1f} MB', storage_extra(await asyncio.to_thread(data_tools.report, DIR))
+        if cmd == 'storage_set':
+            if args.demo:
+                return False, '演示模式不改设置', {}
+            if 'backup_keep' in c:
+                BACKUP_KEEP = int(c['backup_keep'])
+            if 'warn_gb' in c:
+                STORAGE_WARN_GB = float(c['warn_gb'])
+            try:
+                conf = load_config(args.config)
+                conf['backup_keep'], conf['storage_warn_gb'] = BACKUP_KEEP, STORAGE_WARN_GB
+                write_json(args.config, conf)
+            except (OSError, SystemExit, ValueError) as e:
+                return False, f'没存上：{e}', {}
+            return True, f'备份留最近 {BACKUP_KEEP} 份；' + (f'超过 {STORAGE_WARN_GB:g} GB 提醒' if STORAGE_WARN_GB else '不提醒占用'), {}
+        if cmd == 'hist_merge':
+            if args.demo:
+                return False, '演示模式不改历史', {}
+
+            def merge():
+                with history_maintenance.HISTORY_LOCK:
+                    return data_tools.merge_sessions(history.dir, c['a'], c['b'], write_json)
+            try:
+                m = await asyncio.to_thread(merge)
+            except (OSError, ValueError, KeyError) as e:
+                return False, f'没合成：{e}', {}
+            history._viewers, history._dm = None, (None, None)
+            log.info('历史：%s 和 %s 合成了一场', c['a'], c['b'])
+            return True, '两场合成一场了', {'id': m['id']}
+        if cmd == 'obs_css_set':
+            ok, note = save_obs_css(c.get('css'))
+            return ok, note, {}
+        if cmd == 'event_api':
+            if c.get('reset') or not event_cfg.get('token'):
+                event_cfg['token'] = secrets.token_urlsafe(18)
+                for ws in list(hub.event_socks):  # 换了口令：旧的连接断掉
+                    await ws.close()
+                hub.event_socks.clear()
+            if 'on' in c:
+                event_cfg['on'] = bool(c['on'])
+                if not event_cfg['on']:
+                    for ws in list(hub.event_socks):
+                        await ws.close()
+                    hub.event_socks.clear()
+            if 'on' in c or c.get('reset'):
+                try:
+                    write_json(event_file, event_cfg)
+                except OSError as e:
+                    return False, f'没存上：{e}', {}
+            note = '' if 'on' not in c and not c.get('reset') else ('事件接口已打开' if event_cfg.get('on') else '事件接口已关掉') + ('，口令换新了' if c.get('reset') else '')
+            return True, note, {'event_api': event_view()}
+        return False, '不支持', {}
+
+    def save_obs_css(css):
+        css = str(css or '').replace('</', '<\\/')[:20000]  # 只是样式：不让它把 <style> 提前关掉
+        try:
+            write_json(obs_css_file, {'css': css, 't': int(time.time())})
+        except OSError as e:
+            return False, f'没存上：{e}'
+        hub.emit('obs_css', {'css': css})
+        return True, ('已保存，开着的 OBS 页面马上换上' if css.strip() else '已清空自定义样式')
+
+    async def obs_css_post(request):
+        """OBS 设置页存自定义样式（只给管理身份）"""
+        if not is_admin(request, links, args.port):
+            raise web.HTTPForbidden()
+        try:
+            j = await request.json()
+        except ValueError:
+            raise web.HTTPBadRequest()
+        css = j.get('css', '') if isinstance(j, dict) else ''
+        if not isinstance(css, str) or len(css) > 20000:
+            return web.json_response({'ok': False, 'msg': '太长了，最多 2 万字'})
+        ok, msg = save_obs_css(css)
+        return web.json_response({'ok': ok, 'msg': msg})
+
+    async def obs_css_get(request):
+        return web.json_response({'css': read_json_file(obs_css_file, {}).get('css', '')}, headers={'Cache-Control': 'no-store'})
+
+    async def events_ws(request):
+        """事件转发接口：别的程序连 ws://127.0.0.1:端口/api/events?token=口令，实时收弹幕、礼物、SC、上舰、进房（只读）。
+        只给这台电脑上的程序，而且要在设置里打开、带对口令"""
+        t = event_cfg.get('token', '')
+        if not event_cfg.get('on') or not t or request.remote not in ('127.0.0.1', '::1') \
+                or not hmac.compare_digest(str(request.query.get('token', '')), t):
+            raise web.HTTPForbidden(text='事件接口没打开，或者口令不对（设置 → 链接 → 事件接口）')
+        if len(hub.event_socks) >= 10:
+            raise web.HTTPServiceUnavailable(text='连的程序太多了（最多 10 个）')
+        ws = web.WebSocketResponse(heartbeat=30)
+        await ws.prepare(request)
+        hub.event_socks.add(ws)
+        try:
+            await ws.send_str(wsjson({'type': 'hello', 'data': {'room': hub.state.room.get('room_real') or args.room,
+                                                                'kinds': list(EVENT_KINDS), 'app': BRAND['name'], 'version': updates.VERSION}}))
+            async for _ in ws:  # 只读：别的程序发来的都不管
+                pass
+        finally:
+            hub.event_socks.discard(ws)
+        return ws
+
+    async def storage_watch():
+        """占用太大时提醒（每 6 小时看一次，一天最多提醒一次）"""
+        last = 0.0
+        await asyncio.sleep(120)
+        while True:
+            try:
+                if STORAGE_WARN_GB and not args.demo and time.time() - last > 86400:
+                    size = await asyncio.to_thread(data_tools.total_size, DIR)
+                    if size > STORAGE_WARN_GB * 1024 ** 3:
+                        last = time.time()
+                        app_tip('雾幕的数据有点多了', f'存档和备份一共 {size / 1024 ** 3:.1f} GB。设置 → 更多 → 数据 里能看每一类多大、一键清理', 'storage')
+            except Exception as e:
+                log.info('看数据占用没成功：%s', e)
+            await asyncio.sleep(6 * 3600)
 
     async def desktop_cmd(c):
         cmd = c['cmd']
@@ -3499,6 +3676,10 @@ async def main():
                             await kick_side_viewers()
                             asyncio.get_event_loop().create_task(fill_xroom_names())
                             await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': note}})
+                            continue
+                        if cmd in ('storage_get', 'storage_clean', 'storage_set', 'hist_merge', 'obs_css_set', 'event_api'):
+                            ok, note, extra = await data_cmd(c)
+                            await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': note, **extra}})
                             continue
                         if cmd == 'tpre_set':
                             note = hub.tpre_set(c['list'])
@@ -4687,7 +4868,7 @@ async def main():
     # 设了 key 的话，第一次用 ?key= 打开，之后记在 cookie 里
     @web.middleware
     async def auth(request, handler):
-        if not args.key or request.path in ('/api/launcher/quit', '/api/launcher/status'):
+        if not args.key or request.path in ('/api/launcher/quit', '/api/launcher/status', '/api/events'):  # 事件接口自己查口令
             return await handler(request)
         q = request.query.get('key', '')
         k = q or request.cookies.get('xwkey', '')
@@ -4921,6 +5102,9 @@ async def main():
     app.router.add_get('/api/art', art_list)
     app.router.add_post('/api/launcher/quit', launcher_quit)
     app.router.add_get('/api/launcher/status', launcher_status)
+    app.router.add_get('/api/obs_css', obs_css_get)
+    app.router.add_post('/api/obs_css', obs_css_post)
+    app.router.add_get('/api/events', events_ws)
     app.router.add_post('/api/mascot', mascot_put)
     app.router.add_get('/api/diag', diag)
     app.router.add_get('/api/backups', backups_list)
@@ -5019,6 +5203,7 @@ async def main():
             hub.emit_admin('series', list(hub.series))
             await asyncio.sleep(10 if args.demo else 60)
     tasks.append(asyncio.create_task(sample_series()))
+    tasks.append(asyncio.create_task(storage_watch()))  # 占用太大时提醒（2026-11-28）
     # 有新版本就在管理页面上提示（只读 GitHub 最新 Release 的版本号，不下载任何东西）；演示模式只在测试时查
     if not args.no_update_check and (not args.demo or args.update_url):
         def on_new_release(info):

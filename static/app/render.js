@@ -504,6 +504,20 @@ $('giftlist').addEventListener('click', e => {
   const done = !it.thanked; if (done) it.thanked = true; else delete it.thanked; renderGifts();
   window._ws?.send(JSON.stringify({ cmd: 'gift_thank', id: String(it.id), done }));
 }, true);
+// 礼物合并（2026-11-28，blivechat 那种）：同一个人连着送同一个礼物，10 秒内的合成一条「× 总数」，不刷满礼物栏。
+// 只是显示时合，存的记录不动；下播期间送的不合（每条要单独点感谢）
+function mergeGifts(list) {
+  if (!cfg.giftMerge) return list;
+  const out = [];
+  for (const g of list) {
+    const last = out[out.length - 1];
+    if (last && !g.blind && !last.blind && g.source !== '下播' && last.source !== '下播' && last.uid === g.uid && last.gift === g.gift
+        && (last.plat || '') === (g.plat || '') && g.t - last.t <= 10 && g.t >= last.t) {
+      out[out.length - 1] = { ...g, num: (last.num || 1) + (g.num || 1), yuan: last.yuan == null || g.yuan == null ? g.yuan : Math.round((last.yuan + g.yuan) * 100) / 100, big: last.big || g.big };
+    } else out.push(g);
+  }
+  return out;
+}
 function renderGifts() {
   const el = $('giftlist');
   if (giftTab === 'guard') {
@@ -528,7 +542,7 @@ function renderGifts() {
   // 2026-11-25：上一段下播带过来的，点了感谢就不再列（「下播期间」页里还有）
   const carried = g => g.source === '下播' && g.thanked && g.t < (S.session_start || 0);
   const items = [
-    ...S.gifts.filter(g => (g.yuan == null || g.yuan >= cfg.giftMin) && !carried(g)).map(g => ({ t: g.t, html: `<div class="gift${g.yuan >= 50 || g.big ? ' big' : ''}" data-uid="${g.uid}" data-k="${g.id}" data-t="${g.t}">${avatar(g.face, g.name, g.guard)}<div class="body"><div class="n"><span class="nm">${esc(g.name)}</span>${g.plat ? platTag(g.plat) : ''}${g.source === '下播' ? '<span class="tag off" title="下播期间送的">下播</span>' : ''}</div><div class="g">${g.blind ? `${esc(g.blind)} 爆出 ${esc(g.gift)}` : `投喂 ${esc(g.gift)}`} × ${g.num} · ${g.source === '下播' ? fmtMd(g.t) : hhmm(g.t)}</div></div>${giftIcon(g)}${thxBtn(g)}${g.yuan == null ? '' : `<span class="y">${yuan(g.yuan)}</span>`}</div>` })),
+    ...mergeGifts(S.gifts.filter(g => !carried(g))).filter(g => g.yuan == null || g.yuan >= cfg.giftMin).map(g => ({ t: g.t, html: `<div class="gift${g.yuan >= 50 || g.big ? ' big' : ''}" data-uid="${g.uid}" data-k="${g.id}" data-t="${g.t}">${avatar(g.face, g.name, g.guard)}<div class="body"><div class="n"><span class="nm">${esc(g.name)}</span>${g.plat ? platTag(g.plat) : ''}${g.source === '下播' ? '<span class="tag off" title="下播期间送的">下播</span>' : ''}</div><div class="g">${g.blind ? `${esc(g.blind)} 爆出 ${esc(g.gift)}` : `投喂 ${esc(g.gift)}`} × ${g.num} · ${g.source === '下播' ? fmtMd(g.t) : hhmm(g.t)}</div></div>${giftIcon(g)}${thxBtn(g)}${g.yuan == null ? '' : `<span class="y">${yuan(g.yuan)}</span>`}</div>` })),
     ...S.guards.filter(g => !carried(g)).map(g => ({ t: g.t, html: guardRow(g).slice(0, -6) + thxBtn(g) + '</div>' })),
   ].sort((a, b) => b.t - a.t).slice(0, 200);
   setList(el, items.length ? items.map(x => x.html).join('') : '<div class="empty xw">暂无礼物</div>');

@@ -158,6 +158,10 @@ function connect() {
       if (String(data.cmd).startsWith('admin_link_')) { linkResult(data); return; }
       if (data.cmd === 'lan_set') { note(data.msg, data.ok); if (!data.ok) drawLinks(); return; }
       if (data.cmd === 'room_set') { roomSetResult(data); return; }
+      if (String(data.cmd).startsWith('storage_')) { if (data.storage) drawData(data.storage); if (data.msg) note(data.msg, data.ok); return; }  // 数据管理（2026-11-28）
+      if (data.cmd === 'event_api') { if (data.event_api) drawEv(data.event_api); if (data.msg) note(data.msg, data.ok); return; }
+      if (data.cmd === 'obs_css_set') { note(data.msg, data.ok); return; }
+      if (data.cmd === 'hist_merge') { note(data.msg, data.ok); if (data.ok && typeof loadHistList === 'function') loadHistList(); return; }
       if (['update_check', 'update_download', 'update_restart', 'open_mode', 'close_mode', 'autostart', 'make_shortcut'].includes(data.cmd)) { if (data.cmd === 'update_check' && S.update?.v) { $('updbar').hidden = false; try { localStorage.removeItem('xw-upd-skip'); } catch {} drawUpd(); } note(data.msg, data.ok); if (!data.ok && data.cmd === 'update_download') { updPct = -1; drawUpd(); } return; }
       if (['music_qr', 'music_poll', 'music_logout', 'music_cookie'].includes(data.cmd)) { musicLoginResult(data); return; }
       if (['music_add', 'music_alts', 'music_swap', 'music_vol', 'music_move'].includes(data.cmd)) { if (!['music_vol', 'music_move'].includes(data.cmd) || !data.ok) musicResult(data); return; }
@@ -185,8 +189,9 @@ function connect() {
       if ($('card').classList.contains('open') && $('card').dataset.uid) drawCardTags(Number($('card').dataset.uid));
     } else if (type === 'mascot') {  // 在别的地方换了看板娘
       applyMascot(data);
-    } else if (type === 'music_tip') {  // 点歌姬给主播的提醒（2026-11-28）
+    } else if (type === 'app_tip') {  // 给主播的提醒：点歌姬、数据占用太大（2026-11-28）
       note(`${data.title}：${data.text}`, true);
+      if (data.kind === 'storage' && $('datalist')) drawDataSoon();
     } else if (type === 'desktop') {
       S.desktop = data; updPct = null; drawUpd();
     } else if (type === 'face') {  // 没头像的人，后台去 B 站名片查到了（2026-11-25）：补上再画

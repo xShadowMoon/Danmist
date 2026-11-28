@@ -118,6 +118,10 @@ async function openHist() {
   $('hist').classList.add('open'); $('mask').classList.add('show');
   await loadHistList();
 }
+// 时间上紧挨着的前一场（两场合成一场用）
+function histPrev(d) {
+  return (H.list || []).filter(x => x.id !== d.id && x.start < d.start).sort((a, b) => b.start - a.start)[0] || null;
+}
 async function loadHistList() {
   H.detail = null;
   $('htitle').innerHTML = icon('history') + ' 历史场次'; $('hback').style.display = 'none';
@@ -273,7 +277,7 @@ function renderHistDetail(d) {
       <div class="hbox"><h4>${icon('anchor')} 上舰<a data-go="guard">全部</a></h4>${(d.guards || []).length ? d.guards.slice(0, 4).map(g => guardRow(g, 0, 0, true)).join('') : '<div class="empty sm">这场没有人上舰</div>'}</div>
       <div class="hbox"><h4>${icon('p-sc')} SC<a data-go="sc">全部</a></h4>${(d.scs || []).length ? d.scs.slice().sort((a, b) => (b.price || 0) - (a.price || 0)).slice(0, 3).map(s => `<div class="row"><span class="n">${esc(s.name)}</span><span style="flex:1;margin:0 8px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.text || '')}</span><span class="r money">${yuan(s.price || 0)}</span></div>`).join('') : '<div class="empty sm">这场没有 SC</div>'}</div>
     </div>
-    ${H.admin ? `<div style="margin-top:16px;text-align:right"><button class="btn sm danger" id="hdel">删除这场记录</button></div>` : ''}
+    ${H.admin ? `<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${histPrev(d) ? `<button class="btn sm" id="hmerge" title="被断流、重开切成两场时用：跟时间上前一场（${esc(fmtMd(histPrev(d).start))}）合成一场，数字、送礼榜、弹幕都加在一起">跟前一场合成一场</button>` : ''}<button class="btn sm danger" id="hdel">删除这场记录</button></div>` : ''}
     </div>
     <div class="hp" data-hp="rank" title="礼物 + SC + 上舰"><div class="lst">${(d.rank || []).length ? d.rank.map(rankRow).join('') : '<div class="empty">无</div>'}</div></div>
     <div class="hp" data-hp="sc"><div class="lst">${(d.scs || []).length ? d.scs.slice().reverse().map(s => scHtml(s)).join('') : '<div class="empty">无</div>'}</div></div>
@@ -287,7 +291,13 @@ function renderHistDetail(d) {
   showTab(H.tab);
   if (d.has_dm) histDm(d.id, '');
   if (H.admin) {
-    let arm = 0;
+    let arm = 0, armM = 0;
+    const mb = $('hmerge');
+    if (mb) mb.onclick = () => {  // 两场合成一场（2026-11-28）
+      if (Date.now() - armM > 3000) { armM = Date.now(); mb.textContent = '再点一次合成'; return; }
+      const p = histPrev(d);
+      if (p) window._ws?.send(JSON.stringify({ cmd: 'hist_merge', a: p.id, b: d.id }));
+    };
     $('hdel').onclick = async () => {
       if (Date.now() - arm > 3000) { arm = Date.now(); $('hdel').textContent = '再点一次删除'; return; }
       try { await fetch(`api/history/${encodeURIComponent(d.id)}/delete`, { method: 'POST' }); } catch {}

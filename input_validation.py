@@ -179,6 +179,8 @@ COMMAND_FIELDS = {
     'tpre_set': {'list'}, 'xrooms_set': {'open', 'rooms'}, 'live_start': {'acct', 'area_id', 'title'}, 'live_stop': {'acct'},
     'lan_set': {'on'},
     'update_check': set(), 'update_download': set(), 'update_restart': set(), 'open_mode': {'mode'}, 'close_mode': {'mode'}, 'autostart': {'on'}, 'make_shortcut': set(),
+    'storage_get': set(), 'storage_clean': {'kind', 'keep', 'days'}, 'storage_set': {'backup_keep', 'warn_gb'}, 'hist_merge': {'a', 'b'},
+    'obs_css_set': {'css'}, 'event_api': {'on', 'reset'},
     'music_rules': {'on', 'mode', 'src', 'need_ok', 'skip', 'max', 'medal', 'guard', 'wealth', 'follow', 'maxdur', 'reply', 'idle', 'idle_list', 'vol',
                     'fallback', 'cd_user', 'cd_song', 'norm', 'bili'},
     'music_next': set(), 'music_ok': {'id'}, 'music_del': {'id'}, 'music_top': {'id'},
@@ -271,6 +273,30 @@ def validate_command(c, clean_rules):
         if c.get('plat') != 'douyin' or not re.fullmatch(r'\d{1,20}', str(c.get('room') or '')):
             raise InputError('只有抖音的直播间能显示窗口')
         boolean(c.get('show'), '显示窗口')
+    elif cmd == 'storage_clean':  # 数据管理（2026-11-28）
+        if c.get('kind') not in ('img', 'browser', 'backup', 'dm'):
+            raise InputError('不知道要清哪一类')
+        if 'keep' in c:
+            integer(c.get('keep'), '留几份', 1, 60)
+        if 'days' in c:
+            integer(c.get('days'), '多少天以前', 0, 3650)
+    elif cmd == 'storage_set':
+        if 'backup_keep' in c:
+            integer(c.get('backup_keep'), '备份留几份', 1, 60)
+        if 'warn_gb' in c:
+            number(c.get('warn_gb'), '提醒的大小', 0, 1000)
+    elif cmd == 'hist_merge':
+        for k in ('a', 'b'):
+            if not re.fullmatch(r'\d{8}-\d{4}(?:-[0-9a-f]{12})?', str(c.get(k) or '')):
+                raise InputError('场次编号不对')
+        if c['a'] == c['b']:
+            raise InputError('要选两场不一样的')
+    elif cmd == 'obs_css_set':
+        text(c.get('css', ''), 'OBS 自定义样式', 20000)
+    elif cmd == 'event_api':
+        for k in ('on', 'reset'):
+            if k in c:
+                boolean(c.get(k), k)
     elif cmd == 'open_mode':
         if c.get('mode') not in ('app', 'web'):
             raise InputError('打开方式只能是软件窗口或浏览器')
