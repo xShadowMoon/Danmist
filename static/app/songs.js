@@ -121,7 +121,7 @@ function drawMusicSet() {
   const lg = R.login || {}, src = R.src;
   $('mlogin').innerHTML = lg[src] ? `<span class="mlg">${esc(lg[src])}</span><button class="btn sm" data-mlogout="${src}">退出</button>`
     : `<button class="btn sm go" data-mweb="${src}" title="在这台电脑上弹出${MSRC[src]}官网的登录页，像平常一样登录（扫码、密码都行），登好后窗口自己关掉">登录${MSRC[src]}</button><button class="btn sm" data-mcookie="${src}" title="扫码登不上时用：在电脑浏览器登录${MSRC[src]}网页版，按 F12 → 应用/存储 → Cookie，复制${src === '163' ? ' MUSIC_U' : ' uin 和 qqmusic_key'}粘进来">粘贴登录信息</button>`
-      + `<small class="mtip">${R.mode === 'app' ? `「音乐客户端」用${MSRC[src]}客户端自己的登录，这里可以不登` : '不登录只能放免费的歌'}</small>`;
+      + `<small class="mtip">${R.mode === 'app' ? `「音乐客户端」用${MSRC[src]}客户端自己的登录，这里可以不登。打游戏时建议用「雾幕自己放」，客户端换歌时可能弹到前面` : '不登录只能放免费的歌'}</small>`;
   $('mobsurl').value = location.origin + location.pathname.replace(/[^/]*$/, '') + 'obs-music';
 }
 function sendRules(patch) { window._ws?.send(JSON.stringify({ cmd: 'music_rules', ...patch })); }

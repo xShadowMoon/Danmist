@@ -221,3 +221,25 @@ class Music6Tests(unittest.TestCase):
         self.assertEqual(music.BV_RE.search('av170001').group(2), '170001')
         self.assertTrue(music.BV_RE.search('https://b23.tv/abcd123'))
         self.assertIsNone(music.BV_RE.search('晴天 - 周杰伦'))
+
+
+class OpenQuietTests(unittest.TestCase):
+    """叫音乐客户端时要求最小化、不抢前台（2026-11-28）"""
+
+    def test_asks_for_minimized_no_focus(self):
+        from unittest import mock
+        with mock.patch.object(music.os, 'startfile', create=True) as sf:
+            music.open_quiet('orpheus://abc')
+        sf.assert_called_once_with('orpheus://abc', 'open', show_cmd=7)
+
+    def test_old_python_falls_back(self):
+        from unittest import mock
+        calls = []
+
+        def old(uri, *rest, **kw):
+            if rest or kw:
+                raise TypeError('too many args')
+            calls.append(uri)
+        with mock.patch.object(music.os, 'startfile', old, create=True):
+            music.open_quiet('qqmusic://x')
+        self.assertEqual(calls, ['qqmusic://x'])

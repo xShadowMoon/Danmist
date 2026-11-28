@@ -5,6 +5,15 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.15.4 · 2026-11-28
+
+- 没登录（游客）时 B 站会把弹幕的名字打码、账号编号藏起来，雾幕认不出主播本人。现在按头像认，主播的弹幕照样带「主播」标签。
+  When not logged in, Bilibili hides the sender's account id, so the streamer's own messages lost the streamer tag. The streamer is now recognised by avatar.
+- 点歌姬用「音乐客户端」放歌时，叫网易云 / QQ 音乐最小化打开、不抢前台，免得全屏游戏被切出去（客户端听不听由它自己决定）；设置里也提示打游戏时用「雾幕自己放」。
+  In music-client mode, NetEase / QQ Music is asked to open minimized without taking focus, so fullscreen games are not interrupted (it is up to the client to honour this).
+
+---
+
 ## v0.9.15.3 · 2026-11-28
 
 - 雾幕重启后读回来的弹幕丢了荣耀等级（灰色粉丝牌、回复了谁也一起丢了），现在都能读回来。0.9.15.2 的「荣耀等级回来了」只修了一半，这次才是真正的原因。
