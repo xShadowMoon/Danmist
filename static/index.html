@@ -340,6 +340,11 @@
         <div class="opt r"><span>高亮词</span><div class="ctl"><input type="text" data-k="hlWords" placeholder="空格隔开"></div><button class="rs" title="恢复默认">↺</button></div>
         <div class="opt r" title="「只看粉丝牌」只算主播的牌子"><span>粉丝牌 ≥</span><div class="ctl"><input type="number" min="1" max="40" step="1" data-k="dmMedalMin"><small>级</small></div><button class="rs" title="恢复默认">↺</button></div>
       </fieldset>
+      <fieldset class="admin-only" id="kwbox"><legend>关键词回应</legend>
+        <div class="note">观众弹幕里有某个词，就自动回一句或者念出来。比如关键词「晚安」，回复「晚安 {name}，明天见」。{name} 会换成观众的名字。同一条规则在冷却时间里只回一次，同一个人 2 分钟内只回一次。「发弹幕」用机器人或者连直播间的号发出去；「念出来」只在开着雾幕的这台电脑上念。</div>
+        <div id="kwlist"></div>
+        <div class="chips"><button class="btn sm" id="kwadd">＋ 加一条</button><button class="btn sm go" id="kwsave">保存</button><span class="mtip" id="kwtip"></span></div>
+      </fieldset>
       <button class="btn sm" id="dmreset" hidden>↺ 恢复默认</button>
     </div>
 

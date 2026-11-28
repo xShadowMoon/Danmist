@@ -123,3 +123,27 @@ class DataToolsTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class KeywordTests(unittest.TestCase):
+    """关键词回应（2026-11-28）"""
+
+    def test_rules_and_cooldown(self):
+        import keywords
+        with tempfile.TemporaryDirectory() as d:
+            kw = keywords.Keywords(os.path.join(d, 'keywords.json'), wj)
+            kw.set([{'words': '晚安，睡了', 'reply': '晚安 {name}', 'read': True, 'cd': 30},
+                    {'words': ['签到'], 'reply': '签到成功', 'exact': True, 'say': True, 'read': False},
+                    {'words': [], 'reply': ''}])  # 空的那条丢掉
+            self.assertEqual(len(kw.rules), 2)
+            again = keywords.Keywords(os.path.join(d, 'keywords.json'), wj)
+            self.assertEqual(again.rules[0]['words'], ['晚安', '睡了'])
+            hits = kw.match({'uid': 1, 'name': '小鱼', 'text': '主播晚安啦'}, now=1000)
+            self.assertEqual([t for _, t in hits], ['晚安 小鱼'])
+            self.assertEqual(kw.match({'uid': 2, 'name': '乙', 'text': '晚安'}, now=1010), [])  # 规则冷却中
+            self.assertEqual(len(kw.match({'uid': 2, 'name': '乙', 'text': '晚安'}, now=1040)), 1)
+            self.assertEqual(kw.match({'uid': 1, 'name': '小鱼', 'text': '晚安'}, now=1080), [])  # 同一个人 2 分钟内
+            self.assertEqual(kw.match({'uid': 3, 'name': '丙', 'text': '我来签到'}, now=2000), [])  # 整句一样才算
+            self.assertEqual(len(kw.match({'uid': 3, 'name': '丙', 'text': '签到'}, now=2000)), 1)
+            with self.assertRaises(ValueError):
+                kw.set([{'words': ['x'], 'reply': ''}])

@@ -42,6 +42,7 @@ from daily_health import DailyHealth
 from public_limits import PublicLimits, client_ip
 import history_maintenance
 import data_tools
+import keywords
 import secrets
 from ai_voice import AIVoice, Busy as VoiceBusy, VoiceError
 from breaker import Breaker
@@ -2989,6 +2990,19 @@ async def main():
         finally:
             reply_busy[0] = False
     hub.music.say = auto_say
+    # 关键词回应（2026-11-28）：弹幕里有某个词就自动回一句 / 念出来
+    hub.keywords = keywords.Keywords('' if args.demo else os.path.join(DIR, 'data', 'keywords.json'), write_json)
+
+    def keyword_hit(item):
+        s = hub.state
+        if item.get('emoticon') or item.get('kind') or item.get('uid') in s.bot_uids or (s.room.get('uid') and item.get('uid') == s.room.get('uid')):
+            return  # 表情、系统消息、机器人、主播自己不算（免得自己回自己）
+        for rule, text in hub.keywords.match(item):
+            if rule['say']:
+                asyncio.ensure_future(auto_say(text, item.get('uid') or 0, item.get('dmid') or '', ''))
+            if rule['read']:
+                hub.emit_admin('kw_read', {'text': text})
+    hub.bus.on('dm', keyword_hit)
     launcher_tips = []  # 给托盘弹的小通知（启动器来拿，2026-11-28）
 
     def app_tip(title, text, kind='tip'):
@@ -3583,6 +3597,7 @@ async def main():
             snap['room_locked'] = room_locked
             snap['mascot'] = mascot_ver(mascot_dir)  # 换过看板娘时网页拿它刷新图标
             if admin:
+                snap['keywords'] = hub.keywords.rules  # 关键词回应（2026-11-28）
                 snap['update'] = new_release[0]  # GitHub 上有新版本时：{'v', 'url', 'name'}，没有就是 None
                 snap['songbook'] = hub.songbook_list()
                 snap['library'] = hub.library_list()
@@ -3676,6 +3691,14 @@ async def main():
                             await kick_side_viewers()
                             asyncio.get_event_loop().create_task(fill_xroom_names())
                             await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': note}})
+                            continue
+                        if cmd == 'kw_set':  # 关键词回应（2026-11-28）
+                            try:
+                                hub.keywords.set(c['rules'])
+                                hub.emit_admin('keywords', hub.keywords.rules)
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': True, 'msg': '关键词回应已保存'}})
+                            except (ValueError, OSError) as e:
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': str(e)}})
                             continue
                         if cmd in ('storage_get', 'storage_clean', 'storage_set', 'hist_merge', 'obs_css_set', 'event_api'):
                             ok, note, extra = await data_cmd(c)

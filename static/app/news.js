@@ -385,6 +385,35 @@ document.addEventListener('change', e => {
   if (e.target.id === 'datawarn') window._ws?.send(JSON.stringify({ cmd: 'storage_set', warn_gb: Number(e.target.value) || 0 }));
   if (e.target.id === 'evon') window._ws?.send(JSON.stringify({ cmd: 'event_api', on: e.target.checked }));
 });
+// 关键词回应（2026-11-28）：设置 → 弹幕 → 关键词回应。在这里改完点「保存」才发给后台
+let kwDraft = null, kwDirty = false;
+function drawKw(force) {
+  const box = $('kwlist');
+  if (!box || !S.admin) return;
+  if (!kwDraft || force || !kwDirty) kwDraft = JSON.parse(JSON.stringify(S.keywords || []));
+  box.innerHTML = kwDraft.length ? kwDraft.map((r, i) => `<div class="kwrow" data-kw="${i}">
+    <label class="chip" title="关掉就先不回"><input type="checkbox" data-kf="on"${r.on !== false ? ' checked' : ''}><span>开</span></label>
+    <input type="text" data-kf="words" value="${esc((r.words || []).join('，'))}" placeholder="关键词，几个用逗号隔开" maxlength="200">
+    <input type="text" data-kf="reply" value="${esc(r.reply || '')}" placeholder="回复的话（最多 40 字）" maxlength="40">
+    <span class="kwopts"><label class="chip"><input type="checkbox" data-kf="say"${r.say ? ' checked' : ''}><span>发弹幕</span></label><label class="chip"><input type="checkbox" data-kf="read"${r.read !== false ? ' checked' : ''}><span>念出来</span></label><label class="chip" title="整句话一模一样才算，不勾就是包含这个词就算"><input type="checkbox" data-kf="exact"${r.exact ? ' checked' : ''}><span>整句一样</span></label>
+    <label class="kwcd" title="这条回过以后，多少秒内不再回">冷却 <input type="number" data-kf="cd" min="5" max="3600" value="${r.cd || 30}"> 秒</label>
+    <button class="btn sm" data-kwdel="${i}" title="删掉这条">✕</button></span></div>`).join('') : '<div class="empty" style="padding:8px">还没有规则，点「加一条」</div>';
+}
+document.addEventListener('input', e => {
+  const f = e.target.closest('#kwlist [data-kf]'); if (!f) return;
+  const r = kwDraft[+f.closest('[data-kw]').dataset.kw]; if (!r) return;
+  const k = f.dataset.kf;
+  r[k] = f.type === 'checkbox' ? f.checked : k === 'cd' ? Math.max(5, Math.min(3600, parseInt(f.value, 10) || 30)) : k === 'words' ? f.value.split(/[,，、]/).map(x => x.trim()).filter(Boolean) : f.value;
+  kwDirty = true; $('kwtip').textContent = '改了还没保存';
+});
+document.addEventListener('change', e => { if (e.target.closest('#kwlist [data-kf]') && e.target.type === 'checkbox') e.target.dispatchEvent(new Event('input', { bubbles: true })); });
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-st="dm"]')) drawKw();
+  if (e.target.closest('#kwadd')) { if (!kwDraft) kwDraft = []; kwDraft.push({ words: [], reply: '', say: false, read: true, exact: false, on: true, cd: 30 }); kwDirty = true; drawKw(); $('kwlist').querySelector('.kwrow:last-child [data-kf="words"]')?.focus(); }
+  const d = e.target.closest('[data-kwdel]');
+  if (d) { kwDraft.splice(+d.dataset.kwdel, 1); kwDirty = true; drawKw(); $('kwtip').textContent = '改了还没保存'; }
+  if (e.target.closest('#kwsave')) window._ws?.send(JSON.stringify({ cmd: 'kw_set', rules: kwDraft || [] }));
+});
 // 事件接口（2026-11-28）：设置 → 链接 最下面
 function drawEv(v) {
   if (!$('evbox')) return;

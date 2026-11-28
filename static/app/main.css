@@ -1603,3 +1603,9 @@ body.touring #spot { transition: opacity .3s, left .2s, top .2s, width .2s, heig
 .evhelp { margin-top: 8px; font-size: 12px; color: var(--ink2); }
 .evhelp pre { white-space: pre-wrap; word-break: break-all; background: var(--input); border: 1px solid var(--line-soft); border-radius: 8px; padding: 8px; margin: 6px 0 0; font-size: 11.5px; }
 @media (max-width: 640px) { .dtrow { flex-direction: column; align-items: stretch; } .dtact { flex-direction: row; justify-content: flex-end; align-items: center; } }
+/* 关键词回应（2026-11-28） */
+.kwrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
+.kwrow input[type=text] { flex: 1 1 160px; min-width: 0; }
+.kwopts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.kwcd { font-size: 12px; color: var(--ink2); white-space: nowrap; }
+.kwcd input { width: 60px; }

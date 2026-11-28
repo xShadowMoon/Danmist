@@ -32,7 +32,7 @@ BAD_COMMANDS = {
     'admin_link_open_del': {'id': 'a' * 32, 't': 'x'},
     'news_get': {'rid': []}, 'news_set': {'acct': 'a' * 32, 'text': '字' * 61},
     # 2026-11-26 补上后来加的命令（手机打开、桌面版、点歌直接放、其他平台、抖音窗口）
-    'lan_set': {'on': 'yes'}, 'make_shortcut': {'extra': 1}, 'update_check': {'extra': 1}, 'storage_get': {'extra': 1}, 'storage_clean': {'kind': 'all'}, 'storage_set': {'backup_keep': 0}, 'hist_merge': {'a': '1', 'b': '2'}, 'obs_css_set': {'css': 'x' * 20001}, 'event_api': {'on': 'yes'}, 'close_mode': {'extra': 1}, 'autostart': {'extra': 1}, 'update_download': {'extra': 1}, 'update_restart': {'extra': 1},
+    'lan_set': {'on': 'yes'}, 'make_shortcut': {'extra': 1}, 'update_check': {'extra': 1}, 'storage_get': {'extra': 1}, 'storage_clean': {'kind': 'all'}, 'storage_set': {'backup_keep': 0}, 'hist_merge': {'a': '1', 'b': '2'}, 'obs_css_set': {'css': 'x' * 20001}, 'event_api': {'on': 'yes'}, 'kw_set': {'rules': 'x'}, 'close_mode': {'extra': 1}, 'autostart': {'extra': 1}, 'update_download': {'extra': 1}, 'update_restart': {'extra': 1},
     'open_mode': {'mode': 'x'}, 'music_cookie': {'src': 'x', 'cookie': 'a'}, 'music_del': {'id': []}, 'music_logout': {'src': 'x'},
     'music_next': {'extra': 1}, 'music_ok': {'id': []}, 'music_poll': {'src': '163', 'key': []}, 'music_qr': {'src': 'x'},
     'music_rules': {'max': 'x'}, 'music_top': {'id': ''}, 'plat_set': {'rooms': 'x'},
