@@ -5,6 +5,13 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.15.3 · 2026-11-28
+
+- 雾幕重启后读回来的弹幕丢了荣耀等级（灰色粉丝牌、回复了谁也一起丢了），现在都能读回来。0.9.15.2 的「荣耀等级回来了」只修了一半，这次才是真正的原因。
+  Danmaku restored after a restart lost their honor (wealth) level, grey-medal state and reply target. They are kept now; 0.9.15.2 only fixed half of this.
+
+---
+
 ## v0.9.15.2 · 2026-11-28
 
 - 弹幕的「简洁」模式下荣耀等级也照常显示（0.9.15 会把它藏起来）。

@@ -556,7 +556,8 @@ def event_row(kind, row):
         defaults.update(unit='月')
     aliases = {'gift_name': 'gift', 'sc_id': 'id', 'price': 'price', 'text': 'text'}
     fields = {'t', 'uid', 'name', 'face', 'guard', 'id', 'i', 'thanked', 'medal', 'medal_level', 'medal_room', 'admin', 'emoticon', 'emots',
-              'gift', 'num', 'yuan', 'img', 'blind', 'price', 'text', 'end', 'level', 'level_name', 'unit', 'kind', 'recovered', 'source', 'op', 'days', 'days_est', 'dmid', 'link', 'plat'}
+              'gift', 'num', 'yuan', 'img', 'blind', 'price', 'text', 'end', 'level', 'level_name', 'unit', 'kind', 'recovered', 'source', 'op', 'days', 'days_est', 'dmid', 'link', 'plat',
+              'wealth', 'medal_dim', 'reply'}  # 2026-11-28：以前漏了这三个，重启后读回来的弹幕没有荣耀等级、灰牌子、回复谁
     result = {**defaults, **{k: v for k, v in row.items() if k in fields}}
     values = {**result, **{key: result.get(value) for key, value in aliases.items() if value in result}}
     event(kind, values)
@@ -578,6 +579,12 @@ def event_row(kind, row):
         result.pop('dmid')
     if 'days_est' in result and not isinstance(result['days_est'], bool):
         result.pop('days_est')
+    # 荣耀等级 1~999、粉丝牌亮不亮（0/1）、回复了谁：坏了就只丢这个字段
+    for key, hi in (('wealth', 999), ('medal_dim', 1)):
+        if key in result and not (type(result[key]) is int and 0 <= result[key] <= hi):
+            result.pop(key)
+    if 'reply' in result and not (isinstance(result['reply'], str) and len(result['reply']) <= 64):
+        result.pop('reply')
     for key in ('level_name', 'source'):
         if key in result:
             text(result[key], key, 64)

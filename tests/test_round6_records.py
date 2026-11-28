@@ -54,6 +54,18 @@ class GuardRecordTests(RoundSixTest):
         cleaned = valid.event_row('guard', row)
         self.assertEqual((cleaned['op'], cleaned['days'], cleaned['days_est']), ('续费', 123, True))
 
+    def test_event_row_keeps_wealth_dim_reply(self):
+        # 2026-11-28：重启后读回来的弹幕以前丢了荣耀等级、灰牌子、回复谁
+        row = {'t': 1795799673, 'uid': 1, 'name': '观众', 'text': '晚安', 'medal': '雾锁胃', 'medal_level': 20,
+               'medal_room': 373317, 'medal_dim': 1, 'wealth': 28, 'reply': '小鱼干', 'i': 1}
+        cleaned = valid.event_row('dm', row)
+        self.assertEqual((cleaned['wealth'], cleaned['medal_dim'], cleaned['reply']), (28, 1, '小鱼干'))
+        bad = valid.event_row('dm', {**row, 'wealth': '28', 'medal_dim': 5, 'reply': 'x' * 100})
+        self.assertNotIn('wealth', bad)
+        self.assertNotIn('medal_dim', bad)
+        self.assertNotIn('reply', bad)
+        self.assertEqual(bad['text'], '晚安')
+
     def test_event_row_rejects_invalid_operation(self):
         row = self.toast('开通，第1天')
         for value in ('未知', '', None, 1, []):
