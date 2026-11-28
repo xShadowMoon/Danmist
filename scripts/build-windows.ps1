@@ -1,4 +1,4 @@
-# Build the portable Windows package for a GitHub Release.
+﻿# Build the portable Windows package for a GitHub Release.
 # 打包带 Python 的 Windows 版（解压就能用，不用装 Python）。
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1 -Version 0.9.0
@@ -7,10 +7,31 @@
 # Needs: git, and any Python 3 with pip on this machine (only used to download wheels).
 param(
   [Parameter(Mandatory = $true)][string]$Version,
-  [string]$PythonVersion = '3.13.13'
+  [string]$PythonVersion = '3.13.13',
+  [switch]$SkipTests  # only for test builds you hand to yourself; a real Release must not use it
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+
+# 0. 先跑全部测试再打包（2026-11-28：0.9.15.4 两个脚本重名、页面一半没加载，网页检查能拦住，但发版时没跑）。
+#    后台测试 + 网页检查（tests/run_ui.py：开演示服务，用浏览器打开每个页面，脚本一报错就算不过）。有一项不过就不打包。
+if (-not $SkipTests) {
+  $py = (Get-Command py -ErrorAction SilentlyContinue)
+  $pyArgs = if ($py) { @('-3', '-B') } else { @('-B') }
+  $pyExe = if ($py) { 'py' } else { 'python' }
+  Push-Location $root
+  try {
+    $old = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    & $pyExe @pyArgs -m unittest discover -s tests 2>&1 | Select-Object -Last 3 | ForEach-Object { "  $_" }
+    $unit = $LASTEXITCODE
+    & $pyExe @pyArgs (Join-Path 'tests' 'run_ui.py') 2>&1 | Where-Object { $_ -match 'FAIL|SKIP|全部通过' } | ForEach-Object { "  $_" }
+    $ui = $LASTEXITCODE
+    $ErrorActionPreference = $old
+  } finally { Pop-Location }
+  if ($unit -ne 0) { throw 'Backend tests failed - not packaging (后台测试没过，不打包)' }
+  if ($ui -ne 0) { throw 'Page checks failed - not packaging (网页检查没过，不打包)' }
+  'Tests passed (测试全过)'
+}
 $name = "Danmist-v$Version-windows-x64"
 $dist = Join-Path $root 'dist'
 $out = Join-Path $dist $name
