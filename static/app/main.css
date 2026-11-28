@@ -1518,7 +1518,7 @@ body.touring #spot { transition: opacity .3s, left .2s, top .2s, width .2s, heig
 .top.narrow .brand .title { max-width: 16vw; }
 .top.narrow #rankpill { display: none; }
 /* 弹幕「简洁」（2026-11-26）：名字前面只留身份和自己直播间的粉丝牌 */
-.dm-simple .dm .wealth, .dm-simple .dm .wealthimg, .dm-simple .dm .medal.other, .dm-simple .dm .medal.dim, .dm-simple .dm .tag.note { display: none; }
+.dm-simple .dm .medal.other, .dm-simple .dm .medal.dim, .dm-simple .dm .tag.note { display: none; }
 /* 数据条小曲线（2026-11-26） */
 #stats .sparkw { margin-left: auto; display: flex; align-items: center; min-width: 0; }
 #stats .sparkw:empty { display: none; }

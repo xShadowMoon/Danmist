@@ -5,6 +5,17 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.15.2 · 2026-11-28
+
+- 弹幕的「简洁」模式下荣耀等级也照常显示（0.9.15 会把它藏起来）。
+  Honor (wealth) levels show again in the compact danmaku view (0.9.15 hid them).
+- 「简洁」默认改成不开，0.9.15 默认开着的也先关上；想要可以再开。
+  The compact view is now off by default, and is switched off once for anyone who had the 0.9.15 default.
+- 「简洁模式」改成一个总开关，放在 设置 → 弹幕 最上面。
+  The compact view is now a single switch at the top of Settings → Danmaku.
+
+---
+
 ## v0.9.15.1 · 2026-11-27
 
 只修问题、没有新功能的小更新。以后这类更新都在版本号后面加一位（0.9.15.1、0.9.15.2……）。

@@ -297,6 +297,9 @@
 
     <div class="spage" data-sp="dm">
       <h2 class="ptitle">弹幕<small>弹幕栏标题上的齿轮也是打开这一页</small></h2>
+      <fieldset class="simplebox"><legend>简洁模式</legend>
+        <div class="opt r" title="名字前面的标签少一点，看着清爽"><span>简洁模式</span><div class="ctl"><label class="switch"><input type="checkbox" data-k="dm.simple"><i></i></label><small>打开后名字前只留舰长、房管、荣耀等级和本直播间的粉丝牌，别家的粉丝牌和备注先藏起来</small></div><button class="rs" title="恢复默认">↺</button></div>
+      </fieldset>
       <fieldset class="admin-only" id="tagbox"><legend>身份标签</legend><div id="tagset"></div></fieldset>
       <fieldset><legend>文字</legend>
         <div class="opt r"><span>字号</span><div class="ctl"><input type="range" min="13" max="28" step="0.5" data-k="dmSize" data-u="px"></div><button class="rs" title="恢复默认">↺</button></div>
@@ -311,7 +314,6 @@
       </fieldset>
       <fieldset class="ckg"><legend>每条显示</legend>
         <div class="chips">
-          <label class="chip" title="名字前面只留舰长、房管、自己直播间的粉丝牌；荣耀等级、别家的粉丝牌、备注都先藏起来"><input type="checkbox" data-k="dm.simple"><span>简洁</span></label>
           <label class="chip"><input type="checkbox" data-k="dm.avatar"><span>头像</span></label>
           <label class="chip"><input type="checkbox" data-k="dm.medal"><span>粉丝牌</span></label>
           <label class="chip"><input type="checkbox" data-k="dm.time"><span>时间</span></label>

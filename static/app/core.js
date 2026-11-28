@@ -22,12 +22,12 @@ const DEF_LAYOUT = {
 };
 const clone = o => JSON.parse(JSON.stringify(o));
 const DEF = {
-  v: 5, theme: 'auto', pal: '', frames: true, enterMerge: true, songGroup: '',
+  v: 6, theme: 'auto', pal: '', frames: true, enterMerge: true, songGroup: '',
   // 进房并入弹幕的样子：位置 flow（弹幕区底部常驻小栏，默认）/ top / bottom（有人进来才弹出），停几秒，显示哪些，带不带头像
   enterTip: { pos: 'flow', sec: 3.5, enter: true, follow: true, share: true, like: true, guardOnly: false, avatar: true }, compact: false,
   snd: { on: false, dm: false, sc: true, gift: true, guard: true, enterGuard: false, follow: false, giftMin: 10, scMin: 0, vol: 0.6 }, giftAnim: true, bigGift: { on: true, min: 10, guard: true }, dmSize: 15.5, giftMin: 0, snow: false,
   dmFilter: 'all', dmMedalMin: 10, hlWords: '主播 点歌',
-  dm: { gap: 0, name: 12, bg: 'none', font: '', color: '', avatar: true, medal: true, simple: true, time: true, bold: false, inline: false, guardBg: true, note: true, hoverPause: true, anim: 'in', animMs: 600 },
+  dm: { gap: 0, name: 12, bg: 'none', font: '', color: '', avatar: true, medal: true, simple: false, time: true, bold: false, inline: false, guardBg: true, note: true, hoverPause: true, anim: 'in', animMs: 600 },
   sc: { size: 14.5, read: 'dim', avatar: true, bar: true, unreadTop: false, autoRead: false, min: 0 },
   accent: '', bgAlpha: 85, fs: { sc: 100, gift: 100, enter: 100, users: 100, req: 100 }, topHide: [], topPin: ['obsbtn', 'ttsbtn', 'histbtn', 'librarybtn'],
   layout: clone(DEF_LAYOUT),
@@ -56,6 +56,8 @@ try {
   if (!(saved.v >= 4)) { if (cfg.bigGift.min === 100) cfg.bigGift.min = 10; cfg.v = 4; }
   // 第 5 版（2026-11-18）：提示音改成分开设置、默认全关（用户要求）；以前的「提示音」开关不再用
   if (!(saved.v >= 5)) { cfg.snd.on = false; cfg.v = 5; }
+  // 第 6 版（2026-11-28）：弹幕「简洁」默认改成不开（用户要求）；0.9.15 默认开着的，先关上，想要可以再开
+  if (!(saved.v >= 6)) { cfg.dm.simple = false; cfg.v = 6; }
   // 2026-11-12 上舰默认说法改成「xx开通了大航海」；自己改过说法的不动，只换掉还是旧默认的
   if (cfg.tts.tpl.guard === '感谢{name}开通{level}') cfg.tts.tpl.guard = DEF_TPL.guard;
   // 2026-11-19 SC 只留一个「字号」（整张卡一起缩放）：以前单独调过 SC 文字大小的，折算进去
