@@ -293,9 +293,11 @@ document.addEventListener('click', async e => {  // 打开程序 / 存档文件�
   try { const r = await fetch('api/open_dir?d=' + b.dataset.opendir, { method: 'POST' }); if (!r.ok) note('打不开：只能在运行雾幕的这台电脑上打开', false); } catch {}
 });
 $('dkshortcut')?.addEventListener('click', () => window._ws?.send(JSON.stringify({ cmd: 'make_shortcut' })));
-$('dkcheck')?.addEventListener('click', () => {
-  if (S.update?.v) { $('updbar').hidden = false; try { localStorage.removeItem('xw-upd-skip'); } catch {} drawUpd(); note(`有新版本 v${S.update.v}，点顶上的「下载更新」`, true); }
-  else note('现在没有新版本（每天会自动查一次）', true);
+$('dkcheck')?.addEventListener('click', () => {  // 2026-11-28：点了马上去 GitHub 查，不再只看每天自动查的那次
+  if (!window._ws || window._ws.readyState !== 1) { note('还没连上雾幕，等一下再点', false); return; }
+  try { localStorage.removeItem('xw-upd-skip'); } catch {}  // 自己点的检查：之前点过「这版不更新」的也重新提示
+  note('正在查…', true);
+  window._ws.send(JSON.stringify({ cmd: 'update_check' }));
 });
 $('updclose').onclick = () => { try { localStorage.setItem('xw-upd-skip', S.update?.v || ''); } catch {} $('updbar').hidden = true; };
 // 连接状态：网页 ↔ 电脑（wsOpen），电脑 ↔ B 站（S.room.bili_ok）

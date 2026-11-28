@@ -3099,6 +3099,16 @@ async def main():
 
     async def desktop_cmd(c):
         cmd = c['cmd']
+        if cmd == 'update_check':
+            # 「检查更新」（2026-11-28）：以前只看每天自动查的那次结果，刚发的新版要等到第二天才看得到；现在点了马上去 GitHub 问
+            info = await updates.fetch_latest(bare, args.update_url or updates.LATEST_API)
+            if not info:
+                return False, '没查到（连不上 GitHub），等会儿再试'
+            if not updates.is_newer(info['v']):
+                return True, f'已经是最新版 v{updates.VERSION}'
+            new_release[0] = info
+            hub.emit_admin('update', info)
+            return True, f'有新版本 v{info["v"]}，点顶上的「下载更新」'
         if cmd == 'update_download':
             info = new_release[0] or await updates.fetch_latest(bare)
             if info and info.get('via') == 'mirror':  # 之前是经加速站查到的：下载前再直接问一次 GitHub 拿校验码
@@ -3393,9 +3403,9 @@ async def main():
                                 extra = {}
                             await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': note, **extra}})
                             continue
-                        if cmd in ('update_download', 'update_restart', 'open_mode', 'make_shortcut'):
-                            # 桌面版（2026-11-25）：只有在这台电脑上打开的才能用（会下载文件、动这台电脑）
-                            if not local:
+                        if cmd in ('update_check', 'update_download', 'update_restart', 'open_mode', 'make_shortcut'):
+                            # 桌面版（2026-11-25）：只有在这台电脑上打开的才能用（会下载文件、动这台电脑）；只是查一下有没有新版的不限
+                            if not local and cmd != 'update_check':
                                 await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': '只能在运行雾幕的这台电脑上操作'}})
                                 continue
                             ok, note = await desktop_cmd(c)

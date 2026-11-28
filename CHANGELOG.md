@@ -5,6 +5,13 @@ Release notes for each version are taken from this file. Downloads are on the [R
 
 ---
 
+## v0.9.15.5 · 2026-11-28
+
+- 设置 → 更多 →「检查更新」点了马上去 GitHub 查。以前它只看开软件时自动查的那一次，开着软件期间发的新版本要等到第二天才看得到。
+  "Check for updates" now asks GitHub right away. It used to only show the result of the automatic check made at startup, so a release made while the app was open showed up a day later.
+
+---
+
 ## v0.9.15.4 · 2026-11-28
 
 - 没登录（游客）时 B 站会把弹幕的名字打码、账号编号藏起来，雾幕认不出主播本人。现在按头像认，主播的弹幕照样带「主播」标签。
