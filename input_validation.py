@@ -181,6 +181,9 @@ COMMAND_FIELDS = {
     'update_check': set(), 'update_download': set(), 'update_restart': set(), 'open_mode': {'mode'}, 'close_mode': {'mode'}, 'autostart': {'on'}, 'make_shortcut': set(),
     'storage_get': set(), 'storage_clean': {'kind', 'keep', 'days'}, 'storage_set': {'backup_keep', 'warn_gb'}, 'hist_merge': {'a', 'b'},
     'obs_css_set': {'css'}, 'event_api': {'on', 'reset'}, 'kw_set': {'rules'},
+    'train_check': {'folder'}, 'train_install': {'folder', 'kind'}, 'train_cancel': set(), 'train_use': {'folder'},
+    'train_webui': set(), 'train_scan': set(), 'train_api': set(),
+    'train_import': {'name', 'ref_audio', 'ref_text', 'ref_lang', 'gpt', 'sovits'},
     'music_rules': {'on', 'mode', 'src', 'need_ok', 'skip', 'max', 'medal', 'guard', 'wealth', 'follow', 'maxdur', 'reply', 'idle', 'idle_list', 'vol',
                     'fallback', 'cd_user', 'cd_song', 'norm', 'bili'},
     'music_next': set(), 'music_ok': {'id'}, 'music_del': {'id'}, 'music_top': {'id'},
@@ -291,6 +294,24 @@ def validate_command(c, clean_rules):
                 raise InputError('场次编号不对')
         if c['a'] == c['b']:
             raise InputError('要选两场不一样的')
+    elif cmd in ('train_check', 'train_install', 'train_use'):  # 训练音色（2026-11-28）
+        folder = c.get('folder', '')
+        text(folder, '文件夹', 260, cmd != 'train_check')
+        if any(ch in str(folder) for ch in '\r\n\0*?"<>|'):
+            raise InputError('文件夹路径不对')
+        if cmd == 'train_install':
+            if not re.match(r'^[A-Za-z]:[\\/]', str(folder)):
+                raise InputError('要填完整的文件夹路径，比如 D:\\GPT-SoVITS')
+            if c.get('kind', 'normal') not in ('normal', 'rtx50'):
+                raise InputError('不知道要下哪个版本')
+    elif cmd == 'train_import':
+        text(c.get('name'), '音色名字', 20, True)
+        text(c.get('ref_audio'), '参考音频', 400, True)
+        text(c.get('ref_text', ''), '参考音频的文字', 200)
+        for k in ('gpt', 'sovits'):
+            text(c.get(k, ''), k, 400)
+        if c.get('ref_lang', 'zh') not in ('zh', 'ja', 'en', 'ko', 'yue'):
+            raise InputError('语言不对')
     elif cmd == 'kw_set':
         import keywords
         try:

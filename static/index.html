@@ -193,6 +193,33 @@
         <div class="opt"><input type="text" id="aiurl" maxlength="200" placeholder="地址，比如 http://127.0.0.1:9880（空着就不用）" style="flex:1;min-width:0"><select id="aiapi" title="接口" style="flex:none;width:auto"><option value="api_v2">GPT-SoVITS api_v2</option><option value="folder">说话服务（folder）</option></select></div>
         <div class="chips"><button class="btn sm" id="aisave">保存并测试</button><span class="mtip" id="aitip"></span></div>
         <div class="note">用你自己训练的声音（或者一段 3~10 秒的录音）来念。先在这台电脑上打开 GPT-SoVITS 的接口：在 GPT-SoVITS 文件夹里运行 <code>api_v2.py</code>（整合包是 <code>runtime\python.exe api_v2.py</code>），地址一般是 http://127.0.0.1:9880，填上点「保存并测试」。</div>
+        <details id="trainbox"><summary>训练自己的音色</summary>
+          <div class="note">用你自己的录音训练一个专属声音来读弹幕。用的是开源的 GPT-SoVITS，雾幕的安装包里不带，要用时再下载。</div>
+          <div class="trneed"><b>要准备的</b>
+            <ul>
+              <li>一张 <b>N 卡</b>（NVIDIA），显存 <b>6GB 以上</b>，8GB 更稳。A 卡、核显训练不了</li>
+              <li>硬盘空出 <b>15GB</b>：GPT-SoVITS 下载约 <b>8.2GB</b>，解压后约 12GB（解压完压缩包会自动删掉）</li>
+              <li>一段你自己说话的录音，<b>1~10 分钟</b>，越清楚越好，不要有背景音乐（直播录播里聊天的部分就行）</li>
+              <li>训练大概 20~60 分钟，看显卡</li>
+            </ul>
+          </div>
+          <div id="trstat" class="trstat"></div>
+          <div class="opt"><span style="flex:none">放在哪</span><input type="text" id="trdir" maxlength="260" placeholder="比如 D:\GPT-SoVITS" style="flex:1;min-width:0"><button class="btn sm" id="trcheck">检查</button></div>
+          <div class="chips"><button class="btn sm go" id="trinstall">下载安装</button><button class="btn sm" id="truse" title="已经自己装过 GPT-SoVITS：上面填它的文件夹，点这个就不用再下">我已经装了，用这个文件夹</button><button class="btn sm" id="trcancel" hidden>停止下载</button></div>
+          <div id="trprog" class="trprog" hidden><div class="dtbar"><i></i></div><small></small></div>
+          <div class="trsteps" id="trsteps" hidden>
+            <b>装好以后这样训练</b>
+            <ol>
+              <li>点下面「打开训练页面」，会弹一个黑窗口，等一会儿浏览器里出来 GPT-SoVITS 的页面</li>
+              <li>「0-前置数据集获取工具」：把录音所在的文件夹填进去，依次点「开启语音切分」「开启离线批量 ASR」（自动切成小段、认出文字）</li>
+              <li>「1-GPT-SoVITS-TTS」→「1A-训练集格式化工具」：起个实验名，点「一键三连」</li>
+              <li>「1B-微调训练」：先点「开启 SoVITS 训练」，跑完再点「开启 GPT 训练」</li>
+              <li>训练完关掉那个黑窗口，回来点「训练好了，导入音色」</li>
+            </ol>
+          </div>
+          <div class="chips" id="trbtns" hidden><button class="btn sm" id="trwebui">打开训练页面</button><button class="btn sm go" id="trscan">训练好了，导入音色</button><button class="btn sm" id="trapi" title="朗读要用它；导入音色时会自动开">启动合成服务</button></div>
+          <div id="trimport"></div>
+        </details>
         <div id="aivoices" hidden>
           <div class="tagsub">音色</div>
           <div id="aivlist"></div>

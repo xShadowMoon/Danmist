@@ -161,6 +161,7 @@ function connect() {
       if (String(data.cmd).startsWith('storage_')) { if (data.storage) drawData(data.storage); if (data.msg) note(data.msg, data.ok); return; }  // 数据管理（2026-11-28）
       if (data.cmd === 'event_api') { if (data.event_api) drawEv(data.event_api); if (data.msg) note(data.msg, data.ok); return; }
       if (data.cmd === 'obs_css_set') { note(data.msg, data.ok); return; }
+      if (String(data.cmd).startsWith('train_')) { if (typeof trainResult === 'function') trainResult(data); return; }
       if (data.cmd === 'kw_set') { $('kwtip').textContent = data.msg; note(data.msg, data.ok); if (data.ok) kwDirty = false; return; }
       if (data.cmd === 'hist_merge') { note(data.msg, data.ok); if (data.ok && typeof loadHistList === 'function') loadHistList(); return; }
       if (['update_check', 'update_download', 'update_restart', 'open_mode', 'close_mode', 'autostart', 'make_shortcut'].includes(data.cmd)) { if (data.cmd === 'update_check' && S.update?.v) { $('updbar').hidden = false; try { localStorage.removeItem('xw-upd-skip'); } catch {} drawUpd(); } note(data.msg, data.ok); if (!data.ok && data.cmd === 'update_download') { updPct = -1; drawUpd(); } return; }
@@ -190,6 +191,8 @@ function connect() {
       if ($('card').classList.contains('open') && $('card').dataset.uid) drawCardTags(Number($('card').dataset.uid));
     } else if (type === 'mascot') {  // 在别的地方换了看板娘
       applyMascot(data);
+    } else if (type === 'train_progress') {  // 训练音色：下载、解压进度（2026-11-28）
+      if (typeof drawTrainProg === 'function') drawTrainProg(data);
     } else if (type === 'keywords') {  // 关键词回应（2026-11-28）
       S.keywords = data; drawKw();
     } else if (type === 'kw_read') {

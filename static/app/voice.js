@@ -400,3 +400,86 @@ document.addEventListener('click', async e => {
     } catch { $('aivtip').textContent = '没保存上'; }
   }
 });
+
+/* ---------- 训练自己的音色（2026-11-28）：设置 → 朗读 → AI 音色 → 训练自己的音色 ---------- */
+const TR = { st: null, found: null };
+const trSend = c => window._ws?.send(JSON.stringify(c));
+function trCheck() { trSend({ cmd: 'train_check', folder: $('trdir').value.trim() }); }
+function drawTrain(st) {
+  TR.st = st;
+  const g = st.gpus || [], best = g.reduce((m, x) => Math.max(m, x.mb), 0);
+  const ok = (b, t) => `<div class="${b ? 'ok' : 'bad'}">${b ? '✓' : '✗'} ${t}</div>`;
+  const root = st.root || st.saved_root;
+  $('trstat').innerHTML = ok(st.gpu_ok, g.length ? `显卡：${esc(g.map(x => x.name).join('、'))}（显存 ${(best / 1024).toFixed(1)} GB${st.gpu_ok ? '' : `，不到 ${st.need_vram_gb} GB，可能训练不了`}）` : '没找到 N 卡（或者没装显卡驱动），训练不了')
+    + ok(st.free_gb >= st.need_gb || !!root, `这个盘还剩 ${st.free_gb} GB${st.free_gb >= st.need_gb ? '' : `，要 ${st.need_gb} GB`}`)
+    + (root ? ok(true, `GPT-SoVITS：${esc(root)}`) : '<div class="mid">○ 还没装 GPT-SoVITS</div>')
+    + (root ? ok(st.api, st.api ? '合成服务开着' : '合成服务没开（导入音色时会自动开）') : '');
+  if (!$('trdir').value) $('trdir').value = st.saved_root || 'D:\\GPT-SoVITS';
+  const kind = st.rtx50 ? 'rtx50' : 'normal', pk = (st.packages || {})[kind];
+  $('trinstall').textContent = root ? '重新下载安装' : `下载安装（约 ${pk ? pk.gb : 8.2} GB${st.rtx50 ? '，RTX 50 系专用版' : ''}）`;
+  $('trinstall').dataset.kind = kind;
+  $('trinstall').hidden = !!root;
+  $('trsteps').hidden = $('trbtns').hidden = !root;
+  $('trcancel').hidden = !st.busy;
+  if (st.busy && st.progress) drawTrainProg(st.progress);
+}
+function drawTrainProg(p) {
+  const box = $('trprog'); if (!box) return;
+  box.hidden = false;
+  const gb = n => (n / 1e9).toFixed(2) + ' GB', mmss = s => s > 3600 ? `${Math.floor(s / 3600)} 小时 ${Math.round(s % 3600 / 60)} 分` : s > 60 ? `${Math.round(s / 60)} 分钟` : `${s} 秒`;
+  const msg = p.stage === 'download' ? `正在从${esc(p.src || '')}下载：${gb(p.done)} / ${gb(p.total)}，${(p.speed / 1048576).toFixed(1)} MB/s，还要 ${mmss(p.left)}`
+    : p.stage === 'extract' ? `正在解压 ${p.pct}%` : esc(p.msg || '');
+  box.querySelector('i').style.width = Math.max(0, Math.min(100, p.pct || 0)) + '%';
+  box.querySelector('small').innerHTML = msg;
+  box.classList.toggle('bad', p.stage === 'error');
+  const running = ['tools', 'probe', 'download', 'extract'].includes(p.stage);
+  $('trcancel').hidden = !running; $('trinstall').disabled = running;
+  if (p.stage === 'done' || p.stage === 'error' || p.stage === 'stopped') { $('trinstall').disabled = false; trCheck(); }
+}
+function trainResult(d) {
+  if (d.train) { drawTrain(d.train); return; }
+  if (d.msg) note(d.msg, d.ok);
+  if (d.cmd === 'train_use' && d.ok) trCheck();
+  if (d.cmd === 'train_scan' && d.ok) drawTrainImport(d.found || {});
+  if (d.cmd === 'train_import' && d.ok) { $('trimport').innerHTML = ''; if (typeof loadAiVoices === 'function') loadAiVoices(); trCheck(); }
+  if (d.cmd === 'train_api') trCheck();
+}
+function drawTrainImport(f) {
+  TR.found = f;
+  const box = $('trimport');
+  if (!(f.gpt || []).length && !(f.sovits || []).length) {
+    box.innerHTML = '<div class="note">还没找到训练好的模型。在训练页面里把 SoVITS 和 GPT 都训练完再来点。</div>';
+    return;
+  }
+  const opt = (rows, lab) => rows.map((r, i) => `<option value="${i}">${esc(lab ? lab(r) : r.name)}</option>`).join('');
+  box.innerHTML = `<div class="trimp">
+    <div class="opt r"><span>音色名字</span><div class="ctl"><input type="text" id="trname" maxlength="20" placeholder="比如：我的声音"></div><span></span></div>
+    <div class="opt r"><span>GPT 模型</span><div class="ctl"><select id="trgpt">${opt(f.gpt)}</select></div><span></span></div>
+    <div class="opt r"><span>SoVITS 模型</span><div class="ctl"><select id="trsov">${opt(f.sovits)}</select></div><span></span></div>
+    <div class="opt r" title="从你训练用的录音里挑了几段 3~10 秒的，选一段说得最清楚的"><span>参考音频</span><div class="ctl">${(f.refs || []).length ? `<select id="trref">${opt(f.refs, r => `${r.sec} 秒：${r.text}`)}</select>` : '<small>没找到切好的录音，导入后在下面「音色」里自己选一段 3~10 秒的</small>'}</div><span></span></div>
+    <div class="chips"><button class="btn sm go" id="trimpgo">导入</button><small class="mtip">新的模型排在最前面</small></div></div>`;
+}
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t.closest('#trainbox > summary')) setTimeout(trCheck, 50);
+  if (t.id === 'trcheck') trCheck();
+  if (t.id === 'trinstall') {
+    const dir = $('trdir').value.trim();
+    if (!/^[A-Za-z]:\\/.test(dir)) { note('先填一个完整的文件夹路径，比如 D:\\GPT-SoVITS', false); return; }
+    trSend({ cmd: 'train_install', folder: dir, kind: t.dataset.kind || 'normal' });
+  }
+  if (t.id === 'truse') trSend({ cmd: 'train_use', folder: $('trdir').value.trim() });
+  if (t.id === 'trcancel') trSend({ cmd: 'train_cancel' });
+  if (t.id === 'trwebui') trSend({ cmd: 'train_webui' });
+  if (t.id === 'trscan') trSend({ cmd: 'train_scan' });
+  if (t.id === 'trapi') { note('正在开合成服务，第一次要等一两分钟', true); trSend({ cmd: 'train_api' }); }
+  if (t.id === 'trimpgo') {
+    const f = TR.found || {}, name = $('trname').value.trim();
+    if (!name) { note('先给这个音色起个名字', false); return; }
+    const ref = $('trref') ? (f.refs || [])[+$('trref').value] : null;
+    if (!ref) { note('没有参考音频：在下面「音色」里加一个，自己选一段 3~10 秒的录音', false); return; }
+    note('正在接进来，第一次开合成服务要等一两分钟', true);
+    trSend({ cmd: 'train_import', name, gpt: (f.gpt[+$('trgpt').value] || {}).path || '', sovits: (f.sovits[+$('trsov').value] || {}).path || '',
+      ref_audio: ref.path, ref_text: ref.text, ref_lang: ref.lang || 'zh' });
+  }
+});

@@ -205,7 +205,7 @@ class SideWebsocketTests(RoundSixTest):
             'music_del': {'id': 'm'}, 'music_logout': {'src': '163'}, 'music_ok': {'id': 'm'}, 'music_poll': {'src': '163', 'key': 'k'},
             'music_qr': {'src': '163'}, 'music_top': {'id': 'm'}, 'music_vol': {'vol': 50}, 'music_add': {'text': 'x'}, 'music_alts': {'id': 'm'}, 'music_swap': {'id': 'm', 'sid': '1'}, 'music_weblogin': {'src': '163'}, 'music_move': {'id': 'm'}, 'plat_set': {'rooms': []}, 'plat_show': {'plat': 'douyin', 'room': '1', 'show': True},
             'tags_set': {'builtin': {}, 'custom': []}, 'tag_user': {'uid': 7, 'tags': []}, 'room_set': {'plat': 'bili', 'room': 1},
-            'storage_clean': {'kind': 'img'}, 'kw_set': {'rules': []}, 'hist_merge': {'a': '20261101-1200', 'b': '20261101-1300'},
+            'storage_clean': {'kind': 'img'}, 'kw_set': {'rules': []}, 'train_install': {'folder': 'D:/x'}, 'train_use': {'folder': 'D:/x'}, 'train_import': {'name': 'a', 'ref_audio': 'D:/a.wav'}, 'hist_merge': {'a': '20261101-1200', 'b': '20261101-1300'},
         }
         before = copy.deepcopy(self.state.snapshot())
         for cmd in valid.COMMAND_FIELDS:

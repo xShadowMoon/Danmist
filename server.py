@@ -43,6 +43,7 @@ from public_limits import PublicLimits, client_ip
 import history_maintenance
 import data_tools
 import keywords
+import voice_train
 import secrets
 from ai_voice import AIVoice, Busy as VoiceBusy, VoiceError
 from breaker import Breaker
@@ -3700,6 +3701,13 @@ async def main():
                             except (ValueError, OSError) as e:
                                 await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': str(e)}})
                             continue
+                        if cmd.startswith('train_'):  # 训练音色（2026-11-28）：会在这台电脑上下载、开程序，只给在这台电脑上打开的
+                            if not local:
+                                await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': False, 'msg': '只能在运行雾幕的这台电脑上操作'}})
+                                continue
+                            ok, note, extra = await train_cmd(c)
+                            await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': note, **extra}})
+                            continue
                         if cmd in ('storage_get', 'storage_clean', 'storage_set', 'hist_merge', 'obs_css_set', 'event_api'):
                             ok, note, extra = await data_cmd(c)
                             await ws.send_json({'type': 'result', 'data': {**operation_info(c), 'ok': ok, 'msg': note, **extra}})
@@ -5014,6 +5022,126 @@ async def main():
         log.info('已经换成备份 %s（换之前的在 备份/数据 里，名字带「恢复前」）', restored)
     if ai_voice.enabled:
         log.info('AI 音色：%s（%s）', ai_voice.url, ai_voice.api)
+
+    # ---------- 训练自己的音色（2026-11-28）：下载 GPT-SoVITS、打开训练页、开合成接口、把训练好的接进朗读 ----------
+    trainer = voice_train.Installer()
+    gsv_api = [None]  # 雾幕开的 api_v2 进程
+
+    def train_root():
+        conf = load_config(args.config) if not args.demo else {}
+        av = conf.get('ai_voice') if isinstance(conf.get('ai_voice'), dict) else {}
+        return voice_train.find_root(av.get('gsv_root', ''))
+
+    def save_gsv(root=None, url=None, add_voice=None):
+        conf = load_config(args.config)
+        av = dict(conf.get('ai_voice') or {}) if isinstance(conf.get('ai_voice'), dict) else {}
+        if root is not None:
+            av['gsv_root'] = root
+        if url is not None:
+            av.update(url=url, api='api_v2')
+        if add_voice:
+            rows = [v for v in (av.get('voices') or []) if isinstance(v, dict) and v.get('name') != add_voice['name']]
+            av['voices'] = clean_voice_rows(rows + [add_voice])
+        conf['ai_voice'] = av
+        write_json(args.config, conf)
+        voice_box[0] = AIVoice(av)
+
+    async def gsv_up():
+        try:
+            async with bare.get('http://127.0.0.1:9880/docs', timeout=aiohttp.ClientTimeout(total=3)) as r:
+                return r.status < 500
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
+            return False
+
+    async def ensure_gsv_api(root):
+        """合成接口没开就开（第一次加载模型要等一会儿）"""
+        if await gsv_up():
+            return True
+        if gsv_api[0] is None or gsv_api[0].poll() is not None:
+            gsv_api[0] = await asyncio.to_thread(voice_train.start_api, root)
+        for _ in range(60):
+            await asyncio.sleep(2)
+            if await gsv_up():
+                return True
+            if gsv_api[0].poll() is not None:
+                return False
+        return False
+
+    async def train_cmd(c):
+        """返回 (ok, 说明, 额外数据)"""
+        cmd = c['cmd']
+        if args.demo:
+            return False, '演示模式不能装 GPT-SoVITS', {}
+        if sys.platform != 'win32':
+            return False, '训练音色只支持 Windows', {}
+        if cmd == 'train_check':
+            folder = c.get('folder') or ''
+            st = await asyncio.to_thread(voice_train.check, folder)
+            st['saved_root'] = train_root()
+            st['busy'] = trainer.busy()
+            st['progress'] = trainer.state
+            st['api'] = await gsv_up()
+            return True, '', {'train': st}
+        if cmd == 'train_install':
+            if trainer.busy():
+                return False, '已经在下载了', {}
+            folder, kind = c['folder'], c.get('kind') or 'normal'
+
+            def progress(st):
+                trainer.state = st
+                hub.emit_admin('train_progress', st)
+
+            async def job():
+                try:
+                    root = await trainer.run(bare, folder, kind, progress)
+                    save_gsv(root=root)
+                    log.info('GPT-SoVITS 装好了：%s', root)
+                except asyncio.CancelledError:
+                    progress({'stage': 'stopped', 'pct': 0, 'msg': '停了，再点「下载安装」会接着下'})
+                except (OSError, ValueError, aiohttp.ClientError, asyncio.TimeoutError) as e:
+                    log.warning('GPT-SoVITS 没装好：%s', e)
+                    progress({'stage': 'error', 'pct': 0, 'msg': str(e)})
+            trainer.task = asyncio.ensure_future(job())
+            return True, '开始下载，可以先干别的，进度在这里看', {}
+        if cmd == 'train_cancel':
+            trainer.cancel()
+            return True, '已经停了', {}
+        if cmd == 'train_use':
+            root = voice_train.find_root(c['folder'])
+            if not root:
+                return False, '这个文件夹里没找到 GPT-SoVITS（要有 api_v2.py 和 webui.py）', {}
+            save_gsv(root=root)
+            return True, f'用这个：{root}', {'root': root}
+        root = train_root()
+        if not root:
+            return False, '还没装 GPT-SoVITS，或者还没选文件夹', {}
+        if cmd == 'train_webui':
+            try:
+                await asyncio.to_thread(voice_train.open_webui, root)
+            except (OSError, ValueError) as e:
+                return False, f'没打开：{e}', {}
+            return True, '训练页面正在打开（会先弹一个黑窗口，等一会儿浏览器里会出来）', {}
+        if cmd == 'train_scan':
+            return True, '', {'found': await asyncio.to_thread(voice_train.scan, root), 'root': root}
+        if cmd == 'train_import':
+            v = {'name': c['name'], 'ref_audio': c['ref_audio'], 'ref_text': c.get('ref_text', ''), 'ref_lang': c.get('ref_lang') or 'zh',
+                 'gpt': c.get('gpt', ''), 'sovits': c.get('sovits', '')}
+            for k in ('ref_audio', 'gpt', 'sovits'):
+                if v[k] and not os.path.isfile(v[k]):
+                    return False, f'找不到这个文件：{v[k]}', {}
+            try:
+                save_gsv(url='http://127.0.0.1:9880', add_voice=v)
+            except ValueError as e:
+                return False, str(e), {}
+            log.info('训练的音色接进来了：%s', v['name'])
+            ok = await ensure_gsv_api(root)
+            return True, f'「{v["name"]}」接好了' + ('，合成服务也开好了，在上面「声音」里选它' if ok else '；合成服务还没开起来，点「启动合成服务」再试'), {}
+        if cmd == 'train_api':
+            ok = await ensure_gsv_api(root)
+            if ok and not voice_box[0].url:
+                save_gsv(url='http://127.0.0.1:9880')
+            return ok, '合成服务开好了' if ok else '合成服务没开起来，看 GPT-SoVITS 文件夹里的 danmist-api.log', {}
+        return False, '不支持', {}
 
     async def tts_voices(request):
         if not is_admin(request, links, args.port):
